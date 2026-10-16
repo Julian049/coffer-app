@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Product and documentation
 
-This repository is the Android client of **Coffer** (formerly "Finance App"): an offline-first personal finance app. GitHub: `Julian049/coffer-app`. Its sibling repositories are `coffer-server` (Spring Boot backend) and `coffer-docs` (all project documentation). Locally they live side by side under `/home/julian/finance-app/` (`finance-app/`, `finance-server/`, `docs/`), so the docs are at `../docs/`.
+This repository is the Android client of **Coffer** (formerly "Finance App"): an offline-first personal finance app. GitHub: `Julian049/coffer-app`. Its sibling repositories are `coffer-server` (Spring Boot backend) and `coffer-docs` (all project documentation). Locally they live side by side in the same parent folder (`finance-app/`, `finance-server/`, `docs/`), so the docs are at `../docs/`.
 
 **The documentation is the source of truth — read it before changing anything structural:**
 
