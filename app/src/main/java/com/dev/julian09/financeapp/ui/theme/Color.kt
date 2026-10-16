@@ -18,16 +18,16 @@ val DeepDarkSecondary = Color(0xFF29323F)
 
 // --- Fondos y Superficies ---
 val AppBackground = Color(0xFFF4F7F9) // Gris hielo limpio
-val SurfaceWhite = Color(0xFFFFFFFF)  // Blanco para tarjetas
-val DividerGray = Color(0xFFE2E8F0)   // Para líneas sutiles
+val SurfaceWhite = Color(0xFFFFFFFF) // Blanco para tarjetas
+val DividerGray = Color(0xFFE2E8F0) // Para líneas sutiles
 
 // --- Tipografía ---
-val TextPrimary = Color(0xFF29323F)   // El más oscuro para títulos
+val TextPrimary = Color(0xFF29323F) // El más oscuro para títulos
 val TextSecondary = Color(0xFF64748B) // Gris azulado para detalles
-val TextOnDark = Color(0xFFFFFFFF)    // Blanco para leer sobre el azul primario
+val TextOnDark = Color(0xFFFFFFFF) // Blanco para leer sobre el azul primario
 
 // --- Colores de Acción y Estado (Finanzas) ---
-val AccentCian = Color(0xFF00C4FF)    // El toque moderno de "luz"
+val AccentCian = Color(0xFF00C4FF) // El toque moderno de "luz"
 val IncomeGreen = Color(0xFF4DB6AC)
 val IncomeGreenContainer = Color(0xFF97ECE1)
 val ExpenseRed = Color(0xFFE57373)
