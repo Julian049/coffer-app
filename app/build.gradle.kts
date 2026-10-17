@@ -1,6 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.roborazzi)
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
 }
@@ -8,41 +11,75 @@ plugins {
 android {
     namespace = "com.dev.julian09.financeapp"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version =
+            release(36) {
+                minorApiLevel = 1
+            }
     }
 
     defaultConfig {
         applicationId = "com.dev.julian09.financeapp"
-        minSdk = 24
+        minSdk = 31
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        // versionCode = MAJOR*10000 + MINOR*100 + PATCH (manage-config §3.1.2)
+        versionCode = 200
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        // Only in release.yml: the keystore comes from GitHub secrets, never from the repo
+        System.getenv("RELEASE_KEYSTORE_PATH")?.let { path ->
+            create("release") {
+                storeFile = file(path)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
+    // Suffixes let staging and release live side by side on the PO's phone (manage-config §5.3)
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/\"")
+            resValue("string", "app_name", "Coffer debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
+            signingConfig = signingConfigs.findByName("release")
+            buildConfigField("String", "API_BASE_URL", "\"https://coffer-server.onrender.com/\"")
+            resValue("string", "app_name", "Coffer")
+        }
+        create("staging") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".staging"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            buildConfigField("String", "API_BASE_URL", "\"https://coffer-server-staging.onrender.com/\"")
+            resValue("string", "app_name", "Coffer staging")
         }
     }
     compileOptions {
-        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+        resValues = true
     }
     testOptions {
         unitTests {
             isReturnDefaultValues = true
+            // Robolectric renders Compose with the app's resources (Roborazzi screenshots)
+            isIncludeAndroidResources = true
         }
     }
 }
@@ -64,22 +101,35 @@ dependencies {
     val roomVersion = "2.8.4"
     implementation("androidx.room:room-runtime:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
-    implementation("androidx.room:room-ktx:${roomVersion}")
+    implementation("androidx.room:room-ktx:$roomVersion")
     implementation("com.google.dagger:hilt-android:2.57.1")
     ksp("com.google.dagger:hilt-android-compiler:2.57.1")
-    implementation("com.squareup.retrofit2:retrofit:3.0.0")
-    implementation("com.squareup.retrofit2:converter-gson:3.0.0")
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
     implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
-    val nav_version = "2.9.8"
-    implementation("androidx.navigation:navigation-compose:$nav_version")
+    val navVersion = "2.9.8"
+    implementation("androidx.navigation:navigation-compose:$navVersion")
     testImplementation("io.mockk:mockk:1.13.17")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation(libs.junit)
+    testImplementation(libs.konsist)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+}
+
+// Reference screenshots live in the repo; CI fails when a component changes without updating them
+roborazzi {
+    outputDir.set(file("src/test/screenshots"))
 }
