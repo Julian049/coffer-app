@@ -14,10 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LegacyDatabaseMigrator`: one-time move of the MVP `finance_db` into `finance.db` with the server's V6 rules and fixed UUIDs; every row starts pending upload
 - Ledger domain models (`Account`, `Category`, `Tag`, `Transaction`, `Settings`) and read ports
 - Tests: MVP migration, DAOs and an instrumented encryption test (run by hand)
+- Background sync (ADR-0006): `SyncApi`, `SyncTables` (entity ↔ change codec), `ChangeApplier` (client last-write-wins, cursor saved per page), `SyncEngine` (push batches of 200, pull pages of 500, refuses another account's database), `SyncWorker` (retries on network, 5xx and 429) and `SyncSchedulerImpl` (on change, every 15 min, initial download)
+- `BaseCatalogSeeder`: base categories (detailed-design §6.9.10) and default settings on a new account
+- Tests: `SyncEngineTest` (MockWebServer) and `ChangeApplierTest`
 
 ### Changed
 
 - Android backup and device-to-device transfer are disabled (ADR-0008: the cloud is the backup)
+- Signing out also cancels the background sync
 
 ### Removed
 
