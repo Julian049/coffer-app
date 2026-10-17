@@ -96,7 +96,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.benchmark.common)
-    val roomVersion = "2.8.4"
+    val roomVersion = "2.8.5"
     implementation("androidx.room:room-runtime:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
@@ -106,8 +106,8 @@ dependencies {
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
-    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
-    val navVersion = "2.9.8"
+    implementation("androidx.hilt:hilt-navigation-compose:1.4.0")
+    val navVersion = "2.10.2"
     implementation("androidx.navigation:navigation-compose:$navVersion")
     testImplementation("io.mockk:mockk:1.13.17")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
