@@ -7,11 +7,15 @@ updates:
       interval: weekly
     labels: ["type:chore", "area:ops"]
     groups:
-      androidx:
-        patterns: ["androidx.*"]
+      # One PR for every minor/patch bump; majors keep their own PR to be reviewed one by one
+      gradle-minor-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop
     schedule:
       interval: weekly
     labels: ["type:chore", "area:ops"]
+    groups:
+      actions:
+        patterns: ["*"]

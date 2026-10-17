@@ -1,7 +1,10 @@
 package com.dev.julian09.financeapp.di
 
 import com.dev.julian09.financeapp.BuildConfig
+import com.dev.julian09.financeapp.data.remote.AuthApi
+import com.dev.julian09.financeapp.data.remote.AuthInterceptor
 import com.dev.julian09.financeapp.data.remote.HealthApi
+import com.dev.julian09.financeapp.data.remote.TokenAuthenticator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,9 +31,14 @@ object NetworkModule {
     // Render's free plan sleeps; waking up takes close to a minute (ADR-0009)
     @Provides
     @Singleton
-    fun provideOkHttp(): OkHttpClient =
+    fun provideOkHttp(
+        authInterceptor: AuthInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
+    ): OkHttpClient =
         OkHttpClient
             .Builder()
+            .addInterceptor(authInterceptor)
+            .authenticator(tokenAuthenticator)
             .connectTimeout(60, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .build()
@@ -51,4 +59,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideHealthApi(retrofit: Retrofit): HealthApi = retrofit.create(HealthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
 }

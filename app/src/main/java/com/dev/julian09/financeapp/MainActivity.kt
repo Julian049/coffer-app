@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.dev.julian09.financeapp.ui.navigation.AppNavHost
+import com.dev.julian09.financeapp.ui.root.AppRoot
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -15,7 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CofferTheme {
-                AppNavHost()
+                AppRoot()
             }
         }
     }

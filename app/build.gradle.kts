@@ -4,17 +4,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.roborazzi)
-    id("com.google.dagger.hilt.android")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.dev.julian09.financeapp"
+    // Compiling against 37 lets current AndroidX and OkHttp 5 build; behavior still follows targetSdk 36
     compileSdk {
-        version =
-            release(36) {
-                minorApiLevel = 1
-            }
+        version = release(37)
     }
 
     defaultConfig {
@@ -22,8 +20,8 @@ android {
         minSdk = 31
         targetSdk = 36
         // versionCode = MAJOR*10000 + MINOR*100 + PATCH (manage-config §3.1.2)
-        versionCode = 200
-        versionName = "0.2.0"
+        versionCode = 300
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -98,21 +96,23 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.benchmark.common)
-    val roomVersion = "2.8.4"
+    val roomVersion = "2.8.5"
     implementation("androidx.room:room-runtime:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
-    implementation("com.google.dagger:hilt-android:2.57.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.57.1")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.okhttp)
+    implementation(libs.androidx.datastore)
     implementation(libs.kotlinx.serialization.json)
-    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
-    val navVersion = "2.9.8"
+    implementation("androidx.hilt:hilt-navigation-compose:1.4.0")
+    val navVersion = "2.10.2"
     implementation("androidx.navigation:navigation-compose:$navVersion")
     testImplementation("io.mockk:mockk:1.13.17")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.junit)
     testImplementation(libs.konsist)
     testImplementation(libs.robolectric)
