@@ -16,6 +16,8 @@ benchmarkCommon = "1.4.1"
 kotlinxSerialization = "1.11.0"
 retrofit = "3.0.0"
 okhttp = "5.5.0"
+datastore = "1.2.1"
+coroutines = "1.11.0"
 konsist = "0.18.1"
 ktlintGradle = "14.2.0"
 robolectric = "4.17"
@@ -44,6 +46,9 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-converter-kotlinx-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver3", version.ref = "okhttp" }
+androidx-datastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 konsist = { group = "com.lemonappdev", name = "konsist", version.ref = "konsist" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Session layer: `SessionStore` (typed DataStore encrypted with an AES-256-GCM key in Android Keystore) and `DeviceIdProvider`
+- `AuthApi`, `AuthInterceptor` (bearer token) and `TokenAuthenticator` (one shared refresh on 401, then retry; a rejected refresh marks the session expired without deleting local data)
+- `AuthRepositoryImpl` mapping server problems (RFC 9457) to `AuthFailure`; use cases `RegisterUser`, `Login`, `Logout`, `ObserveSession` with form validation
+- Tests: `TokenAuthenticatorTest` and `AuthRepositoryImplTest` (MockWebServer), `AuthUseCasesTest`, instrumented `SessionStoreTest` (run by hand)
+
 ### Changed
 
 - Dependabot groups minor/patch Gradle bumps and all Actions bumps
