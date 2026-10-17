@@ -109,6 +109,10 @@ dependencies {
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.androidx.datastore)
+    // Background sync (ADR-0006): WorkManager with Hilt-injected workers
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
     implementation(libs.kotlinx.serialization.json)
     implementation("androidx.hilt:hilt-navigation-compose:1.4.0")
     val navVersion = "2.10.2"
@@ -117,6 +121,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.androidx.work.testing)
     testImplementation(libs.junit)
     testImplementation(libs.konsist)
     testImplementation(libs.robolectric)
