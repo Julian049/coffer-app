@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dependabot groups minor/patch Gradle bumps and all Actions bumps
 - compileSdk 36.1 -> 37 (needed by current AndroidX and OkHttp 5); targetSdk stays 36
+- Kotlin 2.2.10 -> 2.4.21 together with Hilt 2.57.1 -> 2.60.1 and KSP 2.3.4 -> 2.3.12, all in the version catalog
 
 ## [0.2.0] - 2026-10-16
 
