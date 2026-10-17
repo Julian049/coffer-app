@@ -16,18 +16,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
+import com.dev.julian09.financeapp.domain.model.Account
+import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.AuthField
+import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.SyncStatus
+import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.ui.PROFILE
+import com.dev.julian09.financeapp.ui.feature.accounts.AccountsContent
 import com.dev.julian09.financeapp.ui.feature.auth.LoginContent
 import com.dev.julian09.financeapp.ui.feature.auth.LoginUiState
 import com.dev.julian09.financeapp.ui.feature.auth.RegisterContent
 import com.dev.julian09.financeapp.ui.feature.auth.RegisterUiState
+import com.dev.julian09.financeapp.ui.feature.history.HistoryContent
+import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
+import com.dev.julian09.financeapp.ui.feature.history.HistoryRow
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsUiState
+import com.dev.julian09.financeapp.ui.feature.sync.InitialDownloadContent
 import com.dev.julian09.financeapp.ui.navigation.BottomBar
 import com.dev.julian09.financeapp.ui.navigation.Tab
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -38,6 +47,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.LocalDate
+import java.util.UUID
 
 /**
  * Reference images of the base components in light and dark (src/test/screenshots).
@@ -79,6 +90,18 @@ class ComponentsScreenshotTest {
 
     @Test
     fun settingsDark() = capture("settings_dark", dark = true) { Settings() }
+
+    @Test
+    fun initialDownloadLight() = capture("initial_download_light", dark = false) { InitialDownload() }
+
+    @Test
+    fun initialDownloadDark() = capture("initial_download_dark", dark = true) { InitialDownload() }
+
+    @Test
+    fun historyLight() = capture("history_light", dark = false) { History() }
+
+    @Test
+    fun accountsLight() = capture("accounts_light", dark = false) { Accounts() }
 
     private fun capture(
         name: String,
@@ -132,7 +155,7 @@ class ComponentsScreenshotTest {
     @Composable
     private fun Home() {
         Column(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f)) { HomeScreen(onOpenSettings = {}, avatarInitial = 'J') }
+            Box(Modifier.weight(1f)) { HomeScreen(onOpenSettings = {}, avatarInitial = 'J', syncStatus = SyncStatus.Pending(2)) }
             BottomBar(selected = Tab.Home, onSelect = {})
         }
     }
@@ -143,6 +166,47 @@ class ComponentsScreenshotTest {
             state = SettingsUiState("0.3.0", ServerState.Available, user = PROFILE, confirmingLogout = confirmingLogout),
             onBack = {},
             onRetry = {},
+            syncStatus = SyncStatus.Synced(null),
+        )
+    }
+
+    @Composable
+    private fun InitialDownload() {
+        InitialDownloadContent(
+            InitialSyncProgress(received = 120, total = 200, byEntity = mapOf("account" to 5L, "category" to 24L, "transaction" to 91L)),
+            onRetry = {},
+        )
+    }
+
+    @Composable
+    private fun History() {
+        val today = LocalDate.of(2026, 10, 17)
+        HistoryContent(
+            listOf(
+                HistoryDay(
+                    today,
+                    listOf(
+                        HistoryRow("Comida", "Efectivo", Money.ofPesos(28_000), TransactionType.EXPENSE),
+                        HistoryRow("Transferencia", "Nu → Efectivo", Money.ofPesos(200_000), TransactionType.TRANSFER),
+                    ),
+                ),
+                HistoryDay(today.minusDays(3), listOf(HistoryRow("Salario", "Nu", Money.ofPesos(3_500_000), TransactionType.INCOME))),
+            ),
+            onOpenSettings = {},
+            avatarInitial = 'J',
+            today = today,
+        )
+    }
+
+    @Composable
+    private fun Accounts() {
+        AccountsContent(
+            listOf(
+                Account(UUID(0, 1), "Efectivo", AccountType.CASH, Money.ofPesos(150_000)),
+                Account(UUID(0, 2), "Nu", AccountType.SAVINGS, Money.ofPesos(2_600_000), institution = "Nu Colombia"),
+            ),
+            onOpenSettings = {},
+            avatarInitial = 'J',
         )
     }
 

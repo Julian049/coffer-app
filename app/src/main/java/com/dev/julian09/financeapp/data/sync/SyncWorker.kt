@@ -22,7 +22,10 @@ class SyncWorker
     ) : CoroutineWorker(context, params) {
         override suspend fun doWork(): Result =
             try {
-                engine.sync { received, total -> setProgress(workDataOf(RECEIVED to received, TOTAL to (total ?: -1L))) }
+                engine.sync { received, total, byEntity ->
+                    val counts = byEntity.map { (entity, count) -> "$ENTITY_PREFIX$entity" to count }.toTypedArray()
+                    setProgress(workDataOf(RECEIVED to received, TOTAL to (total ?: -1L), *counts))
+                }
                 Result.success()
             } catch (e: CancellationException) {
                 throw e
@@ -33,6 +36,7 @@ class SyncWorker
         companion object {
             const val RECEIVED = "received"
             const val TOTAL = "total"
+            const val ENTITY_PREFIX = "received_"
 
             /**
              * No network, a sleeping or failing server (RNF-06) → retry with exponential backoff. An expired session (the

@@ -10,6 +10,8 @@ import com.dev.julian09.financeapp.data.repository.BaseCatalogSeeder
 import com.dev.julian09.financeapp.data.session.DeviceIdProvider
 import com.dev.julian09.financeapp.data.session.SessionStore
 import com.dev.julian09.financeapp.domain.port.Clock
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
@@ -38,18 +40,20 @@ class SyncEngine
             val updatedAt: Instant,
         )
 
-        /** [onProgress] gets (received, total) during the initial download; total is null on incremental pulls. */
-        suspend fun sync(onProgress: suspend (Long, Long?) -> Unit = { _, _ -> }) {
-            val session = store.current()?.takeUnless { it.expired } ?: return
-            claimOwnership(session.user.id)
-            push()
-            pull(onProgress)
-            if (db.syncMeta().get(SyncMeta.INITIAL_SYNC_DONE) != "true") {
-                if (seeder.ensureBaseCatalog(UUID.fromString(session.user.id))) push()
-                db.syncMeta().put(SyncMetaEntity(SyncMeta.INITIAL_SYNC_DONE, "true"))
+        /** [onProgress] gets (received, total, received per entity); total is only known on the initial download. */
+        suspend fun sync(onProgress: suspend (Long, Long?, Map<String, Long>) -> Unit = { _, _, _ -> }) =
+            // The one-off, periodic and initial works are unique per name, not across names: one round at a time
+            LOCK.withLock {
+                val session = store.current()?.takeUnless { it.expired } ?: return@withLock
+                claimOwnership(session.user.id)
+                push()
+                pull(onProgress)
+                if (db.syncMeta().get(SyncMeta.INITIAL_SYNC_DONE) != "true") {
+                    if (seeder.ensureBaseCatalog(UUID.fromString(session.user.id))) push()
+                    db.syncMeta().put(SyncMetaEntity(SyncMeta.INITIAL_SYNC_DONE, "true"))
+                }
+                db.syncMeta().put(SyncMetaEntity(SyncMeta.LAST_SYNC_AT, clock.now().toString()))
             }
-            db.syncMeta().put(SyncMetaEntity(SyncMeta.LAST_SYNC_AT, clock.now().toString()))
-        }
 
         private suspend fun claimOwnership(userId: String) {
             when (db.syncMeta().get(SyncMeta.OWNER)) {
@@ -95,17 +99,19 @@ class SyncEngine
             }
         }
 
-        private suspend fun pull(onProgress: suspend (Long, Long?) -> Unit) {
+        private suspend fun pull(onProgress: suspend (Long, Long?, Map<String, Long>) -> Unit) {
             var cursor = db.syncMeta().get(SyncMeta.PULL_CURSOR)?.toLongOrNull() ?: 0
             var received = 0L
+            val byEntity = mutableMapOf<String, Long>()
             var total: Long? = null
             do {
                 val page = api.pull(cursor, PULL_PAGE)
                 applier.apply(page.changes, page.nextCursor)
                 received += page.changes.size
+                page.changes.forEach { byEntity.merge(it.entity, 1, Long::plus) }
                 // remaining only comes with since=0, the start of the initial download
                 if (total == null && page.remaining != null) total = page.changes.size + page.remaining
-                onProgress(received, total)
+                onProgress(received, total, byEntity.toMap())
                 cursor = page.nextCursor
             } while (page.hasMore)
         }
@@ -114,5 +120,6 @@ class SyncEngine
             const val PUSH_BATCH = 200
             const val PULL_PAGE = 500
             private const val MAX_PUSH_ROUNDS = 50
+            private val LOCK = Mutex()
         }
     }
