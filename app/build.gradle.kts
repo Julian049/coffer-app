@@ -10,11 +10,9 @@ plugins {
 
 android {
     namespace = "com.dev.julian09.financeapp"
+    // Compiling against 37 lets current AndroidX and OkHttp 5 build; behavior still follows targetSdk 36
     compileSdk {
-        version =
-            release(36) {
-                minorApiLevel = 1
-            }
+        version = release(37)
     }
 
     defaultConfig {
