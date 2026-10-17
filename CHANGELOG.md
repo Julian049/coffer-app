@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17
+
 ### Added
 
 - Encrypted local database `finance.db` (Room + SQLCipher, ADR-0008) with settings, accounts, categories, tags, transactions and sync metadata; schema exported to `app/schemas`
