@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.ui.feature.settings
 
 import com.dev.julian09.financeapp.domain.model.SessionState
 import com.dev.julian09.financeapp.domain.port.ServerStatusRepository
+import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import com.dev.julian09.financeapp.domain.usecase.CheckServerStatus
 import com.dev.julian09.financeapp.domain.usecase.Logout
 import com.dev.julian09.financeapp.domain.usecase.ObserveSession
@@ -19,6 +20,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -28,6 +30,21 @@ class SettingsViewModelTest {
         override suspend fun isAvailable() = up
     }
 
+    private class FakeScheduler : SyncScheduler {
+        var cancelled = false
+
+        override fun requestSync() = Unit
+
+        override fun requestInitialSync(): UUID = UUID.randomUUID()
+
+        override fun ensurePeriodic() = Unit
+
+        override fun cancelAll() {
+            cancelled = true
+        }
+    }
+
+    private val scheduler = FakeScheduler()
     private val auth = FakeAuthRepository().apply { session.value = SessionState.Active(PROFILE) }
     private val server = FakeServer(up = false)
 
@@ -37,7 +54,8 @@ class SettingsViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = SettingsViewModel(CheckServerStatus(server), ObserveSession(auth), RefreshProfile(auth), Logout(auth))
+    private fun viewModel() =
+        SettingsViewModel(CheckServerStatus(server), ObserveSession(auth), RefreshProfile(auth), Logout(auth, scheduler))
 
     @Test
     fun `reports the server state and retries`() {
@@ -63,6 +81,7 @@ class SettingsViewModelTest {
 
         vm.confirmLogout()
         assertTrue(auth.loggedOut)
+        assertTrue("sync stops on sign-out", scheduler.cancelled)
         assertFalse(vm.state.value.confirmingLogout)
     }
 }

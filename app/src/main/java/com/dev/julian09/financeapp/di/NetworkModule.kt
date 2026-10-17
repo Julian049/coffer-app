@@ -4,6 +4,7 @@ import com.dev.julian09.financeapp.BuildConfig
 import com.dev.julian09.financeapp.data.remote.AuthApi
 import com.dev.julian09.financeapp.data.remote.AuthInterceptor
 import com.dev.julian09.financeapp.data.remote.HealthApi
+import com.dev.julian09.financeapp.data.remote.SyncApi
 import com.dev.julian09.financeapp.data.remote.TokenAuthenticator
 import dagger.Module
 import dagger.Provides
@@ -63,4 +64,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSyncApi(retrofit: Retrofit): SyncApi = retrofit.create(SyncApi::class.java)
 }
