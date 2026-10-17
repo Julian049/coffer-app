@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-16
+
 ### Added
 
 - Sign-in and registration screens (Figma "Iniciar Sesión" and "Registro") with errors next to each field; Google sign-in visible but disabled until Sprint 11
