@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Dependabot groups minor/patch Gradle bumps and all Actions bumps; OkHttp majors are skipped while compileSdk is 36
+- Dependabot groups minor/patch Gradle bumps and all Actions bumps
+- compileSdk 36.1 -> 37 (needed by current AndroidX and OkHttp 5); targetSdk stays 36
 
 ## [0.2.0] - 2026-10-16
 

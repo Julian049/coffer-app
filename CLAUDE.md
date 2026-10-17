@@ -35,7 +35,7 @@ Sprint 1 (`v0.2.0`): project base (S1-H03) and design system + 4-tab navigation 
 
 ## Project
 
-Single-module Android app (`:app`, package and `applicationId` `com.dev.julian09.financeapp`; **never change the `applicationId`**). Kotlin + Jetpack Compose + Material 3 + Navigation Compose + Hilt (KSP) + Room + Retrofit 3/OkHttp 4 with **kotlinx.serialization** (no Gson). minSdk 31, targetSdk 36 (compileSdk 36.1), no desugaring. AGP 9 with built-in Kotlin (no `kotlin-android` plugin). README, UI strings, log messages and test names are in Spanish; CHANGELOG follows Keep a Changelog in English. Commits use Conventional Commits.
+Single-module Android app (`:app`, package and `applicationId` `com.dev.julian09.financeapp`; **never change the `applicationId`**). Kotlin + Jetpack Compose + Material 3 + Navigation Compose + Hilt (KSP) + Room + Retrofit 3/OkHttp 4 with **kotlinx.serialization** (no Gson). minSdk 31, targetSdk 36, compileSdk 37 (current AndroidX and OkHttp 5 require it), no desugaring. AGP 9 with built-in Kotlin (no `kotlin-android` plugin). README, UI strings, log messages and test names are in Spanish; CHANGELOG follows Keep a Changelog in English. Commits use Conventional Commits.
 
 Version: `versionName` = SemVer, `versionCode` = `MAJOR×10000 + MINOR×100 + PATCH` (`0.2.0` → 200), both in `app/build.gradle.kts`.
 

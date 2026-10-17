@@ -10,10 +10,6 @@ updates:
       # One PR for every minor/patch bump; majors keep their own PR to be reviewed one by one
       gradle-minor-patch:
         update-types: ["minor", "patch"]
-    ignore:
-      # OkHttp 5 needs compileSdk 37; the project targets 36 (S1-H03)
-      - dependency-name: com.squareup.okhttp3:okhttp
-        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop
