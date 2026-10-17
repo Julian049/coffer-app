@@ -13,9 +13,10 @@ import com.dev.julian09.financeapp.ui.components.EmptyState
 fun HistoryScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    avatarInitial: Char? = null,
 ) {
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = "Historial", actions = { Avatar(onClick = onOpenSettings) })
+        AppHeader(title = "Historial", actions = { Avatar(onClick = onOpenSettings, initial = avatarInitial) })
         EmptyState(title = "Aún no hay movimientos", message = "Tus gastos, ingresos y transferencias aparecerán aquí.")
     }
 }

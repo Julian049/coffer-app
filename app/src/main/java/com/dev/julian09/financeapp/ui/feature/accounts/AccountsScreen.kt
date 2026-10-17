@@ -13,9 +13,10 @@ import com.dev.julian09.financeapp.ui.components.EmptyState
 fun AccountsScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    avatarInitial: Char? = null,
 ) {
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = "Cuentas", actions = { Avatar(onClick = onOpenSettings) })
+        AppHeader(title = "Cuentas", actions = { Avatar(onClick = onOpenSettings, initial = avatarInitial) })
         EmptyState(title = "Aún no tienes cuentas", message = "Aquí vas a crear y administrar tus cuentas, tarjetas y préstamos.")
     }
 }

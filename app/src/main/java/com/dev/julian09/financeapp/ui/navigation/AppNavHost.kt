@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.dev.julian09.financeapp.domain.model.UserProfile
 import com.dev.julian09.financeapp.ui.feature.accounts.AccountsScreen
 import com.dev.julian09.financeapp.ui.feature.history.HistoryScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
@@ -20,7 +21,11 @@ import com.dev.julian09.financeapp.ui.feature.settings.SettingsScreen
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 @Composable
-fun AppNavHost(navController: NavHostController = rememberNavController()) {
+fun AppNavHost(
+    user: UserProfile,
+    navController: NavHostController = rememberNavController(),
+) {
+    val initial = user.displayName.firstOrNull()
     val backStack by navController.currentBackStackEntryAsState()
     val currentTab = Tab.entries.firstOrNull { tab -> backStack?.destination?.hasRoute(tab.route::class) == true }
     val openSettings = { navController.navigate(SettingsRoute) { launchSingleTop = true } }
@@ -30,10 +35,10 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         bottomBar = { if (currentTab != null) BottomBar(selected = currentTab, onSelect = navController::navigateToTab) },
     ) { padding ->
         NavHost(navController = navController, startDestination = HomeRoute, modifier = Modifier.padding(padding)) {
-            composable<HomeRoute> { HomeScreen(onOpenSettings = openSettings) }
-            composable<HistoryRoute> { HistoryScreen(onOpenSettings = openSettings) }
-            composable<ReportsRoute> { ReportsScreen(onOpenSettings = openSettings) }
-            composable<AccountsRoute> { AccountsScreen(onOpenSettings = openSettings) }
+            composable<HomeRoute> { HomeScreen(onOpenSettings = openSettings, avatarInitial = initial) }
+            composable<HistoryRoute> { HistoryScreen(onOpenSettings = openSettings, avatarInitial = initial) }
+            composable<ReportsRoute> { ReportsScreen(onOpenSettings = openSettings, avatarInitial = initial) }
+            composable<AccountsRoute> { AccountsScreen(onOpenSettings = openSettings, avatarInitial = initial) }
             composable<SettingsRoute> { SettingsScreen(onBack = navController::popBackStack) }
         }
     }

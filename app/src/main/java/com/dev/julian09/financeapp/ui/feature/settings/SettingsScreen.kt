@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
@@ -27,12 +28,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
+import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
+import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 @Composable
@@ -41,24 +44,50 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    SettingsContent(state = state, onBack = onBack, onRetry = viewModel::refreshServer)
+    SettingsContent(
+        state = state,
+        onBack = onBack,
+        onRetry = viewModel::refreshServer,
+        onLogoutRequest = viewModel::requestLogout,
+        onLogoutConfirm = viewModel::confirmLogout,
+        onLogoutDismiss = viewModel::dismissLogout,
+    )
 }
 
-/** Minimal Settings of Sprint 1: server status and app version. Profile, notices and data arrive in later sprints. */
+/** Settings so far: profile, server status, sign-out and version. Notices and data arrive in later sprints. */
 @Composable
 fun SettingsContent(
     state: SettingsUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    onLogoutRequest: () -> Unit = {},
+    onLogoutConfirm: () -> Unit = {},
+    onLogoutDismiss: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
+    LogoutDialogIfNeeded(state.confirmingLogout, onLogoutConfirm, onLogoutDismiss)
     Column(modifier.fillMaxSize()) {
         AppHeader(title = "Ajustes", onBack = onBack)
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            state.user?.let { user ->
+                AppCard {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Avatar(onClick = {}, initial = user.displayName.firstOrNull(), size = 48)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(user.displayName, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                            Text(
+                                "@${user.username} · ${user.email}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textSecondary,
+                            )
+                        }
+                    }
+                }
+            }
             AppCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     val (icon, tint, title, detail) =
@@ -97,6 +126,15 @@ fun SettingsContent(
                     AppButton("Reintentar", onRetry, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
                 }
             }
+            if (state.user != null) {
+                AppButton(
+                    "Cerrar sesión",
+                    onClick = onLogoutRequest,
+                    kind = ButtonKind.Danger,
+                    icon = Icons.AutoMirrored.Outlined.Logout,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Text(
                 "Versión ${state.appVersion}",
                 style = MaterialTheme.typography.bodySmall,
@@ -105,6 +143,26 @@ fun SettingsContent(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+@Composable
+private fun LogoutDialogIfNeeded(
+    show: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (show) {
+        ConfirmDialog(
+            title = "¿Cerrar sesión?",
+            message =
+                "Tus datos se quedan en este teléfono, pero dejarán de sincronizarse. " +
+                    "Los cambios que hagas después no tendrán respaldo en la nube.",
+            confirmText = "Cerrar sesión",
+            onConfirm = onConfirm,
+            onDismiss = onDismiss,
+            destructive = true,
+        )
     }
 }
 
