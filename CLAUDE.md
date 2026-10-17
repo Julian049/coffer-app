@@ -31,7 +31,7 @@ This repository is the Android client of **Coffer** (formerly "Finance App"): an
 
 ## Current state
 
-Sprint 1 (`v0.2.0`) in progress. S1-H03 set up the project base: build types, networking with kotlinx.serialization, the `ui`/`domain`/`data`/`di` skeleton and CI/release workflows. The MVP code lives under `legacy/` and still drives the UI until S1-H04 (design system and 4-tab navigation) replaces it. When the code changes, update this file accordingly.
+Sprint 1 (`v0.2.0`): project base (S1-H03) and design system + 4-tab navigation (S1-H04). The tabs are empty containers until their sprints fill them (Home and Accounts in S4, History in S5, Reports in S9); Settings shows the server status and the version. The MVP screens are gone; only its Room classes remain under `legacy/data/local` for the Sprint 3 migration. When the code changes, update this file accordingly.
 
 ## Project
 
@@ -56,10 +56,11 @@ On this machine the Android SDK is installed on Windows, so from WSL run Gradle 
 ```bash
 ./gradlew assembleDebug assembleStaging         # APKs
 ./gradlew installStaging                        # install on a connected device
-./gradlew testDebugUnitTest                     # JVM tests (JUnit 4, MockK, Konsist)
+./gradlew testDebugUnitTest                     # JVM tests (JUnit 4, MockK, Konsist, Robolectric)
+./gradlew recordRoborazziDebug                  # re-record reference screenshots after an intended visual change
 ./gradlew ktlintCheck                           # style (ktlintFormat fixes most issues)
 ./gradlew lint
-./gradlew lint ktlintCheck testDebugUnitTest assembleStaging   # what CI runs
+./gradlew lint ktlintCheck testDebugUnitTest assembleStaging -Proborazzi.test.verify=true   # what CI runs
 ```
 
 Unit tests run with `isReturnDefaultValues = true`, so `android.util.Log` calls are no-ops in JVM tests.
@@ -70,30 +71,19 @@ CI (`.github/workflows/ci.yml`) runs on every PR and push to `develop`/`main` an
 
 Target structure: detailed-design §6.2.2. Today:
 
-- `FinanceApp` (`@HiltAndroidApp`), `MainActivity`.
-- `domain/port/Clock` (inject it; never read the system clock in domain code). Implemented by `data/clock/SystemClock`.
-- `data/remote/HealthApi` (`GET actuator/health`, sends `Accept: application/json` because Actuator otherwise answers with its own vnd media type) + `dto/HealthDto`.
-- `di/NetworkModule` (`Json { ignoreUnknownKeys }`, OkHttp with 60 s timeouts because Render's free plan sleeps, Retrofit on `BuildConfig.API_BASE_URL`), `di/DispatchersModule` (`@IoDispatcher`, `@DefaultDispatcher`), `di/RepositoryModule` (binds ports), `di/LegacyModule` (MVP Room and repository).
-- `ui/theme` (still the MVP theme until S1-H04).
-- `legacy/`: the MVP, described below.
+- `FinanceApp` (`@HiltAndroidApp`), `MainActivity` (edge-to-edge, `CofferTheme { AppNavHost() }`).
+- **Theme** (`ui/theme`): the 16 tokens of `design-system.md` as `CofferColors` (light and dark), read with `CofferTheme.colors.<token>`; `CofferTypography` (weights 400/500 only), `CofferShapes` (12/16/14/20 dp radii, pill). The Material `ColorScheme` is derived from the tokens with every surface slot flat (no tonal tint). No dynamic color. Do not hardcode colors in screens.
+- **Components** (`ui/components`): `MoneyText` + `formatMoney` (COP without decimals, `$1.250.000`; sign and color by `MoneyKind`: income `+` green, expense/debt `−` red, transfer neutral), `AppButton` (`ButtonKind` Primary/Secondary/Ghost/Danger), `AppCard` (1 dp border, `highlight` for the featured card), `AppChip`, `SegmentedSelector`, `AppBottomSheet`, `ConfirmDialog`, `EmptyState` (resting fox), `SyncBadge` (`domain/model/SyncStatus`), `AppHeader` + `Avatar`. Sizes and paddings follow the prototype (Figma plugin `docs/08-ui/figma-plugins/srs-prototype/code.js` is the most precise spec of each piece).
+- **Navigation** (`ui/navigation`): type-safe routes (`@Serializable` objects in `Routes.kt`), `AppNavHost` (Scaffold; the custom `BottomBar` only on the 4 tabs; standard tab behavior with saved state), avatar → `SettingsRoute`.
+- **Features** (`ui/feature/*`): `home`, `history`, `reports`, `accounts` (empty containers) and `settings` (`SettingsViewModel` → `CheckServerStatus` use case → `ServerStatusRepository` port → `ServerStatusRepositoryImpl` over `HealthApi`; never throws).
+- **Domain**: `model/Money` (Long ×10⁴, ADR-0004), `model/SyncStatus`, `port/Clock`, `port/ServerStatusRepository`, `usecase/CheckServerStatus`.
+- **Data**: `clock/SystemClock`, `remote/HealthApi` (sends `Accept: application/json` because Actuator otherwise answers with its own vnd media type), `repository/ServerStatusRepositoryImpl`.
+- **DI**: `NetworkModule` (`Json { ignoreUnknownKeys }`, OkHttp with 60 s timeouts because Render's free plan sleeps, Retrofit on `BuildConfig.API_BASE_URL`), `DispatchersModule` (`@IoDispatcher`, `@DefaultDispatcher`), `RepositoryModule` (binds ports).
+- `legacy/data/local`: MVP Room schema (`finance_db`), unused until the Sprint 3 migration reads it.
 
-Rules in `ArchitectureTest` (Konsist, runs with the unit tests): `domain` imports no `android.*`, `androidx.*` or `data`; no `Double`/`Float` properties, parameters or return types in `domain` (ADR-0004); `ui` does not import `data`. `legacy` is outside these rules.
+Rules in `ArchitectureTest` (Konsist, runs with the unit tests): `domain` imports no `android.*`, `androidx.*` or `data`; no `Double`/`Float` properties, parameters or return types in `domain` (ADR-0004); `ui` does not import `data`.
 
-## Legacy MVP (`legacy/`)
+### Brand assets and screenshots
 
-MVVM + Clean Architecture under `legacy/`, layered as `ui` → `viewmodel` → `domain/usecase` → `domain/repository` (interface) ← `data` (implementation). Everything revolves around a single entity, the transaction, represented three times with identical fields: `TransactionEntity` (Room), `TransactionDto` (API), `Transaction` (domain). Mapping between them is done inline in `TransactionRepositoryImpl` — there are no mapper classes, so a field change must be applied to all three plus the mapping code.
-
-- **DI**: Room `finance_db`, DAO and repository in `di/LegacyModule.kt`; `ApiService` comes from the shared Retrofit in `di/NetworkModule.kt`, so it talks to the server of the current build type.
-- **Backend contract** (`legacy/data/remote/ApiService.kt`): `GET actuator/health` (Spring Boot actuator), `GET /transactions`, `POST /transactions`.
-- **Single ViewModel**: `TransactionViewModel` is shared by both screens (`MainScreen`, `RegisterTransaction`; routes in `ui/navigation/Screen.kt`, NavHost in `MainActivity`). It exposes one `StateFlow<UiState>`. Navigation back after saving is driven by `isTransactionAdded` + `resetNavigation()`.
-- **Use cases** are thin `operator fun invoke` wrappers over the repository, injected with `@Inject constructor`.
-
-### Sync flow & data conventions (non-obvious)
-
-- `getTransactions()` first pulls all remote transactions **with `runBlocking`** and upserts them into Room (`REPLACE` on `localId`), then returns the Room `Flow`. Room is the single source of truth for the UI; the balance is recomputed on every emission.
-- New transactions are only inserted locally with `synced = false`. `syncTransactions()` (triggered manually from the main screen) POSTs each unsynced row, then marks **all** unsynced rows as synced in one query. Errors are logged and swallowed.
-- `localId` is a client-generated UUID string and is the primary key on both sides.
-- `TransactionDto.value` is a `String`: since server v0.2.0 money travels as a JSON string; the repository converts it to and from the `Double` the MVP stores.
-- **Sign encodes direction**: `value` is negative for expenses — the register screen prepends `-` to the amount for expense type. The balance is a plain sum of `value`. `type: Boolean` is derived from the sign in the ViewModel (`true` when negative).
-- **Date format**: the UI passes `"<epochMillis> <H>:<m>"`; `TransactionRepositoryImpl.formatDate` converts it to an ISO-8601 offset string (UTC) before storing/sending, falling back to the raw string on parse failure.
-- UI status colors: the per-item indicator reflects `synced`; the header indicator reflects `isApiHealthy` (health check runs once in the ViewModel `init`).
+- Brand and mascot images come from `../docs/08-ui/icons/{brand,mascot}` (source of truth, fixed names). `scripts/sync-brand-assets.sh` (wrapper of `sync_brand_assets.py`, needs Pillow with WebP) writes them to `res/drawable-nodpi/` as 512 px WebP with underscores (`mascot-resting.png` → `R.drawable.mascot_resting`). On this machine Pillow lives on Windows: run `python.exe 'C:\...\finance-app\scripts\sync_brand_assets.py'` or `PYTHON=python.exe scripts/sync-brand-assets.sh`. The launcher icon is adaptive: `coffer_mark` inset to the safe zone on `#FAFAF9`, `coffer_mark_mono` as the themed icon.
+- Reference screenshots (Roborazzi + Robolectric, light and dark) live in `app/src/test/screenshots/` and CI verifies them. After an intended visual change, run `recordRoborazziDebug`, look at the PNGs and commit them.

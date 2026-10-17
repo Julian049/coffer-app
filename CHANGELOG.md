@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Konsist architecture rules (`domain` free of Android, `data` and floating point; `ui` does not import `data`)
 - GitHub Actions: CI (`lint`, `ktlintCheck`, `testDebugUnitTest`, `assembleStaging` with the APK as artifact) and signed release on `v*` tags with checksums; Dependabot for Gradle and Actions
 - ktlint
+- Design system theme from `design-system.md` v2.1: light and dark tokens, typography (400/500), shapes, no shadows
+- Base components: `MoneyText` (COP format), buttons, `AppCard`, chips, `SegmentedSelector`, `AppBottomSheet`, `ConfirmDialog`, `EmptyState`, `SyncBadge`, header with avatar
+- 4-tab navigation (Inicio, Historial, Reportes, Cuentas) with type-safe routes; avatar opens Settings
+- Settings: app version and server status with retry
+- Coffer launcher icon (adaptive, with themed icon) and mascot images synced from coffer-docs (`scripts/sync-brand-assets.sh`)
+- Robolectric component tests and Roborazzi screenshots in light and dark, verified in CI
 
 ### Changed
 
@@ -28,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Template example tests
+- MVP screens, view model, use cases and network code; only its Room schema remains for the Sprint 3 migration
 
 ## [0.1.0] - 2026-05-08
 ### Added
