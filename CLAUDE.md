@@ -31,7 +31,7 @@ This repository is the Android client of **Coffer** (formerly "Finance App"): an
 
 ## Current state
 
-Sprint 1 (`v0.2.0`): project base (S1-H03) and design system + 4-tab navigation (S1-H04). The tabs are empty containers until their sprints fill them (Home and Accounts in S4, History in S5, Reports in S9); Settings shows the server status and the version. The MVP screens are gone; only its Room classes remain under `legacy/data/local` for the Sprint 3 migration. When the code changes, update this file accordingly.
+Sprint 1 (`v0.2.0`): project base (S1-H03) and design system + 4-tab navigation (S1-H04). The tabs are empty containers until their sprints fill them (Home and Accounts in S4, History in S5, Reports in S9); Settings shows the server status and the version. The MVP code is gone; its data moves to the encrypted database on first start (S3-H02). When the code changes, update this file accordingly.
 
 ## Project
 
@@ -65,6 +65,8 @@ On this machine the Android SDK is installed on Windows, so from WSL run Gradle 
 
 Network tests use MockWebServer (`mockwebserver3`) with the same interceptor/authenticator wiring (`TestNetwork`) and `FakeSessionStore`. Instrumented tests (`src/androidTest`, e.g. `SessionStoreTest` with the real Keystore) are **run by hand** (`./gradlew connectedDebugAndroidTest` on a device or an emulator with API 31–36), not in CI. On this machine, if Gradle fails with "paging file is too small", add `--max-workers=1`.
 
+Robolectric runs with a plain `android.app.Application` (`src/test/resources/robolectric.properties`) because `FinanceApp` would open the SQLCipher database, whose native library only exists on devices; JVM database tests use `inMemoryDatabase()` (same schema, no SQLCipher) and encryption is covered by `EncryptionInstrumentedTest`.
+
 Unit tests run with `isReturnDefaultValues = true`, so `android.util.Log` calls are no-ops in JVM tests.
 
 CI (`.github/workflows/ci.yml`) runs on every PR and push to `develop`/`main` and uploads the staging APK as the `coffer-staging-apk` artifact (that is what the PO installs to test a PR). `release.yml` runs on `v*` tags: signed `assembleRelease bundleRelease` and a GitHub Release with APK, AAB and `SHA256SUMS.txt`. Dependabot updates Gradle and Actions weekly.
@@ -83,7 +85,8 @@ Target structure: detailed-design §6.2.2. Today:
 - **Session** (`data/session`, SEQ-01/03): `SessionStore` interface, implemented by `EncryptedSessionStore` (typed DataStore `session.bin`, bytes AES-256-GCM encrypted with the Keystore key `coffer_session_key` via `KeystoreCipher`; an undecryptable file resets to signed out). `DeviceIdProvider` keeps a per-installation UUID in SharedPreferences (survives logout). `AuthInterceptor` adds the bearer token except on `AuthApi.PUBLIC_PATHS`; `TokenAuthenticator` refreshes once under a lock on 401 (`AuthApi.refresh` is a blocking `Call` because it runs inside OkHttp) and retries, marks the session expired when the refresh is rejected, and does nothing on network errors. Both read the store with `runBlocking` on OkHttp's threads. `AuthRepositoryImpl` maps RFC 9457 problems to `AuthFailure` (409 tells username from email by the server's wording).
 - **Data**: `clock/SystemClock`, `remote/HealthApi` (sends `Accept: application/json` because Actuator otherwise answers with its own vnd media type), `repository/ServerStatusRepositoryImpl`.
 - **DI**: `NetworkModule` (`Json { ignoreUnknownKeys }`, OkHttp with 60 s timeouts because Render's free plan sleeps, Retrofit on `BuildConfig.API_BASE_URL`), `DispatchersModule` (`@IoDispatcher`, `@DefaultDispatcher`), `RepositoryModule` (binds ports).
-- `legacy/data/local`: MVP Room schema (`finance_db`), unused until the Sprint 3 migration reads it.
+- **Local database** (`data/local`, data-model §5): `FinanceDatabase` (`finance.db`, Room version 1, schemas exported to `app/schemas/` — commit them; later changes need a tested `Migration`, never a destructive fallback) opened with SQLCipher (`SupportOpenHelperFactory`) using `DatabaseKeyProvider` (random 256-bit passphrase wrapped with the Keystore key `coffer_database_key`, file in `noBackupFilesDir`; if it cannot be unwrapped the database is deleted and rebuilt from the cloud). Entities mirror the server tables without `user_id`/`version`, plus `syncState` (`PENDING`/`SYNCED`/`FAILED`, the outbox) and `syncError`; amounts are `Long` ×10⁴, instants epoch ms, UUIDs text. `sync_meta` holds `pull_cursor`, `last_sync_at`, `legacy_migrated`. `LegacyDatabaseMigrator` runs once at app start (`FinanceApp`, on `@ApplicationScope`): reads the MVP `finance_db` with plain SQLite, writes it with the V6 rules and the server's fixed UUIDs (account `…a1`, categories `…b1`/`…b2`), all rows `PENDING`, then deletes `finance_db`. Read ports `AccountRepository`, `CategoryRepository`, `TransactionRepository` → `*RepositoryImpl`.
+- `KeystoreCipher` takes an alias: `SESSION_KEY` for tokens, `DATABASE_KEY` for the database passphrase (ADR-0008: one key per purpose). Android backup and device transfer are off (`allowBackup=false`, `data_extraction_rules.xml` excludes everything).
 
 Rules in `ArchitectureTest` (Konsist, runs with the unit tests): `domain` imports no `android.*`, `androidx.*` or `data`; no `Double`/`Float` properties, parameters or return types in `domain` (ADR-0004); `ui` does not import `data`.
 

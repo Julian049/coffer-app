@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.roborazzi)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 android {
@@ -96,10 +97,12 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.benchmark.common)
-    val roomVersion = "2.8.5"
-    implementation("androidx.room:room-runtime:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    // Encrypted Room database (ADR-0008)
+    implementation(libs.sqlcipher.android)
+    implementation(libs.androidx.sqlite)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.retrofit)
@@ -113,6 +116,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.17")
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.androidx.room.testing)
     testImplementation(libs.junit)
     testImplementation(libs.konsist)
     testImplementation(libs.robolectric)
@@ -132,4 +136,9 @@ dependencies {
 // Reference screenshots live in the repo; CI fails when a component changes without updating them
 roborazzi {
     outputDir.set(file("src/test/screenshots"))
+}
+
+// Room schema JSON per version, versioned in Git and used by migration tests (data-model §5.2)
+room {
+    schemaDirectory("$projectDir/schemas")
 }
