@@ -21,7 +21,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       # Konsist architecture rules run inside testDebugUnitTest
       # Screenshots are compared against src/test/screenshots (Roborazzi)
       - run: ./gradlew lint ktlintCheck testDebugUnitTest assembleStaging -Proborazzi.test.verify=true
