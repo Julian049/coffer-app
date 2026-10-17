@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Encrypted local database `finance.db` (Room + SQLCipher, ADR-0008) with settings, accounts, categories, tags, transactions and sync metadata; schema exported to `app/schemas`
+- `DatabaseKeyProvider`: random 256-bit passphrase stored wrapped by its own Android Keystore key
+- `LegacyDatabaseMigrator`: one-time move of the MVP `finance_db` into `finance.db` with the server's V6 rules and fixed UUIDs; every row starts pending upload
+- Ledger domain models (`Account`, `Category`, `Tag`, `Transaction`, `Settings`) and read ports
+- Tests: MVP migration, DAOs and an instrumented encryption test (run by hand)
+
+### Changed
+
+- Android backup and device-to-device transfer are disabled (ADR-0008: the cloud is the backup)
+
+### Removed
+
+- The MVP Room schema (`legacy`)
+
 ## [0.3.0] - 2026-10-16
 
 ### Added
