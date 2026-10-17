@@ -13,9 +13,10 @@ import com.dev.julian09.financeapp.ui.components.EmptyState
 fun ReportsScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    avatarInitial: Char? = null,
 ) {
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = "Reportes", actions = { Avatar(onClick = onOpenSettings) })
+        AppHeader(title = "Reportes", actions = { Avatar(onClick = onOpenSettings, initial = avatarInitial) })
         EmptyState(title = "Sin reportes todavía", message = "Cuando registres movimientos verás en qué se va tu dinero.")
     }
 }

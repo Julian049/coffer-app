@@ -13,9 +13,10 @@ import com.dev.julian09.financeapp.ui.components.EmptyState
 fun HomeScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    avatarInitial: Char? = null,
 ) {
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = "Inicio", actions = { Avatar(onClick = onOpenSettings) })
+        AppHeader(title = "Inicio", actions = { Avatar(onClick = onOpenSettings, initial = avatarInitial) })
         EmptyState(title = "Tu inicio está en camino", message = "Pronto verás aquí tu saldo, tus cuentas y los pagos próximos.")
     }
 }

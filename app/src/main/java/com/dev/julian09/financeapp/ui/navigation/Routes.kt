@@ -16,3 +16,9 @@ data object AccountsRoute
 
 @Serializable
 data object SettingsRoute
+
+@Serializable
+data object LoginRoute
+
+@Serializable
+data object RegisterRoute

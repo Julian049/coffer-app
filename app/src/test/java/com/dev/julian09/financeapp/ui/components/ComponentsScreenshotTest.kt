@@ -16,8 +16,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
+import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.SyncStatus
+import com.dev.julian09.financeapp.ui.PROFILE
+import com.dev.julian09.financeapp.ui.feature.auth.LoginContent
+import com.dev.julian09.financeapp.ui.feature.auth.LoginUiState
+import com.dev.julian09.financeapp.ui.feature.auth.RegisterContent
+import com.dev.julian09.financeapp.ui.feature.auth.RegisterUiState
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
@@ -55,6 +61,18 @@ class ComponentsScreenshotTest {
 
     @Test
     fun homeDark() = capture("home_dark", dark = true) { Home() }
+
+    @Test
+    fun loginLight() = capture("login_light", dark = false) { Login() }
+
+    @Test
+    fun loginDark() = capture("login_dark", dark = true) { Login() }
+
+    @Test
+    fun registerErrorsLight() = capture("register_errors_light", dark = false) { RegisterWithErrors() }
+
+    @Test
+    fun logoutDialogLight() = capture("logout_dialog_light", dark = false) { Settings(confirmingLogout = true) }
 
     @Test
     fun settingsLight() = capture("settings_light", dark = false) { Settings() }
@@ -114,13 +132,42 @@ class ComponentsScreenshotTest {
     @Composable
     private fun Home() {
         Column(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f)) { HomeScreen(onOpenSettings = {}) }
+            Box(Modifier.weight(1f)) { HomeScreen(onOpenSettings = {}, avatarInitial = 'J') }
             BottomBar(selected = Tab.Home, onSelect = {})
         }
     }
 
     @Composable
-    private fun Settings() {
-        SettingsContent(state = SettingsUiState(appVersion = "0.2.0", server = ServerState.Available), onBack = {}, onRetry = {})
+    private fun Settings(confirmingLogout: Boolean = false) {
+        SettingsContent(
+            state = SettingsUiState("0.3.0", ServerState.Available, user = PROFILE, confirmingLogout = confirmingLogout),
+            onBack = {},
+            onRetry = {},
+        )
+    }
+
+    @Composable
+    private fun Login() {
+        LoginContent(LoginUiState(identifier = "julian@correo.com"), sessionExpired = false, {}, {}, {}, {})
+    }
+
+    @Composable
+    private fun RegisterWithErrors() {
+        RegisterContent(
+            RegisterUiState(
+                displayName = "Julian",
+                email = "julian@correo",
+                username = "jb",
+                errors =
+                    mapOf(
+                        AuthField.Email to "Correo no válido",
+                        AuthField.Username to "Entre 3 y 40 caracteres: minúsculas, números, punto o guion bajo",
+                        AuthField.Password to "Entre 8 y 128 caracteres",
+                    ),
+            ),
+            onChange = { _, _ -> },
+            onSubmit = {},
+            onBack = {},
+        )
     }
 }

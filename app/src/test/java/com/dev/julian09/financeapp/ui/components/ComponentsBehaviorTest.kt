@@ -1,10 +1,14 @@
 package com.dev.julian09.financeapp.ui.components
 
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.dev.julian09.financeapp.domain.model.AuthField
+import com.dev.julian09.financeapp.ui.feature.auth.LoginContent
+import com.dev.julian09.financeapp.ui.feature.auth.LoginUiState
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsUiState
@@ -54,6 +58,32 @@ class ComponentsBehaviorTest {
         compose.onNodeWithText("Versión 0.2.0").assertExists()
         compose.onNodeWithText("Reintentar").performClick()
         assertTrue(retried)
+    }
+
+    @Test
+    fun `login shows the error under each empty field`() {
+        compose.setContent {
+            CofferTheme {
+                LoginContent(
+                    LoginUiState(
+                        errors =
+                            mapOf(
+                                AuthField.Identifier to "Escribe tu usuario o correo",
+                                AuthField.Password to "Escribe tu contraseña",
+                            ),
+                    ),
+                    sessionExpired = true,
+                    onIdentifier = {},
+                    onPassword = {},
+                    onSubmit = {},
+                    onRegister = {},
+                )
+            }
+        }
+        compose.onNodeWithText("Escribe tu usuario o correo").assertExists()
+        compose.onNodeWithText("Escribe tu contraseña").assertExists()
+        compose.onNodeWithText("Tu sesión terminó. Inicia sesión de nuevo; tus datos siguen en este teléfono.").assertExists()
+        compose.onNodeWithText("Continuar con Google").assertIsNotEnabled()
     }
 
     @Test

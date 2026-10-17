@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Sign-in and registration screens (Figma "Iniciar Sesión" and "Registro") with errors next to each field; Google sign-in visible but disabled until Sprint 11
+- The app starts according to the session: sign-in when signed out or expired (keeping local data), Home when signed in
+- Settings: profile card (`GET /me`) and sign-out with a confirmation dialog (REQ-AUT-06); the header avatar shows the user's initial
+- `AppTextField` component (label, 48 dp field, focus and error states, password toggle, autofill hints)
+- Tests: sign-in/registration/settings view models, UI validation, and light/dark screenshots of the new screens
 - Session layer: `SessionStore` (typed DataStore encrypted with an AES-256-GCM key in Android Keystore) and `DeviceIdProvider`
 - `AuthApi`, `AuthInterceptor` (bearer token) and `TokenAuthenticator` (one shared refresh on 401, then retry; a rejected refresh marks the session expired without deleting local data)
 - `AuthRepositoryImpl` mapping server problems (RFC 9457) to `AuthFailure`; use cases `RegisterUser`, `Login`, `Logout`, `ObserveSession` with form validation
