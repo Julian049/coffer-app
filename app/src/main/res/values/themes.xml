@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.FinanceApp" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Window behind Compose: same background as the theme, so there is no flash on start -->
+    <style name="Theme.Coffer" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

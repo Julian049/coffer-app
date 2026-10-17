@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.roborazzi)
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
 }
@@ -77,6 +78,8 @@ android {
     testOptions {
         unitTests {
             isReturnDefaultValues = true
+            // Robolectric renders Compose with the app's resources (Roborazzi screenshots)
+            isIncludeAndroidResources = true
         }
     }
 }
@@ -112,10 +115,21 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation(libs.junit)
     testImplementation(libs.konsist)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// Reference screenshots live in the repo; CI fails when a component changes without updating them
+roborazzi {
+    outputDir.set(file("src/test/screenshots"))
 }

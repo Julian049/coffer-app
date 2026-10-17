@@ -2,7 +2,6 @@ package com.dev.julian09.financeapp.di
 
 import com.dev.julian09.financeapp.BuildConfig
 import com.dev.julian09.financeapp.data.remote.HealthApi
-import com.dev.julian09.financeapp.legacy.data.remote.ApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -52,8 +51,4 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideHealthApi(retrofit: Retrofit): HealthApi = retrofit.create(HealthApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideLegacyApi(retrofit: Retrofit): ApiService = retrofit.create(ApiService::class.java)
 }
