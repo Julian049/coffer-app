@@ -182,6 +182,16 @@ interface SyncMetaDao {
     @Query("SELECT value FROM sync_meta WHERE `key` = :key")
     fun observe(key: String): Flow<String?>
 
+    /** Rows not yet in the cloud across every synced table (REQ-SYN-05). */
+    @Query(
+        "SELECT (SELECT COUNT(*) FROM settings WHERE syncState <> 'SYNCED') + " +
+            "(SELECT COUNT(*) FROM accounts WHERE syncState <> 'SYNCED') + " +
+            "(SELECT COUNT(*) FROM categories WHERE syncState <> 'SYNCED') + " +
+            "(SELECT COUNT(*) FROM tags WHERE syncState <> 'SYNCED') + " +
+            "(SELECT COUNT(*) FROM transactions WHERE syncState <> 'SYNCED')",
+    )
+    fun observeUnsynced(): Flow<Int>
+
     @Upsert
     suspend fun put(meta: SyncMetaEntity)
 }

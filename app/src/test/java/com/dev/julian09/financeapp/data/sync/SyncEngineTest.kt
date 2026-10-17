@@ -104,11 +104,16 @@ class SyncEngineTest {
                 }
             }
             val progress = mutableListOf<Pair<Long, Long?>>()
+            var lastByEntity = emptyMap<String, Long>()
 
-            engine.sync { received, total -> progress += received to total }
+            engine.sync { received, total, byEntity ->
+                progress += received to total
+                lastByEntity = byEntity
+            }
 
             assertEquals(listOf("0", "2"), pullSince)
             assertEquals(listOf(2L to 3L, 3L to 3L), progress)
+            assertEquals(mapOf("account" to 1L, "category" to 1L, "transaction" to 1L), lastByEntity)
             assertEquals("3", db.syncMeta().get(SyncMeta.PULL_CURSOR))
             val tx =
                 db

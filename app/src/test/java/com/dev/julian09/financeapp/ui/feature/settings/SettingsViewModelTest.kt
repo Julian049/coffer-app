@@ -2,12 +2,12 @@ package com.dev.julian09.financeapp.ui.feature.settings
 
 import com.dev.julian09.financeapp.domain.model.SessionState
 import com.dev.julian09.financeapp.domain.port.ServerStatusRepository
-import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import com.dev.julian09.financeapp.domain.usecase.CheckServerStatus
 import com.dev.julian09.financeapp.domain.usecase.Logout
 import com.dev.julian09.financeapp.domain.usecase.ObserveSession
 import com.dev.julian09.financeapp.domain.usecase.RefreshProfile
 import com.dev.julian09.financeapp.ui.FakeAuthRepository
+import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.PROFILE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,7 +20,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -30,21 +29,7 @@ class SettingsViewModelTest {
         override suspend fun isAvailable() = up
     }
 
-    private class FakeScheduler : SyncScheduler {
-        var cancelled = false
-
-        override fun requestSync() = Unit
-
-        override fun requestInitialSync(): UUID = UUID.randomUUID()
-
-        override fun ensurePeriodic() = Unit
-
-        override fun cancelAll() {
-            cancelled = true
-        }
-    }
-
-    private val scheduler = FakeScheduler()
+    private val scheduler = FakeSyncScheduler()
     private val auth = FakeAuthRepository().apply { session.value = SessionState.Active(PROFILE) }
     private val server = FakeServer(up = false)
 

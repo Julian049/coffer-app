@@ -9,9 +9,18 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.dev.julian09.financeapp.data.local.FinanceDatabase
+import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
+import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -22,6 +31,8 @@ class SyncSchedulerImpl
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val db: FinanceDatabase,
+        private val connectivity: ConnectivityObserver,
     ) : SyncScheduler {
         private val workManager get() = WorkManager.getInstance(context)
 
@@ -64,6 +75,42 @@ class SyncSchedulerImpl
         override fun cancelAll() {
             workManager.cancelAllWorkByTag(TAG)
         }
+
+        override fun observeStatus(): Flow<SyncStatus> =
+            combine(
+                db.syncMeta().observeUnsynced(),
+                workManager.getWorkInfosByTagFlow(TAG).map { infos -> infos.any { it.state == WorkInfo.State.RUNNING } },
+                connectivity.observe(),
+                db.syncMeta().observe(SyncMeta.LAST_SYNC_AT),
+            ) { pending, running, online, lastSync ->
+                when {
+                    running -> SyncStatus.Syncing
+                    !online -> SyncStatus.Offline
+                    pending > 0 -> SyncStatus.Pending(pending)
+                    else -> SyncStatus.Synced(lastSync?.let(Instant::parse))
+                }
+            }.distinctUntilChanged()
+
+        override fun observeInitialSyncDone(): Flow<Boolean> = db.syncMeta().observe(SyncMeta.INITIAL_SYNC_DONE).map { it == "true" }
+
+        override fun observeInitialSync(id: UUID): Flow<InitialSyncProgress> =
+            workManager.getWorkInfoByIdFlow(id).map { info ->
+                val progress = info?.progress
+                InitialSyncProgress(
+                    received = progress?.getLong(SyncWorker.RECEIVED, 0) ?: 0,
+                    total = progress?.getLong(SyncWorker.TOTAL, -1)?.takeIf { it >= 0 },
+                    byEntity =
+                        progress
+                            ?.keyValueMap
+                            ?.filterKeys { it.startsWith(SyncWorker.ENTITY_PREFIX) }
+                            ?.map { (k, v) -> k.removePrefix(SyncWorker.ENTITY_PREFIX) to (v as Long) }
+                            ?.toMap()
+                            .orEmpty(),
+                    // Enqueued again after a failed attempt = waiting for the network or a sleeping server
+                    waiting = info?.state == WorkInfo.State.ENQUEUED && (info.runAttemptCount > 0),
+                    failed = info?.state == WorkInfo.State.FAILED,
+                )
+            }
 
         companion object {
             const val TAG = "sync"

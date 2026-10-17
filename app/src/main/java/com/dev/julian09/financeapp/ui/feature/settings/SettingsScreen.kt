@@ -30,22 +30,28 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
+import com.dev.julian09.financeapp.ui.components.SyncBadge
+import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
+    syncViewModel: SyncStatusViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val syncStatus by syncViewModel.status.collectAsStateWithLifecycle()
     SettingsContent(
         state = state,
+        syncStatus = syncStatus,
         onBack = onBack,
         onRetry = viewModel::refreshServer,
         onLogoutRequest = viewModel::requestLogout,
@@ -64,11 +70,12 @@ fun SettingsContent(
     onLogoutRequest: () -> Unit = {},
     onLogoutConfirm: () -> Unit = {},
     onLogoutDismiss: () -> Unit = {},
+    syncStatus: SyncStatus? = null,
 ) {
     val colors = CofferTheme.colors
     LogoutDialogIfNeeded(state.confirmingLogout, onLogoutConfirm, onLogoutDismiss)
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = "Ajustes", onBack = onBack)
+        AppHeader(title = "Ajustes", onBack = onBack, actions = { syncStatus?.let { SyncBadge(it) } })
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
