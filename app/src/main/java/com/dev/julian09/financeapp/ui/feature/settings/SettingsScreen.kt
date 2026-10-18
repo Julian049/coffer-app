@@ -1,6 +1,7 @@
 package com.dev.julian09.financeapp.ui.feature.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,10 +14,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,6 +49,8 @@ import com.dev.julian09.financeapp.ui.theme.CofferTheme
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenCategories: () -> Unit,
+    onOpenDeactivated: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
 ) {
@@ -57,6 +64,8 @@ fun SettingsScreen(
         onLogoutRequest = viewModel::requestLogout,
         onLogoutConfirm = viewModel::confirmLogout,
         onLogoutDismiss = viewModel::dismissLogout,
+        onOpenCategories = onOpenCategories,
+        onOpenDeactivated = onOpenDeactivated,
     )
 }
 
@@ -71,6 +80,8 @@ fun SettingsContent(
     onLogoutConfirm: () -> Unit = {},
     onLogoutDismiss: () -> Unit = {},
     syncStatus: SyncStatus? = null,
+    onOpenCategories: () -> Unit = {},
+    onOpenDeactivated: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     LogoutDialogIfNeeded(state.confirmingLogout, onLogoutConfirm, onLogoutDismiss)
@@ -133,6 +144,11 @@ fun SettingsContent(
                     AppButton("Reintentar", onRetry, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
                 }
             }
+            AppCard {
+                LinkRow(Icons.AutoMirrored.Outlined.Label, "Categorías", onOpenCategories)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.AccountBalance, "Cuentas desactivadas", onOpenDeactivated)
+            }
             if (state.user != null) {
                 AppButton(
                     "Cerrar sesión",
@@ -179,3 +195,21 @@ private data class ServerRow(
     val title: String,
     val detail: String,
 )
+
+@Composable
+private fun LinkRow(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.textSecondary)
+    }
+}

@@ -1,31 +1,320 @@
 package com.dev.julian09.financeapp.ui.feature.home
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dev.julian09.financeapp.R
+import com.dev.julian09.financeapp.domain.finance.FoxMood
+import com.dev.julian09.financeapp.domain.finance.FoxState
+import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.SyncStatus
+import com.dev.julian09.financeapp.ui.components.AppButton
+import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.Avatar
-import com.dev.julian09.financeapp.ui.components.EmptyState
+import com.dev.julian09.financeapp.ui.components.ButtonKind
+import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.SyncBadge
+import com.dev.julian09.financeapp.ui.components.accountIcon
+import com.dev.julian09.financeapp.ui.components.accountTypeShortLabel
+import com.dev.julian09.financeapp.ui.components.formatMoney
+import com.dev.julian09.financeapp.ui.feature.history.DayGroup
+import com.dev.julian09.financeapp.ui.theme.CofferShapes
+import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import java.math.BigDecimal
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.TextStyle
+import java.util.Locale
+import java.util.UUID
 
-/** Empty container until Sprint 4. */
+private val ES_CO: Locale = Locale.forLanguageTag("es-CO")
+
 @Composable
 fun HomeScreen(
     onOpenSettings: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenAccount: (UUID) -> Unit,
     modifier: Modifier = Modifier,
-    avatarInitial: Char? = null,
+    userName: String? = null,
     syncStatus: SyncStatus? = null,
+    viewModel: HomeViewModel = hiltViewModel(),
 ) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    HomeContent(state, onOpenSettings, onOpenHistory, onOpenAccount, modifier, userName, syncStatus)
+}
+
+/** Inicio (S4-UI04): pending payments, pinned tags and customization arrive in S6, S9 and S11. */
+@Composable
+fun HomeContent(
+    state: HomeUiState?,
+    onOpenSettings: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenAccount: (UUID) -> Unit,
+    modifier: Modifier = Modifier,
+    userName: String? = null,
+    syncStatus: SyncStatus? = null,
+    today: LocalDate = LocalDate.now(),
+) {
+    val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
         AppHeader(
             title = "Inicio",
             actions = {
                 syncStatus?.let { SyncBadge(it) }
-                Avatar(onClick = onOpenSettings, initial = avatarInitial)
+                Avatar(onClick = onOpenSettings, initial = userName?.firstOrNull())
             },
         )
-        EmptyState(title = "Tu inicio está en camino", message = "Pronto verás aquí tu saldo, tus cuentas y los pagos próximos.")
+        if (state == null) return@Column
+        val dashboard = state.dashboard
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Bienvenido de nuevo", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                    Text(
+                        "Hola, ${userName?.substringBefore(' ') ?: ""}".trimEnd(',', ' '),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = colors.textPrimary,
+                    )
+                }
+                StatusChip(dashboard.fox.state)
+            }
+            AppCard(Modifier.fillMaxWidth(), highlight = true) {
+                Text("Saldo total disponible", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                MoneyText(dashboard.available, style = MaterialTheme.typography.displaySmall)
+                dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
+            }
+            FoxCard(dashboard.fox, dashboard.previousMonth)
+            QuickActions()
+            val active = dashboard.accounts.filter { it.account.active }
+            SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
+            LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(active, key = { it.account.id }) { AccountChipCard(it, onClick = { onOpenAccount(it.account.id) }) }
+            }
+            if (state.days.isNotEmpty()) {
+                SectionTitle("Últimos 5 días", null)
+                state.days.forEach { DayGroup(it, today) }
+            }
+            AppButton(
+                "Ver todas las transacciones",
+                onClick = onOpenHistory,
+                kind = ButtonKind.Secondary,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(
+    title: String,
+    detail: String?,
+) {
+    val colors = CofferTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+        detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary) }
+    }
+}
+
+@Composable
+private fun StatusChip(state: FoxState) {
+    val colors = CofferTheme.colors
+    val (label, tint) =
+        when (state) {
+            FoxState.RESTING -> "Nuevo" to colors.onPrimaryContainer
+            FoxState.DEBT -> "En rojo" to colors.expense
+            FoxState.WORRIED -> "Revisa" to colors.warning
+            else -> "Al día" to colors.onPrimaryContainer
+        }
+    Surface(shape = CofferShapes.pill, color = colors.primaryContainer) {
+        Text(label, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = tint)
+    }
+}
+
+private fun percent(value: BigDecimal): String = DecimalFormat("#,##0.#", DecimalFormatSymbols(ES_CO)).format(value.abs())
+
+fun monthName(month: YearMonth): String = month.month.getDisplayName(TextStyle.FULL, ES_CO)
+
+@Composable
+private fun MonthlyIndicator(
+    change: BigDecimal,
+    previousMonth: YearMonth,
+) {
+    val colors = CofferTheme.colors
+    val month = monthName(previousMonth)
+    val (icon, text, tint) =
+        when (change.signum()) {
+            1 -> Triple(Icons.AutoMirrored.Outlined.TrendingUp, "${percent(change)} % más que en $month", colors.income)
+            -1 -> Triple(Icons.AutoMirrored.Outlined.TrendingDown, "${percent(change)} % menos que en $month", colors.expense)
+            else -> Triple(null, "Igual que en $month", colors.textSecondary)
+        }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        icon?.let { Icon(it, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp)) }
+        Text(text, style = MaterialTheme.typography.labelMedium, color = tint)
+    }
+}
+
+/** The mascot and its message (rules: FoxRules; texts: Figma "Estado del zorro"). */
+@Composable
+fun FoxCard(
+    mood: FoxMood,
+    previousMonth: YearMonth,
+) {
+    val colors = CofferTheme.colors
+    val month = monthName(previousMonth)
+    val (image, title, message) =
+        when (mood.state) {
+            FoxState.RESTING ->
+                Triple(
+                    R.drawable.mascot_resting,
+                    "Aún no hay movimientos",
+                    "Crea tu primera cuenta en Cuentas. El zorro te irá contando cómo vas.",
+                )
+            FoxState.DEBT ->
+                Triple(
+                    R.drawable.mascot_debt,
+                    "Tu saldo está en rojo",
+                    "Tu saldo disponible es ${formatMoney(mood.amount!!)}. Revisa tus gastos.",
+                )
+            FoxState.WORRIED ->
+                Triple(
+                    R.drawable.mascot_worried,
+                    "Gastas más de lo que entra",
+                    "Gastos ${formatMoney(mood.month!!.expense)} · ingresos ${formatMoney(mood.month.income)} este mes.",
+                )
+            FoxState.GOAL ->
+                Triple(
+                    R.drawable.mascot_goal,
+                    "¡Mes cerrado en positivo!",
+                    "Ahorraste ${formatMoney(mood.amount!!)} en $month.",
+                )
+            FoxState.GOOD ->
+                Triple(R.drawable.mascot_good, "¡Vas muy bien!", "Llevas ${percent(mood.change!!)} % más que en $month. Sigue así.")
+            FoxState.NORMAL -> Triple(R.drawable.mascot_normal, "Todo en orden", "Tus gastos van como de costumbre este mes.")
+        }
+    AppCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Mascot(image)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Mascot(
+    @DrawableRes image: Int,
+) {
+    Image(painterResource(image), contentDescription = null, modifier = Modifier.size(72.dp))
+}
+
+/** Registering movements arrives in S5: the shortcuts show but do nothing yet. */
+@Composable
+private fun QuickActions() {
+    val colors = CofferTheme.colors
+    Row(
+        Modifier.fillMaxWidth().alpha(0.5f).semantics { contentDescription = "Accesos rápidos, disponibles pronto" },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        QuickAction("Gasto", Icons.Outlined.ArrowDownward, colors.expense, Modifier.weight(1f))
+        QuickAction("Ingreso", Icons.Outlined.ArrowUpward, colors.income, Modifier.weight(1f))
+        QuickAction("Transferencia", Icons.Outlined.SwapHoriz, colors.textSecondary, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun QuickAction(
+    label: String,
+    icon: ImageVector,
+    tint: Color,
+    modifier: Modifier,
+) {
+    val colors = CofferTheme.colors
+    AppCard(modifier) {
+        Column(
+            Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(Modifier.size(32.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+            }
+            Text(label, style = MaterialTheme.typography.labelMedium, color = colors.textPrimary, maxLines = 1, softWrap = false)
+        }
+    }
+}
+
+@Composable
+private fun AccountChipCard(
+    item: AccountBalance,
+    onClick: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    AppCard(Modifier.width(150.dp), onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                accountTypeShortLabel(item.account.type),
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.textSecondary,
+                maxLines = 1,
+            )
+            Box(Modifier.size(28.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(
+                    accountIcon(item.account.icon, item.account.type),
+                    contentDescription = null,
+                    tint = colors.iconOnContainer,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+        Text(item.account.name, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, maxLines = 1)
+        MoneyText(item.balance, style = MaterialTheme.typography.titleMedium)
     }
 }
