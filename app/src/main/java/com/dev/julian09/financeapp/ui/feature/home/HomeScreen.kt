@@ -74,13 +74,24 @@ fun HomeScreen(
     onOpenHistory: () -> Unit,
     onOpenAccount: (UUID) -> Unit,
     onNewTransaction: (TransactionType) -> Unit,
+    onOpenTransaction: (UUID) -> Unit,
     modifier: Modifier = Modifier,
     userName: String? = null,
     syncStatus: SyncStatus? = null,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    HomeContent(state, onOpenSettings, onOpenHistory, onOpenAccount, modifier, userName, syncStatus, onNewTransaction = onNewTransaction)
+    HomeContent(
+        state,
+        onOpenSettings,
+        onOpenHistory,
+        onOpenAccount,
+        modifier,
+        userName,
+        syncStatus,
+        onNewTransaction = onNewTransaction,
+        onOpenTransaction = onOpenTransaction,
+    )
 }
 
 /** Inicio (S4-UI04): pending payments, pinned tags and customization arrive in S6, S9 and S11. */
@@ -95,6 +106,7 @@ fun HomeContent(
     syncStatus: SyncStatus? = null,
     today: LocalDate = LocalDate.now(),
     onNewTransaction: (TransactionType) -> Unit = {},
+    onOpenTransaction: (UUID) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
@@ -136,7 +148,7 @@ fun HomeContent(
             }
             if (state.days.isNotEmpty()) {
                 SectionTitle("Últimos 5 días", null)
-                state.days.forEach { DayGroup(it, today) }
+                state.days.forEach { DayGroup(it, today, onOpen = onOpenTransaction) }
             }
             AppButton(
                 "Ver todas las transacciones",

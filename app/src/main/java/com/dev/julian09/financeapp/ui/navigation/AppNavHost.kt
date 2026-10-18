@@ -30,6 +30,7 @@ import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsScreen
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
+import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetailScreen
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionFormScreen
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -46,6 +47,7 @@ fun AppNavHost(
     val openSettings = { navController.navigate(SettingsRoute) { launchSingleTop = true } }
     val openAccount = { id: UUID -> navController.navigate(AccountDetailRoute(id.toString())) }
     val editAccount = { id: UUID -> navController.navigate(EditAccountRoute(id.toString())) }
+    val openTransaction = { id: UUID -> navController.navigate(TransactionDetailRoute(id.toString())) }
 
     val newTransaction = { type: TransactionType -> navController.navigate(TransactionFormRoute(type.name)) }
     Scaffold(
@@ -63,11 +65,18 @@ fun AppNavHost(
                     onOpenHistory = { navController.navigateToTab(Tab.History) },
                     onOpenAccount = openAccount,
                     onNewTransaction = newTransaction,
+                    onOpenTransaction = openTransaction,
                     userName = user.displayName,
                     syncStatus = sync,
                 )
             }
-            composable<HistoryRoute> { HistoryScreen(onOpenSettings = openSettings, avatarInitial = initial) }
+            composable<HistoryRoute> {
+                HistoryScreen(
+                    onOpenSettings = openSettings,
+                    onOpenTransaction = openTransaction,
+                    avatarInitial = initial,
+                )
+            }
             composable<ReportsRoute> { ReportsScreen(onOpenSettings = openSettings, avatarInitial = initial) }
             composable<AccountsRoute> {
                 AccountsScreen(
@@ -93,11 +102,18 @@ fun AppNavHost(
                     onBack = navController::popBackStack,
                     onEdit = editAccount,
                     onOpenHistory = { navController.navigateToTab(Tab.History) },
+                    onOpenTransaction = openTransaction,
                 )
             }
             composable<DeactivatedAccountsRoute> { DeactivatedAccountsScreen(onBack = navController::popBackStack) }
             composable<CategoriesRoute> { CategoriesScreen(onBack = navController::popBackStack) }
             composable<TransactionFormRoute> { TransactionFormScreen(onBack = navController::popBackStack) }
+            composable<TransactionDetailRoute> {
+                TransactionDetailScreen(
+                    onBack = navController::popBackStack,
+                    onEdit = { d -> navController.navigate(TransactionFormRoute(d.transaction.type.name, d.transaction.id.toString())) },
+                )
+            }
         }
     }
 }

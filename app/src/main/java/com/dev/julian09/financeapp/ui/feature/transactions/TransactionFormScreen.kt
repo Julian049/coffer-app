@@ -159,6 +159,8 @@ fun TransactionFormContent(
     choices: TransactionChoices,
     actions: TransactionFormActions,
     modifier: Modifier = Modifier,
+    today: LocalDate = LocalDate.now(),
+    zone: ZoneId = ZoneId.systemDefault(),
 ) {
     val transfer = state.type == TransactionType.TRANSFER
     Column(modifier.fillMaxSize()) {
@@ -201,7 +203,7 @@ fun TransactionFormContent(
             } else {
                 CategoryCard(state, choices.categories, actions.onCategory)
             }
-            DateTimeCard(state.occurredAt, actions.onOccurredAt)
+            DateTimeCard(state.occurredAt, actions.onOccurredAt, today, zone)
             if (!transfer) {
                 AccountPicker("Cuenta", choices.accounts, state.accountId, state.errors[TransactionField.ACCOUNT], actions.onAccount)
             }
@@ -348,9 +350,10 @@ private fun CircleIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
 private fun DateTimeCard(
     occurredAt: Instant,
     onChange: (Instant) -> Unit,
+    today: LocalDate,
+    zone: ZoneId,
 ) {
     val colors = CofferTheme.colors
-    val zone = ZoneId.systemDefault()
     var step by remember { mutableStateOf(0) } // 0 closed, 1 date, 2 time
     var date by remember { mutableStateOf(occurredAt.atZone(zone).toLocalDate()) }
     AppCard {
@@ -358,7 +361,7 @@ private fun DateTimeCard(
             CircleIcon(Icons.Outlined.Schedule)
             Column(Modifier.weight(1f)) {
                 Text("Fecha y hora", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-                Text(dateTimeLabel(occurredAt), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                Text(dateTimeLabel(occurredAt, today, zone), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
             }
             TextButton(onClick = { step = 1 }) { Text("Modificar", color = colors.primary) }
         }
