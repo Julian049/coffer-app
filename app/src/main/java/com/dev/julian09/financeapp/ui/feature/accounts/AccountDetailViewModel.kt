@@ -1,0 +1,43 @@
+package com.dev.julian09.financeapp.ui.feature.accounts
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.dev.julian09.financeapp.domain.model.AccountBalance
+import com.dev.julian09.financeapp.domain.port.AccountRepository
+import com.dev.julian09.financeapp.domain.port.CategoryRepository
+import com.dev.julian09.financeapp.domain.port.TransactionRepository
+import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
+import com.dev.julian09.financeapp.ui.feature.history.buildDays
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import java.util.UUID
+import javax.inject.Inject
+
+data class AccountDetailState(
+    val account: AccountBalance,
+    val days: List<HistoryDay>,
+)
+
+@HiltViewModel
+class AccountDetailViewModel
+    @Inject
+    constructor(
+        savedState: SavedStateHandle,
+        accounts: AccountRepository,
+        transactions: TransactionRepository,
+        categories: CategoryRepository,
+    ) : ViewModel() {
+        private val id: UUID = UUID.fromString(savedState.get<String>("id"))
+
+        /** Null while loading or once the account is gone. */
+        val state: StateFlow<AccountDetailState?> =
+            combine(accounts.observeBalances(), transactions.observeByAccount(id), categories.observeAll()) { accs, txs, cats ->
+                accs.firstOrNull { it.account.id == id }?.let { account ->
+                    AccountDetailState(account, buildDays(txs, accs.associate { it.account.id to it.account.name }, cats))
+                }
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    }

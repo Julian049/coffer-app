@@ -12,8 +12,17 @@ value class Money(
 
     val isNegative: Boolean get() = scaled < 0
 
+    operator fun plus(other: Money) = Money(Math.addExact(scaled, other.scaled))
+
+    operator fun minus(other: Money) = Money(Math.subtractExact(scaled, other.scaled))
+
+    operator fun unaryMinus() = Money(Math.negateExact(scaled))
+
+    operator fun compareTo(other: Money) = scaled.compareTo(other.scaled)
+
     companion object {
         const val SCALE = 4
+        val ZERO = Money(0)
 
         fun of(amount: BigDecimal): Money = Money(amount.setScale(SCALE, RoundingMode.HALF_EVEN).unscaledValue().longValueExact())
 

@@ -16,23 +16,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
+import com.dev.julian09.financeapp.domain.finance.FoxMood
+import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Account
+import com.dev.julian09.financeapp.domain.model.AccountBalance
+import com.dev.julian09.financeapp.domain.model.AccountFlows
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.AuthField
+import com.dev.julian09.financeapp.domain.model.Category
+import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
 import com.dev.julian09.financeapp.ui.PROFILE
+import com.dev.julian09.financeapp.ui.feature.accounts.AccountDetailContent
+import com.dev.julian09.financeapp.ui.feature.accounts.AccountDetailState
+import com.dev.julian09.financeapp.ui.feature.accounts.AccountFormContent
+import com.dev.julian09.financeapp.ui.feature.accounts.AccountFormState
 import com.dev.julian09.financeapp.ui.feature.accounts.AccountsContent
 import com.dev.julian09.financeapp.ui.feature.auth.LoginContent
 import com.dev.julian09.financeapp.ui.feature.auth.LoginUiState
 import com.dev.julian09.financeapp.ui.feature.auth.RegisterContent
 import com.dev.julian09.financeapp.ui.feature.auth.RegisterUiState
+import com.dev.julian09.financeapp.ui.feature.categories.CategoriesContent
+import com.dev.julian09.financeapp.ui.feature.categories.CategoriesState
+import com.dev.julian09.financeapp.ui.feature.categories.CategoryLine
+import com.dev.julian09.financeapp.ui.feature.categories.CategoryNode
 import com.dev.julian09.financeapp.ui.feature.history.HistoryContent
 import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
 import com.dev.julian09.financeapp.ui.feature.history.HistoryRow
-import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
+import com.dev.julian09.financeapp.ui.feature.home.HomeContent
+import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsUiState
@@ -47,7 +63,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.YearMonth
 import java.util.UUID
 
 /**
@@ -103,6 +121,21 @@ class ComponentsScreenshotTest {
     @Test
     fun accountsLight() = capture("accounts_light", dark = false) { Accounts() }
 
+    @Test
+    fun homeNewUserLight() = capture("home_new_user_light", dark = false) { Home(newUser = true) }
+
+    @Test
+    fun accountNewLight() = capture("account_new_light", dark = false) { AccountNew() }
+
+    @Test
+    fun accountDetailLight() = capture("account_detail_light", dark = false) { AccountDetail() }
+
+    @Test
+    fun categoriesLight() = capture("categories_light", dark = false) { Categories() }
+
+    @Test
+    fun categoriesDark() = capture("categories_dark", dark = true) { Categories() }
+
     private fun capture(
         name: String,
         dark: Boolean,
@@ -153,9 +186,32 @@ class ComponentsScreenshotTest {
 
     // Full screen: header, empty state and the 4-tab bar pinned to the bottom
     @Composable
-    private fun Home() {
+    private fun Home(newUser: Boolean = false) {
+        val dashboard =
+            if (newUser) {
+                HomeDashboard(Money.ofPesos(150_000), null, YearMonth.of(2026, 9), BALANCES.take(1), emptyList(), FoxMood(FoxState.RESTING))
+            } else {
+                HomeDashboard(
+                    Money.ofPesos(2_750_000),
+                    BigDecimal("8.4"),
+                    YearMonth.of(2026, 9),
+                    BALANCES,
+                    emptyList(),
+                    FoxMood(FoxState.GOOD, change = BigDecimal("8.4")),
+                )
+            }
         Column(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f)) { HomeScreen(onOpenSettings = {}, avatarInitial = 'J', syncStatus = SyncStatus.Pending(2)) }
+            Box(Modifier.weight(1f)) {
+                HomeContent(
+                    HomeUiState(dashboard, if (newUser) emptyList() else DAYS),
+                    onOpenSettings = {},
+                    onOpenHistory = {},
+                    onOpenAccount = {},
+                    userName = "Julian Bocanegra",
+                    syncStatus = SyncStatus.Pending(2),
+                    today = TODAY,
+                )
+            }
             BottomBar(selected = Tab.Home, onSelect = {})
         }
     }
@@ -200,13 +256,59 @@ class ComponentsScreenshotTest {
 
     @Composable
     private fun Accounts() {
-        AccountsContent(
-            listOf(
-                Account(UUID(0, 1), "Efectivo", AccountType.CASH, Money.ofPesos(150_000)),
-                Account(UUID(0, 2), "Nu", AccountType.SAVINGS, Money.ofPesos(2_600_000), institution = "Nu Colombia"),
+        AccountsContent(BALANCES, onOpenSettings = {
+        }, onNewAccount = {}, onOpenAccount = {}, onOpenOptions = {}, onOpenDeactivated = {}, avatarInitial = 'J')
+    }
+
+    @Composable
+    private fun AccountNew() {
+        AccountFormContent(
+            AccountFormState(name = "Bancolombia Nómina", balanceDigits = "500000", type = AccountType.DEBIT, icon = "bank"),
+            onBack = {},
+            onName = {},
+            onBalance = {},
+            onType = {},
+            onIcon = {},
+            onColor = {},
+            onInclude = {},
+            onSave = {},
+        )
+    }
+
+    @Composable
+    private fun AccountDetail() {
+        AccountDetailContent(AccountDetailState(BALANCES[1], DAYS), onBack = {}, onEdit = {}, onOpenHistory = {}, today = TODAY)
+    }
+
+    @Composable
+    private fun Categories() {
+        val food = Category(UUID(1, 1), "Comida", CategoryKind.EXPENSE, icon = "restaurant")
+
+        fun sub(
+            n: Long,
+            name: String,
+            pesos: Long,
+            count: Int,
+        ) = CategoryLine(Category(UUID(1, n), name, CategoryKind.EXPENSE, food.id), Money.ofPesos(pesos), count)
+        CategoriesContent(
+            CategoriesState(
+                CategoryKind.EXPENSE,
+                listOf(
+                    CategoryNode(
+                        CategoryLine(food, Money.ofPesos(0), 0),
+                        listOf(sub(2, "Restaurantes", 390_000, 18), sub(3, "Supermercado", 375_000, 16), sub(4, "Cafeterías", 75_000, 8)),
+                    ),
+                    CategoryNode(
+                        CategoryLine(Category(UUID(1, 5), "Educación", CategoryKind.EXPENSE, icon = "school"), Money.ofPesos(150_000), 2),
+                        emptyList(),
+                    ),
+                ),
+                mapOf(CategoryKind.EXPENSE to 10, CategoryKind.INCOME to 2),
             ),
-            onOpenSettings = {},
-            avatarInitial = 'J',
+            onBack = {},
+            onSelectKind = {},
+            onNew = {},
+            onOpen = {},
         )
     }
 
@@ -233,5 +335,37 @@ class ComponentsScreenshotTest {
             onSubmit = {},
             onBack = {},
         )
+    }
+
+    private companion object {
+        val TODAY: LocalDate = LocalDate.of(2026, 10, 17)
+        val BALANCES =
+            listOf(
+                AccountBalance(Account(UUID(0, 1), "Billetera", AccountType.CASH, Money.ofPesos(150_000), icon = "cash"), AccountFlows()),
+                AccountBalance(
+                    Account(UUID(0, 2), "Bancolombia", AccountType.DEBIT, Money.ofPesos(500_000), icon = "bank", color = "#2F7A45"),
+                    AccountFlows(Money.ofPesos(2_400_000), Money.ofPesos(1_264_000), Money.ofPesos(886_000), Money.ofPesos(100_000)),
+                    38,
+                ),
+                AccountBalance(Account(UUID(0, 3), "Nu Ahorros", AccountType.SAVINGS, Money.ofPesos(1_750_000)), AccountFlows()),
+            )
+        val DAYS =
+            listOf(
+                HistoryDay(
+                    TODAY,
+                    listOf(
+                        HistoryRow("Café y almuerzo", "Comida · Billetera", Money.ofPesos(24_500), TransactionType.EXPENSE, "restaurant"),
+                        HistoryRow("Taxi", "Transporte · Bancolombia", Money.ofPesos(14_000), TransactionType.EXPENSE, "car"),
+                    ),
+                ),
+                HistoryDay(
+                    TODAY.minusDays(1),
+                    listOf(HistoryRow("Honorarios", "Nu Ahorros", Money.ofPesos(450_000), TransactionType.INCOME, "work")),
+                ),
+                HistoryDay(
+                    TODAY.minusDays(2),
+                    listOf(HistoryRow("Transferencia", "Bancolombia → Billetera", Money.ofPesos(100_000), TransactionType.TRANSFER)),
+                ),
+            )
     }
 }

@@ -21,8 +21,8 @@ android {
         minSdk = 31
         targetSdk = 36
         // versionCode = MAJOR*10000 + MINOR*100 + PATCH (manage-config §3.1.2)
-        versionCode = 400
-        versionName = "0.4.0"
+        versionCode = 500
+        versionName = "0.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -45,6 +45,8 @@ android {
             applicationIdSuffix = ".debug"
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/\"")
             resValue("string", "app_name", "Coffer debug")
+            // JaCoCo built into AGP: ./gradlew createDebugUnitTestCoverageReport
+            enableUnitTestCoverage = true
         }
         release {
             isMinifyEnabled = false
