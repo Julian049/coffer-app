@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-18
+
 ### Added
 
 - Accounts (S4-H01): Gestión de cuentas with balances, Nueva cuenta (cash, debit, savings; cards and loans show "Disponible pronto"), Detalle de cuenta with "Cómo se calcula" and its movements, Editar cuenta (name, initial balance, include in total; the type never changes), Cuentas desactivadas with Reactivar
