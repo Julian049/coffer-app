@@ -32,12 +32,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +43,7 @@ import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.SyncStatus
+import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
@@ -75,13 +73,14 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenAccount: (UUID) -> Unit,
+    onNewTransaction: (TransactionType) -> Unit,
     modifier: Modifier = Modifier,
     userName: String? = null,
     syncStatus: SyncStatus? = null,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    HomeContent(state, onOpenSettings, onOpenHistory, onOpenAccount, modifier, userName, syncStatus)
+    HomeContent(state, onOpenSettings, onOpenHistory, onOpenAccount, modifier, userName, syncStatus, onNewTransaction = onNewTransaction)
 }
 
 /** Inicio (S4-UI04): pending payments, pinned tags and customization arrive in S6, S9 and S11. */
@@ -95,6 +94,7 @@ fun HomeContent(
     userName: String? = null,
     syncStatus: SyncStatus? = null,
     today: LocalDate = LocalDate.now(),
+    onNewTransaction: (TransactionType) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
@@ -128,7 +128,7 @@ fun HomeContent(
                 dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
             }
             FoxCard(dashboard.fox, dashboard.previousMonth)
-            QuickActions()
+            QuickActions(onNewTransaction)
             val active = dashboard.accounts.filter { it.account.active }
             SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
             LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -212,7 +212,7 @@ fun FoxCard(
                 Triple(
                     R.drawable.mascot_resting,
                     "Aún no hay movimientos",
-                    "Crea tu primera cuenta en Cuentas. El zorro te irá contando cómo vas.",
+                    "Registra un gasto o un ingreso con el botón +. El zorro te irá contando cómo vas.",
                 )
             FoxState.DEBT ->
                 Triple(
@@ -254,17 +254,16 @@ private fun Mascot(
     Image(painterResource(image), contentDescription = null, modifier = Modifier.size(72.dp))
 }
 
-/** Registering movements arrives in S5: the shortcuts show but do nothing yet. */
+/** One tap to each form; the transfer is one tap from Home (REQ-TRX-04). */
 @Composable
-private fun QuickActions() {
+private fun QuickActions(onNew: (TransactionType) -> Unit) {
     val colors = CofferTheme.colors
-    Row(
-        Modifier.fillMaxWidth().alpha(0.5f).semantics { contentDescription = "Accesos rápidos, disponibles pronto" },
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        QuickAction("Gasto", Icons.Outlined.ArrowDownward, colors.expense, Modifier.weight(1f))
-        QuickAction("Ingreso", Icons.Outlined.ArrowUpward, colors.income, Modifier.weight(1f))
-        QuickAction("Transferencia", Icons.Outlined.SwapHoriz, colors.textSecondary, Modifier.weight(1f))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        QuickAction("Gasto", Icons.Outlined.ArrowDownward, colors.expense, Modifier.weight(1f)) { onNew(TransactionType.EXPENSE) }
+        QuickAction("Ingreso", Icons.Outlined.ArrowUpward, colors.income, Modifier.weight(1f)) { onNew(TransactionType.INCOME) }
+        QuickAction("Transferencia", Icons.Outlined.SwapHoriz, colors.textSecondary, Modifier.weight(1f)) {
+            onNew(TransactionType.TRANSFER)
+        }
     }
 }
 
@@ -274,9 +273,10 @@ private fun QuickAction(
     icon: ImageVector,
     tint: Color,
     modifier: Modifier,
+    onClick: () -> Unit,
 ) {
     val colors = CofferTheme.colors
-    AppCard(modifier) {
+    AppCard(modifier, onClick = onClick) {
         Column(
             Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,

@@ -4,10 +4,15 @@ import androidx.room.withTransaction
 import com.dev.julian09.financeapp.data.local.FinanceDatabase
 import com.dev.julian09.financeapp.data.local.dao.AccountDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
+import com.dev.julian09.financeapp.data.local.dao.TagDao
 import com.dev.julian09.financeapp.data.local.dao.TransactionDao
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
+import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
+import com.dev.julian09.financeapp.data.local.entity.SyncState
+import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
+import com.dev.julian09.financeapp.data.sync.transactionData
 import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
@@ -18,11 +23,13 @@ import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
+import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -154,11 +161,87 @@ class CategoryRepositoryImpl
         }
     }
 
+/** REQ-HIS-01: one change_log row per write, with the synced data before and after, in the caller's transaction. */
+class ChangeLogWriter
+    @Inject
+    constructor(
+        private val db: FinanceDatabase,
+    ) {
+        suspend fun log(
+            action: String,
+            before: TransactionEntity?,
+            after: TransactionEntity?,
+            now: Instant,
+        ) {
+            val transactionId = (after ?: before)!!.id
+            db.changeLog().upsert(
+                listOf(
+                    ChangeLogEntity(
+                        id = UUID.randomUUID(),
+                        transactionId = transactionId,
+                        action = action,
+                        beforeValue = before?.let { transactionData(it).toString() },
+                        afterValue = after?.let { transactionData(it).toString() },
+                        changedAt = now,
+                        createdAt = now,
+                        updatedAt = now,
+                    ),
+                ),
+            )
+        }
+    }
+
+class TagRepositoryImpl
+    @Inject
+    constructor(
+        private val dao: TagDao,
+        private val clock: Clock,
+    ) : TagRepository {
+        override fun observeAll(): Flow<List<Tag>> = dao.observeAll().map { rows -> rows.map { Tag(it.id, it.name, it.pinned) } }
+
+        override suspend fun create(tag: Tag) {
+            val now = clock.now()
+            dao.upsert(listOf(TagEntity(id = tag.id, name = tag.name, pinned = tag.pinned, createdAt = now, updatedAt = now)))
+        }
+    }
+
 class TransactionRepositoryImpl
     @Inject
     constructor(
+        private val db: FinanceDatabase,
         private val dao: TransactionDao,
+        private val history: ChangeLogWriter,
+        private val clock: Clock,
     ) : TransactionRepository {
+        override fun observe(id: UUID): Flow<Transaction?> = dao.observe(id).map { it?.toDomain() }
+
+        override suspend fun lastUsedAccountId(): UUID? = dao.lastUsedAccountId()
+
+        override suspend fun insert(transaction: Transaction) =
+            db.withTransaction {
+                val now = clock.now()
+                val row = transaction.toEntity(createdAt = now, updatedAt = now)
+                dao.upsert(listOf(row))
+                history.log("CREATE", null, row, now)
+            }
+
+        override suspend fun update(transaction: Transaction) =
+            db.withTransaction {
+                val before = dao.get(transaction.id) ?: return@withTransaction
+                val now = clock.now()
+                val after = transaction.toEntity(createdAt = before.createdAt, updatedAt = now)
+                dao.upsert(listOf(after))
+                history.log("UPDATE", before, after, now)
+            }
+
+        override suspend fun delete(id: UUID) =
+            db.withTransaction {
+                val before = dao.get(id)?.takeIf { it.deletedAt == null } ?: return@withTransaction
+                val now = clock.now()
+                dao.upsert(listOf(before.copy(deletedAt = now, updatedAt = now, syncState = SyncState.PENDING, syncError = null)))
+                history.log("DELETE", before, null, now)
+            }
+
         override fun observeRecent(limit: Int): Flow<List<Transaction>> =
             dao.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }
 
@@ -175,6 +258,30 @@ class TransactionRepositoryImpl
 
         override fun observeCount(): Flow<Int> = dao.observeCount()
     }
+
+internal fun Transaction.toEntity(
+    createdAt: Instant,
+    updatedAt: Instant,
+) = TransactionEntity(
+    id = id,
+    type = type.name,
+    amount = amount.scaled,
+    occurredAt = occurredAt,
+    accountId = accountId,
+    destinationAccountId = destinationAccountId,
+    categoryId = categoryId,
+    tagId = tagId,
+    note = note,
+    installments = installments,
+    principal = principal?.scaled,
+    interest = interest?.scaled,
+    fees = fees?.scaled,
+    installmentId = installmentId,
+    recurringId = recurringId,
+    paymentKind = paymentKind,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
 
 internal fun Account.toEntity(
     createdAt: Instant,

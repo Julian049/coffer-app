@@ -6,6 +6,7 @@ import androidx.room.Query
 import androidx.room.Upsert
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
+import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
@@ -170,6 +171,9 @@ interface TagDao {
     @Upsert
     suspend fun upsert(tags: List<TagEntity>)
 
+    @Query("SELECT * FROM tags WHERE deletedAt IS NULL ORDER BY pinned DESC, name")
+    fun observeAll(): Flow<List<TagEntity>>
+
     @Query("SELECT * FROM tags WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
     suspend fun pending(limit: Int): List<TagEntity>
 
@@ -201,6 +205,19 @@ interface TransactionDao {
 
     @Query("SELECT COUNT(*) FROM transactions WHERE syncState <> 'SYNCED'")
     fun observeUnsynced(): Flow<Int>
+
+    @Query("SELECT * FROM transactions WHERE id = :id")
+    suspend fun get(id: UUID): TransactionEntity?
+
+    @Query("SELECT * FROM transactions WHERE id = :id AND deletedAt IS NULL")
+    fun observe(id: UUID): Flow<TransactionEntity?>
+
+    /** REQ-TRX-05 / SEQ-04: the account of the last movement registered, if it is still active. */
+    @Query(
+        "SELECT t.accountId FROM transactions t JOIN accounts a ON a.id = t.accountId " +
+            "WHERE t.deletedAt IS NULL AND a.deletedAt IS NULL AND a.active = 1 ORDER BY t.createdAt DESC LIMIT 1",
+    )
+    suspend fun lastUsedAccountId(): UUID?
 
     @Query("SELECT * FROM transactions WHERE deletedAt IS NULL AND occurredAt >= :from ORDER BY occurredAt DESC")
     fun observeSince(from: Instant): Flow<List<TransactionEntity>>
@@ -361,7 +378,7 @@ interface SyncMetaDao {
     @Query("SELECT value FROM sync_meta WHERE `key` = :key")
     fun observe(key: String): Flow<String?>
 
-    /** Rows not yet in the cloud across every synced table (REQ-SYN-05). */
+    /** Rows not yet in the cloud across every synced table (REQ-SYN-05); change_log is left out so a movement counts once. */
     @Query(
         "SELECT (SELECT COUNT(*) FROM settings WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM accounts WHERE syncState <> 'SYNCED') + " +
@@ -373,4 +390,32 @@ interface SyncMetaDao {
 
     @Upsert
     suspend fun put(meta: SyncMetaEntity)
+}
+
+@Dao
+interface ChangeLogDao {
+    @Upsert
+    suspend fun upsert(rows: List<ChangeLogEntity>)
+
+    @Query("SELECT * FROM change_log WHERE transactionId = :transactionId ORDER BY changedAt")
+    suspend fun forTransaction(transactionId: UUID): List<ChangeLogEntity>
+
+    @Query("SELECT * FROM change_log WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pending(limit: Int): List<ChangeLogEntity>
+
+    @Query("SELECT syncState, updatedAt FROM change_log WHERE id = :id")
+    suspend fun syncInfo(id: UUID): SyncInfo?
+
+    @Query("UPDATE change_log SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSynced(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE change_log SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailed(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
 }

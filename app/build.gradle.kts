@@ -76,6 +76,10 @@ android {
         buildConfig = true
         resValues = true
     }
+    // Room's MigrationTestHelper reads the exported schemas as assets; Robolectric sees the debug variant's,
+    // so they ship only in debug builds, never in release (FinanceDatabaseMigrationTest)
+    sourceSets["debug"].assets.srcDir("$projectDir/schemas")
+
     testOptions {
         unitTests {
             isReturnDefaultValues = true
