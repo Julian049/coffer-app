@@ -23,8 +23,10 @@ import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
+import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.Transaction
+import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
@@ -257,6 +259,57 @@ class TransactionRepositoryImpl
         ): Flow<PeriodTotals> = dao.observeTotals(from, to).map { PeriodTotals(Money(it.income), Money(it.expense)) }
 
         override fun observeCount(): Flow<Int> = dao.observeCount()
+
+        override fun search(
+            filter: TransactionFilter,
+            limit: Int,
+        ): Flow<List<Transaction>> {
+            val f = filter
+            val rows =
+                dao.search(
+                    f.from,
+                    f.to,
+                    f.types.isEmpty(),
+                    f.types.map { it.name },
+                    f.categoryIds.isEmpty(),
+                    f.categoryIds.toList(),
+                    f.accountIds.isEmpty(),
+                    f.accountIds.toList(),
+                    f.tagIds.isEmpty(),
+                    f.tagIds.toList(),
+                    like(f.query),
+                    limit,
+                )
+            return rows.map { list -> list.map { it.toDomain() } }
+        }
+
+        override fun searchTotals(filter: TransactionFilter): Flow<SearchTotals> {
+            val f = filter
+            val totals =
+                dao.searchTotals(
+                    f.from,
+                    f.to,
+                    f.types.isEmpty(),
+                    f.types.map { it.name },
+                    f.categoryIds.isEmpty(),
+                    f.categoryIds.toList(),
+                    f.accountIds.isEmpty(),
+                    f.accountIds.toList(),
+                    f.tagIds.isEmpty(),
+                    f.tagIds.toList(),
+                    like(f.query),
+                )
+            return totals.map { SearchTotals(Money(it.income), Money(it.expense), it.count) }
+        }
+
+        override fun observeFirstOccurredAt(): Flow<Instant?> = dao.observeFirstOccurredAt()
+
+        // shortcut: SQLite LIKE ignores case only for ASCII, so "cafe" misses "Café"; normalize text if the PO asks
+        private fun like(query: String): String {
+            val text = query.trim()
+            if (text.isEmpty()) return ""
+            return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        }
     }
 
 internal fun Transaction.toEntity(
@@ -338,4 +391,6 @@ internal fun TransactionEntity.toDomain() =
         installmentId = installmentId,
         recurringId = recurringId,
         paymentKind = paymentKind,
+        createdAt = createdAt,
+        pendingSync = syncState != SyncState.SYNCED,
     )

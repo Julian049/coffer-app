@@ -72,6 +72,10 @@ data class Transaction(
     val installmentId: UUID? = null,
     val recurringId: UUID? = null,
     val paymentKind: String? = null,
+    /** When it was registered; null until stored. */
+    val createdAt: Instant? = null,
+    /** Not yet in the cloud (shown in the detail). */
+    val pendingSync: Boolean = false,
 )
 
 data class HomeCard(
@@ -118,6 +122,23 @@ enum class RemoveMode { DEACTIVATE, MOVE, DELETE_ALL }
 data class PeriodTotals(
     val income: Money = Money.ZERO,
     val expense: Money = Money.ZERO,
+)
+
+/** History filters (REQ-TRX-09, 10): empty sets mean "any"; [query] matches note, category, account and tag. */
+data class TransactionFilter(
+    val from: Instant,
+    val to: Instant,
+    val types: Set<TransactionType> = emptySet(),
+    val categoryIds: Set<UUID> = emptySet(),
+    val accountIds: Set<UUID> = emptySet(),
+    val tagIds: Set<UUID> = emptySet(),
+    val query: String = "",
+)
+
+data class SearchTotals(
+    val income: Money = Money.ZERO,
+    val expense: Money = Money.ZERO,
+    val count: Int = 0,
 )
 
 /** Expenses or income of one category in a period, without its subcategories. */
