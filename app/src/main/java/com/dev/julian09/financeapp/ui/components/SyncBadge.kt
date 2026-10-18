@@ -21,17 +21,21 @@ import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import java.time.Duration
+import java.time.Instant
 
-/** Compact sync indicator: synced, N pending (warning), syncing or offline. */
+/** Compact sync indicator: synced (and how long ago), N pending (warning), syncing or offline. */
 @Composable
 fun SyncBadge(
     status: SyncStatus,
     modifier: Modifier = Modifier,
+    // shortcut: the "hace N min" only updates when the status or screen recomposes; add a ticker if it reads stale
+    now: Instant = Instant.now(),
 ) {
     val colors = CofferTheme.colors
     val (icon, label, tint) =
         when (status) {
-            SyncStatus.Synced -> Triple(Icons.Outlined.CloudDone, "Sincronizado", colors.income)
+            is SyncStatus.Synced -> Triple(Icons.Outlined.CloudDone, syncedLabel(status.lastSyncAt, now), colors.income)
             is SyncStatus.Pending ->
                 Triple(
                     Icons.Outlined.CloudUpload,
@@ -51,4 +55,19 @@ fun SyncBadge(
             Text(label, style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
         }
     }
+}
+
+/** "Sincronizado · hace 5 min" (S3-UI02). */
+fun syncedLabel(
+    lastSyncAt: Instant?,
+    now: Instant,
+): String {
+    val ago = lastSyncAt?.let { Duration.between(it, now) } ?: return "Sincronizado"
+    return "Sincronizado · " +
+        when {
+            ago.toMinutes() < 1 -> "ahora"
+            ago.toHours() < 1 -> "hace ${ago.toMinutes()} min"
+            ago.toDays() < 1 -> "hace ${ago.toHours()} h"
+            else -> "hace ${ago.toDays()} d"
+        }
 }

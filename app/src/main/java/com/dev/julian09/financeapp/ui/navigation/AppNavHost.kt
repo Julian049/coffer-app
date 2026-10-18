@@ -5,6 +5,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -18,6 +20,7 @@ import com.dev.julian09.financeapp.ui.feature.history.HistoryScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsScreen
+import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 @Composable
@@ -35,7 +38,10 @@ fun AppNavHost(
         bottomBar = { if (currentTab != null) BottomBar(selected = currentTab, onSelect = navController::navigateToTab) },
     ) { padding ->
         NavHost(navController = navController, startDestination = HomeRoute, modifier = Modifier.padding(padding)) {
-            composable<HomeRoute> { HomeScreen(onOpenSettings = openSettings, avatarInitial = initial) }
+            composable<HomeRoute> {
+                val sync by hiltViewModel<SyncStatusViewModel>().status.collectAsStateWithLifecycle()
+                HomeScreen(onOpenSettings = openSettings, avatarInitial = initial, syncStatus = sync)
+            }
             composable<HistoryRoute> { HistoryScreen(onOpenSettings = openSettings, avatarInitial = initial) }
             composable<ReportsRoute> { ReportsScreen(onOpenSettings = openSettings, avatarInitial = initial) }
             composable<AccountsRoute> { AccountsScreen(onOpenSettings = openSettings, avatarInitial = initial) }

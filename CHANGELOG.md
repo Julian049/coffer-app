@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17
+
+### Added
+
+- Encrypted local database `finance.db` (Room + SQLCipher, ADR-0008) with settings, accounts, categories, tags, transactions and sync metadata; schema exported to `app/schemas`
+- `DatabaseKeyProvider`: random 256-bit passphrase stored wrapped by its own Android Keystore key
+- `LegacyDatabaseMigrator`: one-time move of the MVP `finance_db` into `finance.db` with the server's V6 rules and fixed UUIDs; every row starts pending upload
+- Ledger domain models (`Account`, `Category`, `Tag`, `Transaction`, `Settings`) and read ports
+- Tests: MVP migration, DAOs and an instrumented encryption test (run by hand)
+- Background sync (ADR-0006): `SyncApi`, `SyncTables` (entity ↔ change codec), `ChangeApplier` (client last-write-wins, cursor saved per page), `SyncEngine` (push batches of 200, pull pages of 500, refuses another account's database), `SyncWorker` (retries on network, 5xx and 429) and `SyncSchedulerImpl` (on change, every 15 min, initial download)
+- `BaseCatalogSeeder`: base categories (detailed-design §6.9.10) and default settings on a new account
+- Tests: `SyncEngineTest` (MockWebServer) and `ChangeApplierTest`
+- "Descargando tus datos" screen: an active session whose first download has not finished waits there, with progress per data type, a waiting-for-network notice and a retry after a permanent failure
+- Sync badge in Home and Settings ("Sincronizado · hace N min", "N pendientes", "Sincronizando…", "Sin conexión") from pending rows, running work, connectivity and the last sync time
+- Read-only History (newest movements grouped by day) and Accounts (name, type, initial balance) to see the synced data until Sprints 4 and 5
+- Every start with a session and a finished download requests a sync and keeps the 15-minute periodic work
+- Tests: `InitialDownloadViewModelTest`, `SessionViewModelTest`, `HistoryViewModelTest`, `SyncedLabelTest` and new screenshots
+
+### Changed
+
+- Android backup and device-to-device transfer are disabled (ADR-0008: the cloud is the backup)
+- Signing out also cancels the background sync
+- Sync rounds never overlap: the one-off, periodic and initial works share a lock
+
+### Removed
+
+- The MVP Room schema (`legacy`)
+
 ## [0.3.0] - 2026-10-16
 
 ### Added

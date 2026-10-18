@@ -7,6 +7,7 @@ import com.dev.julian09.financeapp.domain.usecase.Logout
 import com.dev.julian09.financeapp.domain.usecase.ObserveSession
 import com.dev.julian09.financeapp.domain.usecase.RefreshProfile
 import com.dev.julian09.financeapp.ui.FakeAuthRepository
+import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.PROFILE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,6 +29,7 @@ class SettingsViewModelTest {
         override suspend fun isAvailable() = up
     }
 
+    private val scheduler = FakeSyncScheduler()
     private val auth = FakeAuthRepository().apply { session.value = SessionState.Active(PROFILE) }
     private val server = FakeServer(up = false)
 
@@ -37,7 +39,8 @@ class SettingsViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = SettingsViewModel(CheckServerStatus(server), ObserveSession(auth), RefreshProfile(auth), Logout(auth))
+    private fun viewModel() =
+        SettingsViewModel(CheckServerStatus(server), ObserveSession(auth), RefreshProfile(auth), Logout(auth, scheduler))
 
     @Test
     fun `reports the server state and retries`() {
@@ -63,6 +66,7 @@ class SettingsViewModelTest {
 
         vm.confirmLogout()
         assertTrue(auth.loggedOut)
+        assertTrue("sync stops on sign-out", scheduler.cancelled)
         assertFalse(vm.state.value.confirmingLogout)
     }
 }
