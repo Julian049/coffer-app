@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Accounts (S4-H01): Gestión de cuentas with balances, Nueva cuenta (cash, debit, savings; cards and loans show "Disponible pronto"), Detalle de cuenta with "Cómo se calcula" and its movements, Editar cuenta (name, initial balance, include in total; the type never changes), Cuentas desactivadas with Reactivar
+- Removing an account (SEQ-12): deactivate (recommended), move its movements to another active account (transfers between both disappear) or delete it with its movements after typing its name, with the impact shown first (REQ-CTA-05)
+- Categories (S4-H02): expense and income tabs with this month's totals, new category or subcategory (one level, same kind), rename, and delete with its subcategories moving every movement to the chosen category; "Intereses y cargos financieros" cannot be deleted while a card or loan exists
+- Home (S4-H03): total available balance with the change against last month's close, the fox with its mood (rules approved by the PO), quick actions (disabled until S5), accounts carousel and the last 5 days grouped by Hoy, Ayer, Antier and date
+- Settings links to Categorías and Cuentas desactivadas
+- `BalanceCalculator`, `FoxRules` and the account and category use cases; every write is atomic, stays PENDING and requests a sync
+- Base categories get icons on new accounts
+- Unit test coverage with AGP's JaCoCo (`createDebugUnitTestCoverageReport`)
+- Tests: `BalanceCalculatorTest`, `FoxRulesTest`, `RemoveAccountTest`, `DeleteCategoryTest`, `CategoryRepositoryTest`, `HomeViewModelTest`, `ConfirmDeleteAccountTest` and new screenshots
+
+### Changed
+
+- History uses the names of every account (deactivated ones too) and shares the day groups of Home and account detail
+
 ## [0.4.0] - 2026-10-17
 
 ### Added

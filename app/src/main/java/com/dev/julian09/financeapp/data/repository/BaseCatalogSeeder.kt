@@ -31,6 +31,7 @@ class BaseCatalogSeeder
                             kind = base.kind,
                             isBase = true,
                             systemKey = base.systemKey,
+                            icon = base.icon,
                             sortOrder = index,
                             createdAt = now,
                             updatedAt = now,
@@ -77,22 +78,23 @@ class BaseCatalogSeeder
             val kind: String,
             val children: List<String> = emptyList(),
             val systemKey: String? = null,
+            val icon: String? = null,
         )
 
         private companion object {
             // Approved by the PO in the S3 planning (detailed-design §6.9.10)
             val BASE =
                 listOf(
-                    Base("Comida", "EXPENSE", listOf("Restaurantes", "Supermercado", "Cafeterías")),
-                    Base("Transporte", "EXPENSE", listOf("Taxi / Apps", "Gasolina", "Mantenimiento")),
-                    Base("Hogar", "EXPENSE", listOf("Servicios públicos", "Arriendo", "Mantenimiento")),
-                    Base("Entretenimiento", "EXPENSE", listOf("Streaming", "Salidas", "Cine")),
-                    Base("Salud", "EXPENSE", listOf("Farmacia", "Consultas")),
-                    Base("Educación", "EXPENSE"),
-                    Base("Intereses y cargos financieros", "EXPENSE", systemKey = "FINANCIAL_CHARGES"),
-                    Base("Otros gastos", "EXPENSE"),
-                    Base("Salario", "INCOME"),
-                    Base("Otros ingresos", "INCOME"),
+                    Base("Comida", "EXPENSE", listOf("Restaurantes", "Supermercado", "Cafeterías"), icon = "restaurant"),
+                    Base("Transporte", "EXPENSE", listOf("Taxi / Apps", "Gasolina", "Mantenimiento"), icon = "car"),
+                    Base("Hogar", "EXPENSE", listOf("Servicios públicos", "Arriendo", "Mantenimiento"), icon = "home"),
+                    Base("Entretenimiento", "EXPENSE", listOf("Streaming", "Salidas", "Cine"), icon = "movie"),
+                    Base("Salud", "EXPENSE", listOf("Farmacia", "Consultas"), icon = "health"),
+                    Base("Educación", "EXPENSE", icon = "school"),
+                    Base("Intereses y cargos financieros", "EXPENSE", systemKey = "FINANCIAL_CHARGES", icon = "percent"),
+                    Base("Otros gastos", "EXPENSE", icon = "more"),
+                    Base("Salario", "INCOME", icon = "work"),
+                    Base("Otros ingresos", "INCOME", icon = "trending_up"),
                 )
         }
     }

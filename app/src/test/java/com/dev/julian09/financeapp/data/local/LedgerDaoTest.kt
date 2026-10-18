@@ -40,7 +40,7 @@ class LedgerDaoTest {
                 ),
             )
 
-            val active = AccountRepositoryImpl(db.accounts()).observeActive().first()
+            val active = AccountRepositoryImpl(db, db.accounts(), db.transactions(), FixedClock()).observeActive().first()
             assertEquals(listOf("Bancolombia", "Ahorros"), active.map { it.name })
             assertEquals(AccountType.DEBIT, active.first().type)
             assertEquals(Money.ofPesos(1_250_000), active.first().initialBalance)

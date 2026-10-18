@@ -22,3 +22,23 @@ data object LoginRoute
 
 @Serializable
 data object RegisterRoute
+
+@Serializable
+data object NewAccountRoute
+
+/** Ids travel as text: type-safe routes keep them in the SavedStateHandle under the property name. */
+@Serializable
+data class EditAccountRoute(
+    val id: String,
+)
+
+@Serializable
+data class AccountDetailRoute(
+    val id: String,
+)
+
+@Serializable
+data object DeactivatedAccountsRoute
+
+@Serializable
+data object CategoriesRoute
