@@ -47,4 +47,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSyncMetaDao(db: FinanceDatabase) = db.syncMeta()
+
+    @Provides
+    fun provideRecurringDao(db: FinanceDatabase) = db.recurring()
 }

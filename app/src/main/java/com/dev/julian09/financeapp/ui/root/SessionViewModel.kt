@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.ui.root
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.domain.model.SessionState
+import com.dev.julian09.financeapp.domain.port.ReminderScheduler
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import com.dev.julian09.financeapp.domain.usecase.ObserveSession
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +22,7 @@ class SessionViewModel
     constructor(
         observeSession: ObserveSession,
         private val scheduler: SyncScheduler,
+        private val reminders: ReminderScheduler,
     ) : ViewModel() {
         val session: StateFlow<SessionState> =
             observeSession().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionState.Loading)
@@ -37,6 +39,7 @@ class SessionViewModel
                     if (ready) {
                         scheduler.ensurePeriodic()
                         scheduler.requestSync()
+                        reminders.ensureScheduled()
                     }
                 }.launchIn(viewModelScope)
         }

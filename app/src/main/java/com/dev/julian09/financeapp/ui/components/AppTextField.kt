@@ -51,7 +51,7 @@ import com.dev.julian09.financeapp.ui.theme.CofferTheme
 fun AppTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String,
+    label: String?,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
     leadingIcon: ImageVector? = null,
@@ -76,7 +76,7 @@ fun AppTextField(
         }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+        label?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = colors.textSecondary) }
         BasicTextField(
             value = value,
             onValueChange = onValueChange,

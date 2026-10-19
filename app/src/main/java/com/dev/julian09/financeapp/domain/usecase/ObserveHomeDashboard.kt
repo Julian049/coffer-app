@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxRules
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.PendingPayment
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.Clock
@@ -25,6 +26,8 @@ data class HomeDashboard(
     /** REQ-TRX-11: today and the 4 days before. */
     val recent: List<Transaction>,
     val fox: FoxMood,
+    /** REQ-INI-03: inside the reminder window, by due date; they never change a balance (REQ-REC-04). */
+    val pending: List<PendingPayment> = emptyList(),
 )
 
 /** S4-DOM03: total available, accounts, last 5 days and the mascot state. */
@@ -33,6 +36,7 @@ class ObserveHomeDashboard
     constructor(
         private val accounts: AccountRepository,
         private val transactions: TransactionRepository,
+        private val pendingPayments: ObservePendingPayments,
         private val clock: Clock,
     ) {
         operator fun invoke(): Flow<HomeDashboard> {
@@ -64,7 +68,8 @@ class ObserveHomeDashboard
                 balances,
                 totals,
                 transactions.observeSince(today.minusDays(4).atStartOfDay(zone).toInstant()),
-            ) { (now, atClose), (thisMonth, lastMonth, count), recent ->
+                pendingPayments(),
+            ) { (now, atClose), (thisMonth, lastMonth, count), recent, pending ->
                 val available = BalanceCalculator.available(now)
                 // Same accounts as today that already existed then: a new account has no previous close (PO, 2026-10-17)
                 val activeNow = now.filter { it.account.active }.map { it.account.id }.toSet()
@@ -79,7 +84,8 @@ class ObserveHomeDashboard
                     previousMonth = month.minusMonths(1),
                     accounts = now,
                     recent = recent,
-                    fox = FoxRules.evaluate(count > 0, available, change, thisMonth, lastMonth, today),
+                    fox = FoxRules.evaluate(count > 0, available, change, thisMonth, lastMonth, today, pending),
+                    pending = pending.filter { it.inWindow },
                 )
             }
         }

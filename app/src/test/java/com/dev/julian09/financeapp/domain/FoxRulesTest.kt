@@ -2,12 +2,16 @@ package com.dev.julian09.financeapp.domain
 
 import com.dev.julian09.financeapp.domain.finance.FoxRules
 import com.dev.julian09.financeapp.domain.finance.FoxState
+import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
+import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
+import com.dev.julian09.financeapp.domain.model.Recurring
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.util.UUID
 
 /** The order approved by the PO (2026-10-17): the first rule that holds wins. */
 class FoxRulesTest {
@@ -35,6 +39,38 @@ class FoxRulesTest {
         assertEquals(FoxState.GOOD, state(previous = saved, change = BigDecimal("8.4")))
         assertEquals(FoxState.NORMAL, state(change = BigDecimal("-5.2")))
         assertEquals(FoxState.NORMAL, state(change = null))
+    }
+
+    private fun dueIn(days: Long) =
+        RecurrenceCalculator.pending(
+            Recurring(
+                UUID.randomUUID(),
+                "Arriendo",
+                pesos(900_000),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                midMonth,
+                Frequency.MONTHLY,
+                midMonth.plusDays(days),
+            ),
+            midMonth,
+            5,
+        )
+
+    @Test
+    fun `a payment due in two days or less makes the fox attentive, after debt`() {
+        val month = PeriodTotals(pesos(2_100_000), pesos(2_480_000))
+
+        fun state(
+            vararg pending: Long,
+            available: Long = 1_000,
+        ) = FoxRules.evaluate(true, pesos(available), null, month, PeriodTotals(), midMonth, pending.map(::dueIn)).state
+        assertEquals(FoxState.ATTENTIVE, state(2))
+        assertEquals(FoxState.ATTENTIVE, state(10, -3))
+        assertEquals(FoxState.WORRIED, state(3))
+        assertEquals(FoxState.DEBT, state(0, available = -1))
+        val mood = FoxRules.evaluate(true, pesos(1), null, PeriodTotals(), PeriodTotals(), midMonth, listOf(dueIn(5), dueIn(1)))
+        assertEquals(1L, mood.payment!!.daysLeft)
     }
 
     @Test

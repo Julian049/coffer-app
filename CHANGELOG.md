@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Recurring expenses (S6-H01): Gastos recurrentes with the month's commitments (paid plus pending), filters Todos, Próximos, Vencidos and Pagados, and the form with weekly, biweekly, monthly, quarterly, yearly or custom frequencies; months are added to the start date, so the 31st falls on the last day of short months; a start in the past begins at the next date from today; reached from Settings; synced as `recurringExpense` (Room version 3)
+- Pending payments (S6-H02): Home's Próximos pagos lists the recurring expenses inside the reminder window and the overdue ones, with their urgency, and never changes a balance; the sheet pays (amount of the last payment, today and the account, all editable; creates the expense and moves to the next date), skips this time or finalizes; Gastos recurrentes gets Omitir and Registrar pago; the fox gets attentive when a payment is due in 2 days or less
+- Reminders (S6-H03): a daily check near 08:00 without network sends one notice when a payment's window opens (or on the next run inside it) and one on the due date if still unpaid, in the "Pagos pendientes" channel; tapping it opens the pending sheet in Home; Settings → Avisos turns them off and sets the lead days (0 to 30, 5 by default); the notification permission is asked when saving a new recurring expense or turning notices on; sign-out cancels them
+
 ## [0.6.0] - 2026-10-18
 
 ### Added

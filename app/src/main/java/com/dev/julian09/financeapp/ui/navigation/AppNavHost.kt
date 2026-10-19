@@ -7,6 +7,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -27,6 +28,8 @@ import com.dev.julian09.financeapp.ui.feature.accounts.DeactivatedAccountsScreen
 import com.dev.julian09.financeapp.ui.feature.categories.CategoriesScreen
 import com.dev.julian09.financeapp.ui.feature.history.HistoryScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsScreen
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
@@ -50,6 +53,9 @@ fun AppNavHost(
     val openTransaction = { id: UUID -> navController.navigate(TransactionDetailRoute(id.toString())) }
 
     val newTransaction = { type: TransactionType -> navController.navigate(TransactionFormRoute(type.name)) }
+    // A tapped notice opens its sheet in Home, from wherever the app was
+    val pendingLink by PendingLink.recurringId.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingLink) { if (pendingLink != null) navController.navigateToTab(Tab.Home) }
     Scaffold(
         containerColor = CofferTheme.colors.background,
         bottomBar = { if (currentTab != null) BottomBar(selected = currentTab, onSelect = navController::navigateToTab) },
@@ -66,6 +72,7 @@ fun AppNavHost(
                     onOpenAccount = openAccount,
                     onNewTransaction = newTransaction,
                     onOpenTransaction = openTransaction,
+                    onOpenRecurring = { navController.navigate(RecurringRoute) },
                     userName = user.displayName,
                     syncStatus = sync,
                 )
@@ -93,8 +100,18 @@ fun AppNavHost(
                     onBack = navController::popBackStack,
                     onOpenCategories = { navController.navigate(CategoriesRoute) },
                     onOpenDeactivated = { navController.navigate(DeactivatedAccountsRoute) },
+                    onOpenRecurring = { navController.navigate(RecurringRoute) },
                 )
             }
+            composable<RecurringRoute> {
+                RecurringScreen(
+                    onBack = navController::popBackStack,
+                    onNew = { navController.navigate(RecurringFormRoute()) },
+                    onEdit = { id -> navController.navigate(RecurringFormRoute(id.toString())) },
+                    onOpenTransaction = openTransaction,
+                )
+            }
+            composable<RecurringFormRoute> { RecurringFormScreen(onBack = navController::popBackStack) }
             composable<NewAccountRoute> { AccountFormScreen(onBack = navController::popBackStack) }
             composable<EditAccountRoute> { AccountFormScreen(onBack = navController::popBackStack) }
             composable<AccountDetailRoute> {
