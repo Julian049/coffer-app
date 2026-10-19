@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
 import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
+import com.dev.julian09.financeapp.data.repository.ChangeLogWriter
 import com.dev.julian09.financeapp.data.repository.TransactionRepositoryImpl
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.Money
@@ -60,9 +61,12 @@ class LedgerDaoTest {
                 ),
             )
 
-            val recent = TransactionRepositoryImpl(db.transactions()).observeRecent(10).first()
+            val recent = TransactionRepositoryImpl(db, db.transactions(), ChangeLogWriter(db), FixedClock()).observeRecent(10).first()
             assertEquals(listOf(Money.ofPesos(5000), Money.ofPesos(28000)), recent.map { it.amount })
-            assertEquals(1, TransactionRepositoryImpl(db.transactions()).observeRecent(1).first().size)
+            assertEquals(
+                1,
+                TransactionRepositoryImpl(db, db.transactions(), ChangeLogWriter(db), FixedClock()).observeRecent(1).first().size,
+            )
             assertEquals(3, db.transactions().observeUnsynced().first())
         }
 

@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.AuthRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CategoryRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ServerStatusRepositoryImpl
+import com.dev.julian09.financeapp.data.repository.TagRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TransactionRepositoryImpl
 import com.dev.julian09.financeapp.data.sync.SyncSchedulerImpl
 import com.dev.julian09.financeapp.domain.port.AccountRepository
@@ -13,6 +14,7 @@ import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.ServerStatusRepository
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
+import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import dagger.Binds
 import dagger.Module
@@ -40,6 +42,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindTransactionRepository(impl: TransactionRepositoryImpl): TransactionRepository
+
+    @Binds
+    abstract fun bindTagRepository(impl: TagRepositoryImpl): TagRepository
 
     @Binds
     abstract fun bindSyncScheduler(impl: SyncSchedulerImpl): SyncScheduler

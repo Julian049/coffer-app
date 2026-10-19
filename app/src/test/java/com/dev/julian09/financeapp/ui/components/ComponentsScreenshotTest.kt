@@ -27,7 +27,10 @@ import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.SyncStatus
+import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
 import com.dev.julian09.financeapp.ui.PROFILE
@@ -44,15 +47,25 @@ import com.dev.julian09.financeapp.ui.feature.categories.CategoriesContent
 import com.dev.julian09.financeapp.ui.feature.categories.CategoriesState
 import com.dev.julian09.financeapp.ui.feature.categories.CategoryLine
 import com.dev.julian09.financeapp.ui.feature.categories.CategoryNode
+import com.dev.julian09.financeapp.ui.feature.history.HistoryActions
+import com.dev.julian09.financeapp.ui.feature.history.HistoryChoices
 import com.dev.julian09.financeapp.ui.feature.history.HistoryContent
 import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
+import com.dev.julian09.financeapp.ui.feature.history.HistoryFilters
 import com.dev.julian09.financeapp.ui.feature.history.HistoryRow
+import com.dev.julian09.financeapp.ui.feature.history.HistoryUiState
 import com.dev.julian09.financeapp.ui.feature.home.HomeContent
 import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsUiState
 import com.dev.julian09.financeapp.ui.feature.sync.InitialDownloadContent
+import com.dev.julian09.financeapp.ui.feature.transactions.TransactionChoices
+import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetail
+import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetailContent
+import com.dev.julian09.financeapp.ui.feature.transactions.TransactionFormActions
+import com.dev.julian09.financeapp.ui.feature.transactions.TransactionFormContent
+import com.dev.julian09.financeapp.ui.feature.transactions.TransactionFormState
 import com.dev.julian09.financeapp.ui.navigation.BottomBar
 import com.dev.julian09.financeapp.ui.navigation.Tab
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -64,8 +77,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
+import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -135,6 +151,18 @@ class ComponentsScreenshotTest {
 
     @Test
     fun categoriesDark() = capture("categories_dark", dark = true) { Categories() }
+
+    @Test
+    fun transactionExpenseLight() = capture("transaction_expense_light", dark = false) { TransactionForm(TransactionType.EXPENSE) }
+
+    @Test
+    fun transactionExpenseDark() = capture("transaction_expense_dark", dark = true) { TransactionForm(TransactionType.EXPENSE) }
+
+    @Test
+    fun transactionTransferLight() = capture("transaction_transfer_light", dark = false) { TransactionForm(TransactionType.TRANSFER) }
+
+    @Test
+    fun transactionDetailLight() = capture("transaction_detail_light", dark = false) { TransactionDetailPreview() }
 
     private fun capture(
         name: String,
@@ -236,21 +264,68 @@ class ComponentsScreenshotTest {
 
     @Composable
     private fun History() {
-        val today = LocalDate.of(2026, 10, 17)
         HistoryContent(
-            listOf(
-                HistoryDay(
-                    today,
-                    listOf(
-                        HistoryRow("Comida", "Efectivo", Money.ofPesos(28_000), TransactionType.EXPENSE),
-                        HistoryRow("Transferencia", "Nu → Efectivo", Money.ofPesos(200_000), TransactionType.TRANSFER),
-                    ),
-                ),
-                HistoryDay(today.minusDays(3), listOf(HistoryRow("Salario", "Nu", Money.ofPesos(3_500_000), TransactionType.INCOME))),
+            HistoryUiState(
+                month = YearMonth.of(2026, 10),
+                months = listOf(YearMonth.of(2026, 10), YearMonth.of(2026, 9), YearMonth.of(2026, 8)),
+                query = "",
+                filters = HistoryFilters(),
+                days = DAYS.map { d -> d.copy(rows = d.rows.map { it.copy(time = LocalTime.of(13, 30)) }) },
+                totals = SearchTotals(Money.ofPesos(450_000), Money.ofPesos(38_500), 4),
+                hasMore = false,
+                choices = HistoryChoices(),
             ),
-            onOpenSettings = {},
+            HistoryActions(),
             avatarInitial = 'J',
-            today = today,
+            today = TODAY,
+        )
+    }
+
+    @Composable
+    private fun TransactionForm(type: TransactionType) {
+        TransactionFormContent(
+            TransactionFormState(
+                type = type,
+                amountDigits = if (type == TransactionType.TRANSFER) "100000" else "28000",
+                categoryId = CATEGORY_FOOD.id,
+                accountId = BALANCES[1].account.id,
+                destinationId = BALANCES[0].account.id,
+                occurredAt = Instant.parse("2026-10-17T18:10:00Z"),
+                tagId = TAG.id,
+                note = "Almuerzo en restaurante",
+            ),
+            TransactionChoices(BALANCES, listOf(CATEGORY_FOOD, Category(UUID(2, 2), "Transporte", CategoryKind.EXPENSE)), listOf(TAG)),
+            TransactionFormActions(),
+            today = TODAY,
+            zone = ZoneOffset.UTC,
+        )
+    }
+
+    @Composable
+    private fun TransactionDetailPreview() {
+        TransactionDetailContent(
+            TransactionDetail(
+                Transaction(
+                    UUID(3, 1),
+                    TransactionType.EXPENSE,
+                    Money.ofPesos(24_500),
+                    Instant.parse("2026-10-17T13:15:00Z"),
+                    BALANCES[0].account.id,
+                    categoryId = CATEGORY_FOOD.id,
+                    note = "Desayuno con el equipo",
+                    createdAt = Instant.parse("2026-10-17T13:16:00Z"),
+                ),
+                CATEGORY_FOOD,
+                "Comida > Cafeterías",
+                "Billetera",
+                null,
+                "Salidas",
+            ),
+            onBack = {},
+            onEdit = {},
+            onDelete = {},
+            today = TODAY,
+            zone = ZoneOffset.UTC,
         )
     }
 
@@ -339,6 +414,8 @@ class ComponentsScreenshotTest {
 
     private companion object {
         val TODAY: LocalDate = LocalDate.of(2026, 10, 17)
+        val CATEGORY_FOOD = Category(UUID(2, 1), "Comida", CategoryKind.EXPENSE, icon = "restaurant")
+        val TAG = Tag(UUID(4, 1), "Salidas")
         val BALANCES =
             listOf(
                 AccountBalance(Account(UUID(0, 1), "Billetera", AccountType.CASH, Money.ofPesos(150_000), icon = "cash"), AccountFlows()),

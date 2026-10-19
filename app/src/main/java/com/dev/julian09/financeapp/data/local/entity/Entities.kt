@@ -114,6 +114,23 @@ data class TransactionEntity(
     val syncError: String? = null,
 )
 
+/** History of a transaction (REQ-HIS-01): before and after are its synced data as JSON, null when it did not exist. */
+@Entity(tableName = "change_log", indices = [Index("syncState"), Index("transactionId")])
+data class ChangeLogEntity(
+    @PrimaryKey val id: UUID,
+    val transactionId: UUID,
+    /** CREATE, UPDATE, DELETE or RESTORE (S11). */
+    val action: String,
+    val beforeValue: String? = null,
+    val afterValue: String? = null,
+    val changedAt: Instant,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.PENDING,
+    val syncError: String? = null,
+)
+
 /** Local-only key/value: pull_cursor, last_sync_at, last_sync_result, legacy_migrated. */
 @Entity(tableName = "sync_meta")
 data class SyncMetaEntity(

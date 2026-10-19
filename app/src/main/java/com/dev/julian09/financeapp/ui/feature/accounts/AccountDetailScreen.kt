@@ -38,10 +38,11 @@ fun AccountDetailScreen(
     onBack: () -> Unit,
     onEdit: (UUID) -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenTransaction: (UUID) -> Unit,
     viewModel: AccountDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    AccountDetailContent(state, onBack, onEdit, onOpenHistory)
+    AccountDetailContent(state, onBack, onEdit, onOpenHistory, onOpenTransaction = onOpenTransaction)
 }
 
 /** Detalle de cuenta: balance, how it is calculated (REQ-CTA-06) and its movements. */
@@ -53,6 +54,7 @@ fun AccountDetailContent(
     onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
+    onOpenTransaction: (UUID) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     val account = state?.account
@@ -98,7 +100,7 @@ fun AccountDetailContent(
             if (state.days.isEmpty()) {
                 Text("Esta cuenta aún no tiene movimientos.", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
             }
-            state.days.forEach { DayGroup(it, today) }
+            state.days.forEach { DayGroup(it, today, onOpen = onOpenTransaction) }
         }
     }
 }

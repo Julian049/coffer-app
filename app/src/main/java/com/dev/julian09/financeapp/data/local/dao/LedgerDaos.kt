@@ -6,6 +6,7 @@ import androidx.room.Query
 import androidx.room.Upsert
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
+import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
@@ -42,11 +43,38 @@ data class TotalsRow(
     val expense: Long,
 )
 
+data class SearchTotalsRow(
+    val income: Long,
+    val expense: Long,
+    val count: Int,
+)
+
 data class CategoryTotalRow(
     val categoryId: UUID,
     val total: Long,
     val count: Int,
 )
+
+/**
+ * The combinable filters of the history (REQ-TRX-09, 10). An empty list means "any"; the flags say so because
+ * SQLite cannot tell an empty IN list from a missing one. [like] is "" or "%text%" with % and _ escaped by a backslash.
+ */
+private const val SEARCH_FROM =
+    """
+    FROM transactions t
+    LEFT JOIN categories c ON c.id = t.categoryId
+    LEFT JOIN categories p ON p.id = c.parentId
+    LEFT JOIN accounts a ON a.id = t.accountId
+    LEFT JOIN accounts d ON d.id = t.destinationAccountId
+    LEFT JOIN tags g ON g.id = t.tagId
+    WHERE t.deletedAt IS NULL AND t.occurredAt >= :from AND t.occurredAt < :to
+      AND (:anyType OR t.type IN (:types))
+      AND (:anyCategory OR t.categoryId IN (:categoryIds))
+      AND (:anyAccount OR t.accountId IN (:accountIds) OR t.destinationAccountId IN (:accountIds))
+      AND (:anyTag OR t.tagId IN (:tagIds))
+      AND (:like = '' OR t.note LIKE :like ESCAPE '\' OR c.name LIKE :like ESCAPE '\' OR p.name LIKE :like ESCAPE '\'
+           OR a.name LIKE :like ESCAPE '\' OR d.name LIKE :like ESCAPE '\' OR g.name LIKE :like ESCAPE '\')
+    """
 
 @Dao
 interface AccountDao {
@@ -170,6 +198,9 @@ interface TagDao {
     @Upsert
     suspend fun upsert(tags: List<TagEntity>)
 
+    @Query("SELECT * FROM tags WHERE deletedAt IS NULL ORDER BY pinned DESC, name")
+    fun observeAll(): Flow<List<TagEntity>>
+
     @Query("SELECT * FROM tags WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
     suspend fun pending(limit: Int): List<TagEntity>
 
@@ -202,6 +233,19 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM transactions WHERE syncState <> 'SYNCED'")
     fun observeUnsynced(): Flow<Int>
 
+    @Query("SELECT * FROM transactions WHERE id = :id")
+    suspend fun get(id: UUID): TransactionEntity?
+
+    @Query("SELECT * FROM transactions WHERE id = :id AND deletedAt IS NULL")
+    fun observe(id: UUID): Flow<TransactionEntity?>
+
+    /** REQ-TRX-05 / SEQ-04: the account of the last movement registered, if it is still active. */
+    @Query(
+        "SELECT t.accountId FROM transactions t JOIN accounts a ON a.id = t.accountId " +
+            "WHERE t.deletedAt IS NULL AND a.deletedAt IS NULL AND a.active = 1 ORDER BY t.createdAt DESC LIMIT 1",
+    )
+    suspend fun lastUsedAccountId(): UUID?
+
     @Query("SELECT * FROM transactions WHERE deletedAt IS NULL AND occurredAt >= :from ORDER BY occurredAt DESC")
     fun observeSince(from: Instant): Flow<List<TransactionEntity>>
 
@@ -228,6 +272,45 @@ interface TransactionDao {
 
     @Query("SELECT COUNT(*) FROM transactions WHERE deletedAt IS NULL")
     fun observeCount(): Flow<Int>
+
+    /** REQ-TRX-06, 12: by when it happened, newest first; [limit] grows as the list scrolls. */
+    @Query("SELECT t.* $SEARCH_FROM ORDER BY t.occurredAt DESC LIMIT :limit")
+    fun search(
+        from: Instant,
+        to: Instant,
+        anyType: Boolean,
+        types: List<String>,
+        anyCategory: Boolean,
+        categoryIds: List<UUID>,
+        anyAccount: Boolean,
+        accountIds: List<UUID>,
+        anyTag: Boolean,
+        tagIds: List<UUID>,
+        like: String,
+        limit: Int,
+    ): Flow<List<TransactionEntity>>
+
+    /** The same filters, summed for the summary card; transfers are neither (REQ-TRX-03). */
+    @Query(
+        "SELECT COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS income, " +
+            "COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount END), 0) AS expense, COUNT(*) AS count $SEARCH_FROM",
+    )
+    fun searchTotals(
+        from: Instant,
+        to: Instant,
+        anyType: Boolean,
+        types: List<String>,
+        anyCategory: Boolean,
+        categoryIds: List<UUID>,
+        anyAccount: Boolean,
+        accountIds: List<UUID>,
+        anyTag: Boolean,
+        tagIds: List<UUID>,
+        like: String,
+    ): Flow<SearchTotalsRow>
+
+    @Query("SELECT MIN(occurredAt) FROM transactions WHERE deletedAt IS NULL")
+    fun observeFirstOccurredAt(): Flow<Instant?>
 
     @Query(
         "SELECT categoryId, SUM(amount) AS total, COUNT(*) AS count FROM transactions WHERE deletedAt IS NULL " +
@@ -361,7 +444,7 @@ interface SyncMetaDao {
     @Query("SELECT value FROM sync_meta WHERE `key` = :key")
     fun observe(key: String): Flow<String?>
 
-    /** Rows not yet in the cloud across every synced table (REQ-SYN-05). */
+    /** Rows not yet in the cloud across every synced table (REQ-SYN-05); change_log is left out so a movement counts once. */
     @Query(
         "SELECT (SELECT COUNT(*) FROM settings WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM accounts WHERE syncState <> 'SYNCED') + " +
@@ -373,4 +456,32 @@ interface SyncMetaDao {
 
     @Upsert
     suspend fun put(meta: SyncMetaEntity)
+}
+
+@Dao
+interface ChangeLogDao {
+    @Upsert
+    suspend fun upsert(rows: List<ChangeLogEntity>)
+
+    @Query("SELECT * FROM change_log WHERE transactionId = :transactionId ORDER BY changedAt")
+    suspend fun forTransaction(transactionId: UUID): List<ChangeLogEntity>
+
+    @Query("SELECT * FROM change_log WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pending(limit: Int): List<ChangeLogEntity>
+
+    @Query("SELECT syncState, updatedAt FROM change_log WHERE id = :id")
+    suspend fun syncInfo(id: UUID): SyncInfo?
+
+    @Query("UPDATE change_log SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSynced(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE change_log SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailed(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
 }
