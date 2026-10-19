@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.data.repository
 
 import com.dev.julian09.financeapp.data.remote.AuthApi
 import com.dev.julian09.financeapp.data.remote.dto.AuthResponseDto
+import com.dev.julian09.financeapp.data.remote.dto.GoogleLoginRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.LoginRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.ProblemDto
 import com.dev.julian09.financeapp.data.remote.dto.RefreshRequestDto
@@ -52,6 +53,9 @@ class AuthRepositoryImpl
 
         override suspend fun login(input: LoginInput): Result<UserProfile> =
             authenticate { api.login(LoginRequestDto(input.identifier.trim(), input.password, deviceId.deviceId)) }
+
+        override suspend fun loginWithGoogle(idToken: String): Result<UserProfile> =
+            authenticate { api.google(GoogleLoginRequestDto(idToken, deviceId.deviceId)) }
 
         override suspend fun logout() {
             val session = store.current()

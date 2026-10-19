@@ -25,6 +25,10 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Web client id of Google Cloud (public: it travels inside the APK); empty disables "Continuar con Google"
+        val googleWebClientId = providers.gradleProperty("coffer.googleWebClientId").orElse("").get()
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     signingConfigs {
@@ -61,7 +65,8 @@ android {
         create("staging") {
             initWith(getByName("release"))
             applicationIdSuffix = ".staging"
-            signingConfig = signingConfigs.getByName("debug")
+            // CI signs staging with the release key, so its SHA-1 is stable for Google sign-in; locally the debug key
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
             buildConfigField("String", "API_BASE_URL", "\"https://coffer-server-staging.onrender.com/\"")
             resValue("string", "app_name", "Coffer staging")
@@ -120,6 +125,10 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.kotlinx.serialization.json)
+    // Inicio con Google (REQ-AUT-03): Credential Manager and the Google ID token
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
     implementation("androidx.hilt:hilt-navigation-compose:1.4.0")
     val navVersion = "2.10.2"
     implementation("androidx.navigation:navigation-compose:$navVersion")

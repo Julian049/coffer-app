@@ -58,3 +58,9 @@ data class FieldErrorDto(
     val field: String,
     val message: String,
 )
+
+@Serializable
+data class GoogleLoginRequestDto(
+    val idToken: String,
+    val deviceId: String,
+)
