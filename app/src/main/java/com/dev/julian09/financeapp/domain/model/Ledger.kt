@@ -165,4 +165,5 @@ enum class LedgerError {
     CATEGORY_REQUIRED,
     SAME_ACCOUNT,
     NOTE_TOO_LONG,
+    INTERVAL_INVALID,
 }

@@ -28,8 +28,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,8 +47,10 @@ import com.dev.julian09.financeapp.R
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.AccountBalance
+import com.dev.julian09.financeapp.domain.model.PendingPayment
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.model.Urgency
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
@@ -55,6 +62,11 @@ import com.dev.julian09.financeapp.ui.components.accountIcon
 import com.dev.julian09.financeapp.ui.components.accountTypeShortLabel
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.feature.history.DayGroup
+import com.dev.julian09.financeapp.ui.feature.recurring.PendingSheets
+import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
+import com.dev.julian09.financeapp.ui.feature.recurring.dueSentence
+import com.dev.julian09.financeapp.ui.feature.recurring.urgencyTint
+import com.dev.julian09.financeapp.ui.navigation.PendingLink
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.math.BigDecimal
@@ -75,12 +87,22 @@ fun HomeScreen(
     onOpenAccount: (UUID) -> Unit,
     onNewTransaction: (TransactionType) -> Unit,
     onOpenTransaction: (UUID) -> Unit,
+    onOpenRecurring: () -> Unit,
     modifier: Modifier = Modifier,
     userName: String? = null,
     syncStatus: SyncStatus? = null,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var pending by rememberSaveable { mutableStateOf<String?>(null) }
+    val link by PendingLink.recurringId.collectAsStateWithLifecycle()
+    LaunchedEffect(link) {
+        link?.let {
+            pending = it.toString()
+            PendingLink.recurringId.value = null
+        }
+    }
+    PendingSheets(pending?.let(UUID::fromString), onDismiss = { pending = null })
     HomeContent(
         state,
         onOpenSettings,
@@ -91,10 +113,12 @@ fun HomeScreen(
         syncStatus,
         onNewTransaction = onNewTransaction,
         onOpenTransaction = onOpenTransaction,
+        onOpenRecurring = onOpenRecurring,
+        onOpenPending = { pending = it.toString() },
     )
 }
 
-/** Inicio (S4-UI04): pending payments, pinned tags and customization arrive in S6, S9 and S11. */
+/** Inicio (S4-UI04, S6-UI02): pinned tags and customization arrive in S9 and S11. */
 @Composable
 fun HomeContent(
     state: HomeUiState?,
@@ -107,6 +131,8 @@ fun HomeContent(
     today: LocalDate = LocalDate.now(),
     onNewTransaction: (TransactionType) -> Unit = {},
     onOpenTransaction: (UUID) -> Unit = {},
+    onOpenRecurring: () -> Unit = {},
+    onOpenPending: (UUID) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
@@ -132,7 +158,7 @@ fun HomeContent(
                         color = colors.textPrimary,
                     )
                 }
-                StatusChip(dashboard.fox.state)
+                StatusChip(dashboard.fox)
             }
             AppCard(Modifier.fillMaxWidth(), highlight = true) {
                 Text("Saldo total disponible", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
@@ -146,6 +172,7 @@ fun HomeContent(
             LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(active, key = { it.account.id }) { AccountChipCard(it, onClick = { onOpenAccount(it.account.id) }) }
             }
+            if (dashboard.pending.isNotEmpty()) UpcomingPayments(dashboard.pending, onOpenRecurring, onOpenPending)
             if (state.days.isNotEmpty()) {
                 SectionTitle("Últimos 5 días", null)
                 state.days.forEach { DayGroup(it, today, onOpen = onOpenTransaction) }
@@ -173,17 +200,78 @@ private fun SectionTitle(
 }
 
 @Composable
-private fun StatusChip(state: FoxState) {
+private fun StatusChip(mood: FoxMood) {
     val colors = CofferTheme.colors
     val (label, tint) =
-        when (state) {
+        when (mood.state) {
             FoxState.RESTING -> "Nuevo" to colors.onPrimaryContainer
             FoxState.DEBT -> "En rojo" to colors.expense
+            FoxState.ATTENTIVE -> paymentChip(mood.payment!!.daysLeft) to colors.warning
             FoxState.WORRIED -> "Revisa" to colors.warning
             else -> "Al día" to colors.onPrimaryContainer
         }
     Surface(shape = CofferShapes.pill, color = colors.primaryContainer) {
         Text(label, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium, color = tint)
+    }
+}
+
+private fun paymentChip(daysLeft: Long) =
+    when {
+        daysLeft < 0 -> "Pago vencido"
+        daysLeft == 0L -> "Pago hoy"
+        daysLeft == 1L -> "Pago mañana"
+        else -> "Pago en $daysLeft días"
+    }
+
+/** Próximos pagos (S6-UI02): only the ones inside the reminder window (PO, 2026-10-18); they never touch the balance. */
+@Composable
+private fun UpcomingPayments(
+    pending: List<PendingPayment>,
+    onOpenRecurring: () -> Unit,
+    onOpen: (UUID) -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Próximos pagos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+            TextButton(onClick = onOpenRecurring) { Text("Gestionar recurrentes →", color = colors.primary) }
+        }
+        Text(
+            "Avisos automáticos · No afectan tu saldo disponible",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+        pending.forEach { p ->
+            AppCard(Modifier.fillMaxWidth(), onClick = { onOpen(p.recurring.id) }) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.size(8.dp).background(urgencyTint(p), CircleShape))
+                    Column(Modifier.weight(1f)) {
+                        Text(p.recurring.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
+                        Text(
+                            "${dueSentence(p.daysLeft)} · ${dayMonth(p.recurring.nextDueDate)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = urgencyTint(p),
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            formatMoney(p.recurring.suggestedAmount),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.textPrimary,
+                        )
+                        Text(
+                            when (p.urgency) {
+                                Urgency.OVERDUE -> "Vencido"
+                                Urgency.SOON -> "Pendiente"
+                                Urgency.UPCOMING -> "Próximo"
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.textSecondary,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -232,6 +320,15 @@ fun FoxCard(
                     "Tu saldo está en rojo",
                     "Tu saldo disponible es ${formatMoney(mood.amount!!)}. Revisa tus gastos.",
                 )
+            FoxState.ATTENTIVE ->
+                mood.payment!!.let { p ->
+                    Triple(
+                        R.drawable.mascot_attentive,
+                        "Tienes un pago cerca",
+                        "${p.recurring.name}: ${dueSentence(p.daysLeft).replaceFirstChar { it.lowercase() }} · " +
+                            formatMoney(p.recurring.suggestedAmount) + ".",
+                    )
+                }
             FoxState.WORRIED ->
                 Triple(
                     R.drawable.mascot_worried,

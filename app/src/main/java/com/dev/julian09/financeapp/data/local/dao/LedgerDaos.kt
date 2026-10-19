@@ -7,6 +7,7 @@ import androidx.room.Upsert
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
+import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
@@ -14,6 +15,7 @@ import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 /** Sync state of one local row, to decide last-write-wins against a pulled change (SEQ-09). */
@@ -313,6 +315,15 @@ interface TransactionDao {
     fun observeFirstOccurredAt(): Flow<Instant?>
 
     @Query(
+        "SELECT * FROM transactions WHERE deletedAt IS NULL AND recurringId IS NOT NULL " +
+            "AND occurredAt >= :from AND occurredAt < :to ORDER BY occurredAt DESC",
+    )
+    fun observeRecurringPayments(
+        from: Instant,
+        to: Instant,
+    ): Flow<List<TransactionEntity>>
+
+    @Query(
         "SELECT categoryId, SUM(amount) AS total, COUNT(*) AS count FROM transactions WHERE deletedAt IS NULL " +
             "AND categoryId IS NOT NULL AND occurredAt >= :from AND occurredAt < :to GROUP BY categoryId",
     )
@@ -450,6 +461,7 @@ interface SyncMetaDao {
             "(SELECT COUNT(*) FROM accounts WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM categories WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM tags WHERE syncState <> 'SYNCED') + " +
+            "(SELECT COUNT(*) FROM recurring_expenses WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM transactions WHERE syncState <> 'SYNCED')",
     )
     fun observeUnsynced(): Flow<Int>
@@ -479,6 +491,48 @@ interface ChangeLogDao {
     ): Int
 
     @Query("UPDATE change_log SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailed(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
+}
+
+@Dao
+interface RecurringDao {
+    @Upsert
+    suspend fun upsert(rows: List<RecurringExpenseEntity>)
+
+    @Query("SELECT * FROM recurring_expenses WHERE deletedAt IS NULL ORDER BY nextDueDate, name")
+    fun observeAll(): Flow<List<RecurringExpenseEntity>>
+
+    @Query("SELECT * FROM recurring_expenses WHERE id = :id AND deletedAt IS NULL")
+    fun observe(id: UUID): Flow<RecurringExpenseEntity?>
+
+    @Query("SELECT * FROM recurring_expenses WHERE id = :id")
+    suspend fun get(id: UUID): RecurringExpenseEntity?
+
+    @Query("UPDATE recurring_expenses SET lastNotifiedOn = :on, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun markNotified(
+        id: UUID,
+        on: LocalDate,
+        now: Instant,
+    )
+
+    @Query("SELECT * FROM recurring_expenses WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pending(limit: Int): List<RecurringExpenseEntity>
+
+    @Query("SELECT syncState, updatedAt FROM recurring_expenses WHERE id = :id")
+    suspend fun syncInfo(id: UUID): SyncInfo?
+
+    /** Only if the row was not edited while it was being sent; otherwise it stays PENDING for the next push. */
+    @Query("UPDATE recurring_expenses SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSynced(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE recurring_expenses SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
     suspend fun markFailed(
         id: UUID,
         sentUpdatedAt: Instant,

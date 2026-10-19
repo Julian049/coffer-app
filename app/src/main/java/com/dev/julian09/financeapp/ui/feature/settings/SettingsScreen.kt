@@ -21,12 +21,23 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
+import androidx.compose.material.icons.outlined.EventRepeat
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
@@ -43,19 +55,27 @@ import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.SyncBadge
+import com.dev.julian09.financeapp.ui.feature.recurring.days
+import com.dev.julian09.financeapp.ui.feature.recurring.rememberNotificationPermissionRequest
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenCategories: () -> Unit,
     onOpenDeactivated: () -> Unit,
+    onOpenRecurring: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
+    reminderViewModel: ReminderSettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val syncStatus by syncViewModel.status.collectAsStateWithLifecycle()
+    val reminders by reminderViewModel.settings.collectAsStateWithLifecycle()
+    // Turning notices on asks for the permission when it is missing
+    val requestPermission = rememberNotificationPermissionRequest()
     SettingsContent(
         state = state,
         syncStatus = syncStatus,
@@ -66,10 +86,17 @@ fun SettingsScreen(
         onLogoutDismiss = viewModel::dismissLogout,
         onOpenCategories = onOpenCategories,
         onOpenDeactivated = onOpenDeactivated,
+        onOpenRecurring = onOpenRecurring,
+        reminders = reminders,
+        onNotifications = { enabled ->
+            reminderViewModel.setNotifications(enabled)
+            if (enabled) requestPermission()
+        },
+        onLeadDays = reminderViewModel::setLeadDays,
     )
 }
 
-/** Settings so far: profile, server status, sign-out and version. Notices and data arrive in later sprints. */
+/** Settings so far: profile, server status, notices (S6-UI03), data, sign-out and version. */
 @Composable
 fun SettingsContent(
     state: SettingsUiState,
@@ -82,6 +109,10 @@ fun SettingsContent(
     syncStatus: SyncStatus? = null,
     onOpenCategories: () -> Unit = {},
     onOpenDeactivated: () -> Unit = {},
+    onOpenRecurring: () -> Unit = {},
+    reminders: Settings? = null,
+    onNotifications: (Boolean) -> Unit = {},
+    onLeadDays: (Int) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     LogoutDialogIfNeeded(state.confirmingLogout, onLogoutConfirm, onLogoutDismiss)
@@ -144,8 +175,11 @@ fun SettingsContent(
                     AppButton("Reintentar", onRetry, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
                 }
             }
+            reminders?.let { RemindersCard(it, onNotifications, onLeadDays) }
             AppCard {
                 LinkRow(Icons.AutoMirrored.Outlined.Label, "Categorías", onOpenCategories)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.EventRepeat, "Gastos recurrentes", onOpenRecurring)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.AccountBalance, "Cuentas desactivadas", onOpenDeactivated)
             }
@@ -166,6 +200,70 @@ fun SettingsContent(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+/** REQ-REC-03, 10: only pending payments ever notify, and the user can turn them off. */
+@Composable
+private fun RemindersCard(
+    settings: Settings,
+    onNotifications: (Boolean) -> Unit,
+    onLeadDays: (Int) -> Unit,
+) {
+    val colors = CofferTheme.colors
+    var choosing by rememberSaveable { mutableStateOf(false) }
+    Text("Avisos", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
+    AppCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Notificaciones de pagos pendientes", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                Text(
+                    "Solo al abrir la ventana de aviso y el día de vencimiento",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
+            }
+            Switch(
+                checked = settings.notificationsEnabled,
+                onCheckedChange = onNotifications,
+                colors = SwitchDefaults.colors(checkedTrackColor = colors.primary, checkedThumbColor = colors.onPrimary),
+            )
+        }
+        HorizontalDivider(thickness = 1.dp, color = colors.border)
+        Row(
+            Modifier.fillMaxWidth().clickable { choosing = true }.padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Anticipación de avisos", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                Text("Días antes del vencimiento", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            }
+            Text(days(settings.reminderLeadDays), style = MaterialTheme.typography.bodyLarge, color = colors.primary)
+        }
+    }
+    if (choosing) {
+        var value by remember { mutableFloatStateOf(settings.reminderLeadDays.toFloat()) }
+        AlertDialog(
+            onDismissRequest = { choosing = false },
+            title = { Text("Anticipación de avisos") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Los pagos aparecerán en Inicio ${days(value.roundToInt())} antes de vencer.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                    )
+                    Slider(value = value, onValueChange = { value = it }, valueRange = 0f..30f, steps = 29)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onLeadDays(value.roundToInt())
+                    choosing = false
+                }) { Text("Listo") }
+            },
+            dismissButton = { TextButton(onClick = { choosing = false }) { Text("Cancelar") } },
+        )
     }
 }
 

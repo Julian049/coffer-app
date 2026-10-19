@@ -20,4 +20,5 @@ fun LedgerError.message(): String =
         LedgerError.CATEGORY_REQUIRED -> "Elige una categoría"
         LedgerError.SAME_ACCOUNT -> "El destino debe ser otra cuenta"
         LedgerError.NOTE_TOO_LONG -> "La nota es muy larga"
+        LedgerError.INTERVAL_INVALID -> "Elige cada cuántos días, semanas o meses (de 1 a 365)"
     }
