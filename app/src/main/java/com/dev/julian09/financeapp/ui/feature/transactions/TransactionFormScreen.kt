@@ -347,7 +347,7 @@ internal fun CircleIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateTimeCard(
+internal fun DateTimeCard(
     occurredAt: Instant,
     onChange: (Instant) -> Unit,
     today: LocalDate,

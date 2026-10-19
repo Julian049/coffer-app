@@ -68,6 +68,7 @@ fun AppNavHost(
                     onOpenAccount = openAccount,
                     onNewTransaction = newTransaction,
                     onOpenTransaction = openTransaction,
+                    onOpenRecurring = { navController.navigate(RecurringRoute) },
                     userName = user.displayName,
                     syncStatus = sync,
                 )

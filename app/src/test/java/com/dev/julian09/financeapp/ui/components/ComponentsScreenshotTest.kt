@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxState
+import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
 import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
@@ -28,6 +29,10 @@ import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.Recurring
+import com.dev.julian09.financeapp.domain.model.RecurringOverview
+import com.dev.julian09.financeapp.domain.model.RecurringPayment
+import com.dev.julian09.financeapp.domain.model.RecurringSummary
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.Tag
@@ -57,10 +62,13 @@ import com.dev.julian09.financeapp.ui.feature.history.HistoryRow
 import com.dev.julian09.financeapp.ui.feature.history.HistoryUiState
 import com.dev.julian09.financeapp.ui.feature.home.HomeContent
 import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringActions
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringChoices
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringContent
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormActions
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormContent
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormState
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringUiState
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsUiState
@@ -143,6 +151,15 @@ class ComponentsScreenshotTest {
     fun accountsLight() = capture("accounts_light", dark = false) { Accounts() }
 
     @Test
+    fun homePendingLight() = capture("home_pending_light", dark = false) { Home(pending = true) }
+
+    @Test
+    fun recurringLight() = capture("recurring_light", dark = false) { RecurringList() }
+
+    @Test
+    fun recurringDark() = capture("recurring_dark", dark = true) { RecurringList() }
+
+    @Test
     fun homeNewUserLight() = capture("home_new_user_light", dark = false) { Home(newUser = true) }
 
     @Test
@@ -222,9 +239,22 @@ class ComponentsScreenshotTest {
 
     // Full screen: header, empty state and the 4-tab bar pinned to the bottom
     @Composable
-    private fun Home(newUser: Boolean = false) {
+    private fun Home(
+        newUser: Boolean = false,
+        pending: Boolean = false,
+    ) {
         val dashboard =
-            if (newUser) {
+            if (pending) {
+                HomeDashboard(
+                    Money.ofPesos(2_750_000),
+                    null,
+                    YearMonth.of(2026, 9),
+                    BALANCES,
+                    emptyList(),
+                    FoxMood(FoxState.ATTENTIVE, payment = PENDING[0]),
+                    PENDING.take(2),
+                )
+            } else if (newUser) {
                 HomeDashboard(Money.ofPesos(150_000), null, YearMonth.of(2026, 9), BALANCES.take(1), emptyList(), FoxMood(FoxState.RESTING))
             } else {
                 HomeDashboard(
@@ -305,6 +335,35 @@ class ComponentsScreenshotTest {
             TransactionChoices(BALANCES, listOf(CATEGORY_FOOD, Category(UUID(2, 2), "Transporte", CategoryKind.EXPENSE)), listOf(TAG)),
             TransactionFormActions(),
             today = TODAY,
+            zone = ZoneOffset.UTC,
+        )
+    }
+
+    @Composable
+    private fun RecurringList() {
+        val paid =
+            RecurringPayment(
+                Transaction(
+                    UUID(5, 9),
+                    TransactionType.EXPENSE,
+                    Money.ofPesos(85_000),
+                    Instant.parse("2026-10-01T15:00:00Z"),
+                    BALANCES[1].account.id,
+                    categoryId = CATEGORY_FOOD.id,
+                ),
+                "Gimnasio",
+            )
+        RecurringContent(
+            RecurringUiState(
+                RecurringOverview(
+                    PENDING,
+                    listOf(paid),
+                    RecurringSummary(Money.ofPesos(1_088_000), 3, Money.ofPesos(1_003_000), 1, Money.ofPesos(85_000)),
+                ),
+                listOf(CATEGORY_FOOD),
+                YearMonth.of(2026, 10),
+            ),
+            RecurringActions(),
             zone = ZoneOffset.UTC,
         )
     }
@@ -441,6 +500,27 @@ class ComponentsScreenshotTest {
         val TODAY: LocalDate = LocalDate.of(2026, 10, 17)
         val CATEGORY_FOOD = Category(UUID(2, 1), "Comida", CategoryKind.EXPENSE, icon = "restaurant")
         val TAG = Tag(UUID(4, 1), "Salidas")
+        val PENDING =
+            listOf(
+                Triple("Arriendo apartamento", 900_000L, 1L),
+                Triple("Plan teléfono móvil", 65_000L, 5L),
+                Triple("Netflix & Spotify", 38_000L, 15L),
+            ).mapIndexed { i, (name, pesos, days) ->
+                RecurrenceCalculator.pending(
+                    Recurring(
+                        UUID(5, i.toLong()),
+                        name,
+                        Money.ofPesos(pesos),
+                        UUID(0, 2),
+                        CATEGORY_FOOD.id,
+                        TODAY,
+                        Frequency.MONTHLY,
+                        TODAY.plusDays(days),
+                    ),
+                    TODAY,
+                    5,
+                )
+            }
         val BALANCES =
             listOf(
                 AccountBalance(Account(UUID(0, 1), "Billetera", AccountType.CASH, Money.ofPesos(150_000), icon = "cash"), AccountFlows()),

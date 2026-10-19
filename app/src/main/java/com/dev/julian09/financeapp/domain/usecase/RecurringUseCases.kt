@@ -5,10 +5,13 @@ import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.LedgerError
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.PendingPayment
 import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.RecurringOverview
 import com.dev.julian09.financeapp.domain.model.RecurringPayment
 import com.dev.julian09.financeapp.domain.model.RecurringSummary
+import com.dev.julian09.financeapp.domain.model.Transaction
+import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.Urgency
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
@@ -20,7 +23,9 @@ import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import java.time.Instant
 import java.time.YearMonth
+import java.util.UUID
 import javax.inject.Inject
 
 private const val NAME_MAX = 60
@@ -177,5 +182,95 @@ class ObserveRecurringOverview
                         ),
                 )
             }
+        }
+    }
+
+/** SEQ-10 §10.1: every active recurring expense with its urgency; Home shows the ones in the window (REQ-REC-04). */
+class ObservePendingPayments
+    @Inject
+    constructor(
+        private val recurring: RecurringRepository,
+        private val settings: SettingsRepository,
+        private val clock: Clock,
+    ) {
+        operator fun invoke(): Flow<List<PendingPayment>> =
+            combine(recurring.observeAll(), settings.observe()) { all, s ->
+                val today = clock.today()
+                all
+                    .filter { it.active }
+                    .map {
+                        RecurrenceCalculator.pending(
+                            it,
+                            today,
+                            s.reminderLeadDays,
+                        )
+                    }.sortedBy { it.recurring.nextDueDate }
+            }
+    }
+
+/**
+ * REQ-REC-07, 08: the real expense (category and name of the recurring expense) and the next date, together. One date
+ * at a time: an expense overdue twice is paid or skipped twice.
+ */
+class PayPending
+    @Inject
+    constructor(
+        private val recurring: RecurringRepository,
+        private val validator: TransactionValidator,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke(
+            id: UUID,
+            amount: Money,
+            occurredAt: Instant,
+            accountId: UUID,
+        ): TransactionErrors {
+            val r = recurring.observe(id).first() ?: return emptyMap()
+            val payment =
+                Transaction(
+                    id = UUID.randomUUID(),
+                    type = TransactionType.EXPENSE,
+                    amount = amount,
+                    occurredAt = occurredAt,
+                    accountId = accountId,
+                    categoryId = r.categoryId,
+                    note = r.name,
+                    recurringId = r.id,
+                )
+            validator.check(payment).takeIf { it.isNotEmpty() }?.let { return it }
+            recurring.pay(
+                r.copy(lastPaidAmount = amount, nextDueDate = RecurrenceCalculator.next(r, r.nextDueDate), lastNotifiedOn = null),
+                payment,
+            )
+            scheduler.requestSync()
+            return emptyMap()
+        }
+    }
+
+/** REQ-REC-06, 08: no expense, the next date. */
+class SkipPending
+    @Inject
+    constructor(
+        private val recurring: RecurringRepository,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke(id: UUID) {
+            val r = recurring.observe(id).first() ?: return
+            recurring.update(r.copy(nextDueDate = RecurrenceCalculator.next(r, r.nextDueDate), lastNotifiedOn = null))
+            scheduler.requestSync()
+        }
+    }
+
+/** REQ-REC-06: no more pending payments; it leaves the list for good (PO, 2026-10-18). */
+class EndRecurrence
+    @Inject
+    constructor(
+        private val recurring: RecurringRepository,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke(id: UUID) {
+            val r = recurring.observe(id).first() ?: return
+            recurring.update(r.copy(active = false))
+            scheduler.requestSync()
         }
     }

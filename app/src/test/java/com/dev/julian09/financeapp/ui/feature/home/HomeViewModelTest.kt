@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
+import com.dev.julian09.financeapp.domain.usecase.ObservePendingPayments
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterNotNull
@@ -42,7 +43,10 @@ class HomeViewModelTest {
     }
 
     private suspend fun state() =
-        HomeViewModel(ObserveHomeDashboard(f.accounts, f.transactions, f.clock), f.categories).state.filterNotNull().first()
+        HomeViewModel(
+            ObserveHomeDashboard(f.accounts, f.transactions, ObservePendingPayments(f.recurring, f.settings, f.clock), f.clock),
+            f.categories,
+        ).state.filterNotNull().first()
 
     private fun day(date: String) = Instant.parse("${date}T15:00:00Z")
 

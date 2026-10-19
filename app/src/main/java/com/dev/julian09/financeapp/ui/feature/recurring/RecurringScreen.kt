@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -89,9 +93,11 @@ fun RecurringScreen(
     viewModel: RecurringViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var paying by rememberSaveable { mutableStateOf<String?>(null) }
+    PendingSheets(paying?.let(UUID::fromString), onDismiss = { paying = null }, payNow = true)
     RecurringContent(
         state,
-        RecurringActions(onBack, onNew, onEdit, onOpenTransaction, viewModel::setFilter),
+        RecurringActions(onBack, onNew, onEdit, onOpenTransaction, viewModel::setFilter, viewModel::skip) { paying = it.toString() },
     )
 }
 
@@ -101,6 +107,8 @@ class RecurringActions(
     val onEdit: (UUID) -> Unit = {},
     val onOpenTransaction: (UUID) -> Unit = {},
     val onFilter: (RecurringFilter) -> Unit = {},
+    val onSkip: (UUID) -> Unit = {},
+    val onPay: (UUID) -> Unit = {},
 )
 
 /** Gastos recurrentes (S6-UI01): the month's commitments, the next payments and what was paid this month. */
@@ -270,7 +278,9 @@ private fun UpcomingRow(
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { actions.onSkip(r.id) }) { Text("Omitir", color = colors.textSecondary) }
                     TextButton(onClick = { actions.onEdit(r.id) }) { Text("Editar", color = colors.textSecondary) }
+                    AppButton("Registrar pago", onClick = { actions.onPay(r.id) }, icon = Icons.Outlined.Check)
                 }
             }
         }
