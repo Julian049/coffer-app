@@ -272,7 +272,7 @@ private fun AmountCard(
     }
 }
 
-private fun categoryLabel(
+internal fun categoryLabel(
     category: Category,
     all: List<Category>,
 ) = category.parentId?.let { parent -> all.firstOrNull { it.id == parent }?.name + " > " + category.name } ?: category.name
@@ -338,7 +338,7 @@ private fun CategoryCard(
 }
 
 @Composable
-private fun CircleIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+internal fun CircleIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
     val colors = CofferTheme.colors
     Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
         Icon(icon, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
@@ -398,7 +398,7 @@ private fun DateTimeCard(
 }
 
 @Composable
-private fun AccountPicker(
+internal fun AccountPicker(
     title: String,
     accounts: List<AccountBalance>,
     selectedId: UUID?,

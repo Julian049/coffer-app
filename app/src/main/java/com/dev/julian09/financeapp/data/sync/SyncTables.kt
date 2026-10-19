@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.data.local.dao.SyncInfo
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
+import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
@@ -25,6 +26,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -232,6 +234,63 @@ class SyncTables
                 },
             )
 
+        val recurring =
+            SyncTable(
+                entity = "recurringExpense",
+                pending = { db.recurring().pending(it) },
+                syncInfo = { db.recurring().syncInfo(it) },
+                upsert = { db.recurring().upsert(listOf(it)) },
+                markSynced = { id, at -> db.recurring().markSynced(id, at) },
+                markFailed = { id, at, e -> db.recurring().markFailed(id, at, e) },
+                idOf = RecurringExpenseEntity::id,
+                updatedAtOf = RecurringExpenseEntity::updatedAt,
+                encode = { r ->
+                    envelope(
+                        "recurringExpense",
+                        r.id,
+                        r.createdAt,
+                        r.updatedAt,
+                        r.deletedAt,
+                        buildJsonObject {
+                            put("name", r.name)
+                            put("estimatedAmount", amount(r.estimatedAmount))
+                            put("lastPaidAmount", r.lastPaidAmount?.let(::amount))
+                            put("accountId", r.accountId.toString())
+                            put("categoryId", r.categoryId.toString())
+                            put("startDate", r.startDate.toString())
+                            put("frequency", r.frequency)
+                            put("intervalCount", r.intervalCount)
+                            put("intervalUnit", r.intervalUnit)
+                            put("nextDueDate", r.nextDueDate.toString())
+                            put("lastNotifiedOn", r.lastNotifiedOn?.toString())
+                            put("active", r.active)
+                        },
+                    )
+                },
+                decode = { c ->
+                    val d = c.data
+                    RecurringExpenseEntity(
+                        id = UUID.fromString(c.id),
+                        name = d.text("name")!!,
+                        estimatedAmount = scaled(d.text("estimatedAmount")!!),
+                        lastPaidAmount = d.text("lastPaidAmount")?.let(::scaled),
+                        accountId = UUID.fromString(d.text("accountId")!!),
+                        categoryId = UUID.fromString(d.text("categoryId")!!),
+                        startDate = LocalDate.parse(d.text("startDate")!!),
+                        frequency = d.text("frequency")!!,
+                        intervalCount = d.text("intervalCount")?.toInt(),
+                        intervalUnit = d.text("intervalUnit"),
+                        nextDueDate = LocalDate.parse(d.text("nextDueDate")!!),
+                        lastNotifiedOn = d.text("lastNotifiedOn")?.let(LocalDate::parse),
+                        active = d.bool("active"),
+                        createdAt = Instant.parse(c.createdAt),
+                        updatedAt = Instant.parse(c.updatedAt),
+                        deletedAt = c.deletedAt?.let(Instant::parse),
+                        syncState = SyncState.SYNCED,
+                    )
+                },
+            )
+
         val transactions =
             SyncTable(
                 entity = "transaction",
@@ -322,8 +381,8 @@ class SyncTables
                 },
             )
 
-        /** Dependency order: settings, accounts, categories, tags, transactions, then their history. */
-        val all: List<SyncTable<*>> = listOf(settings, accounts, categories, tags, transactions, changeLog)
+        /** Dependency order: settings, accounts, categories, tags, recurring expenses, transactions, then their history. */
+        val all: List<SyncTable<*>> = listOf(settings, accounts, categories, tags, recurring, transactions, changeLog)
 
         val byEntity: Map<String, SyncTable<*>> = all.associateBy { it.entity }
     }

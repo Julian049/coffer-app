@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
+import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +52,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenCategories: () -> Unit,
     onOpenDeactivated: () -> Unit,
+    onOpenRecurring: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
 ) {
@@ -66,6 +68,7 @@ fun SettingsScreen(
         onLogoutDismiss = viewModel::dismissLogout,
         onOpenCategories = onOpenCategories,
         onOpenDeactivated = onOpenDeactivated,
+        onOpenRecurring = onOpenRecurring,
     )
 }
 
@@ -82,6 +85,7 @@ fun SettingsContent(
     syncStatus: SyncStatus? = null,
     onOpenCategories: () -> Unit = {},
     onOpenDeactivated: () -> Unit = {},
+    onOpenRecurring: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     LogoutDialogIfNeeded(state.confirmingLogout, onLogoutConfirm, onLogoutDismiss)
@@ -146,6 +150,8 @@ fun SettingsContent(
             }
             AppCard {
                 LinkRow(Icons.AutoMirrored.Outlined.Label, "Categorías", onOpenCategories)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.EventRepeat, "Gastos recurrentes", onOpenRecurring)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.AccountBalance, "Cuentas desactivadas", onOpenDeactivated)
             }

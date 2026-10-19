@@ -6,12 +6,15 @@ import com.dev.julian09.financeapp.domain.model.AccountImpact
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
+import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
+import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 /** Local ledger. Reads never touch the network; every write is atomic and leaves the rows PENDING (ADR-0006). */
@@ -114,4 +117,39 @@ interface TransactionRepository {
     fun searchTotals(filter: TransactionFilter): Flow<SearchTotals>
 
     fun observeFirstOccurredAt(): Flow<Instant?>
+
+    /** Not deleted payments of recurring expenses in [from, to), newest first. */
+    fun observeRecurringPayments(
+        from: Instant,
+        to: Instant,
+    ): Flow<List<Transaction>>
+}
+
+interface RecurringRepository {
+    /** Not deleted, active or finalized, by due date. */
+    fun observeAll(): Flow<List<Recurring>>
+
+    fun observe(id: UUID): Flow<Recurring?>
+
+    suspend fun create(recurring: Recurring)
+
+    suspend fun update(recurring: Recurring)
+
+    /** PayPending (SEQ-10 §10.2): the expense, its history and the recurring's next date in one database transaction. */
+    suspend fun pay(
+        recurring: Recurring,
+        payment: Transaction,
+    )
+
+    suspend fun markNotified(
+        id: UUID,
+        on: LocalDate,
+    )
+}
+
+interface SettingsRepository {
+    /** The defaults until the first sync seeds the row. */
+    fun observe(): Flow<Settings>
+
+    suspend fun update(settings: Settings)
 }

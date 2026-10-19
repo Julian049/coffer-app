@@ -54,3 +54,12 @@ data class TransactionFormRoute(
 data class TransactionDetailRoute(
     val id: String,
 )
+
+@Serializable
+data object RecurringRoute
+
+/** New recurring expense, or the edit of [id]. */
+@Serializable
+data class RecurringFormRoute(
+    val id: String? = null,
+)

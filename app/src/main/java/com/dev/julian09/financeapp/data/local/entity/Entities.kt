@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 /** Upload state of a local row: the outbox is the table itself (ADR-0006). */
@@ -107,6 +108,31 @@ data class TransactionEntity(
     val installmentId: UUID? = null,
     val recurringId: UUID? = null,
     val paymentKind: String? = null,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.PENDING,
+    val syncError: String? = null,
+)
+
+/** A scheduled expense (V7); the domain computes its dates (RecurrenceCalculator). */
+@Entity(tableName = "recurring_expenses", indices = [Index("syncState"), Index("nextDueDate")])
+data class RecurringExpenseEntity(
+    @PrimaryKey val id: UUID,
+    val name: String,
+    val estimatedAmount: Long,
+    val lastPaidAmount: Long? = null,
+    val accountId: UUID,
+    val categoryId: UUID,
+    val startDate: LocalDate,
+    /** WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, YEARLY or CUSTOM. */
+    val frequency: String,
+    val intervalCount: Int? = null,
+    /** DAY, WEEK or MONTH, only with CUSTOM. */
+    val intervalUnit: String? = null,
+    val nextDueDate: LocalDate,
+    val lastNotifiedOn: LocalDate? = null,
+    val active: Boolean = true,
     val createdAt: Instant,
     val updatedAt: Instant,
     val deletedAt: Instant? = null,

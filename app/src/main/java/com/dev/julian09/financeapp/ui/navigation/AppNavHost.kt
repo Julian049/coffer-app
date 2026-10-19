@@ -27,6 +27,8 @@ import com.dev.julian09.financeapp.ui.feature.accounts.DeactivatedAccountsScreen
 import com.dev.julian09.financeapp.ui.feature.categories.CategoriesScreen
 import com.dev.julian09.financeapp.ui.feature.history.HistoryScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsScreen
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
@@ -93,8 +95,18 @@ fun AppNavHost(
                     onBack = navController::popBackStack,
                     onOpenCategories = { navController.navigate(CategoriesRoute) },
                     onOpenDeactivated = { navController.navigate(DeactivatedAccountsRoute) },
+                    onOpenRecurring = { navController.navigate(RecurringRoute) },
                 )
             }
+            composable<RecurringRoute> {
+                RecurringScreen(
+                    onBack = navController::popBackStack,
+                    onNew = { navController.navigate(RecurringFormRoute()) },
+                    onEdit = { id -> navController.navigate(RecurringFormRoute(id.toString())) },
+                    onOpenTransaction = openTransaction,
+                )
+            }
+            composable<RecurringFormRoute> { RecurringFormScreen(onBack = navController::popBackStack) }
             composable<NewAccountRoute> { AccountFormScreen(onBack = navController::popBackStack) }
             composable<EditAccountRoute> { AccountFormScreen(onBack = navController::popBackStack) }
             composable<AccountDetailRoute> {

@@ -4,11 +4,14 @@ import androidx.room.withTransaction
 import com.dev.julian09.financeapp.data.local.FinanceDatabase
 import com.dev.julian09.financeapp.data.local.dao.AccountDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
+import com.dev.julian09.financeapp.data.local.dao.RecurringDao
+import com.dev.julian09.financeapp.data.local.dao.SettingsDao
 import com.dev.julian09.financeapp.data.local.dao.TagDao
 import com.dev.julian09.financeapp.data.local.dao.TransactionDao
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
+import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
@@ -21,9 +24,13 @@ import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
+import com.dev.julian09.financeapp.domain.model.Frequency
+import com.dev.julian09.financeapp.domain.model.IntervalUnit
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
+import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
+import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
@@ -31,12 +38,15 @@ import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.RecurringRepository
+import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 
@@ -304,6 +314,11 @@ class TransactionRepositoryImpl
 
         override fun observeFirstOccurredAt(): Flow<Instant?> = dao.observeFirstOccurredAt()
 
+        override fun observeRecurringPayments(
+            from: Instant,
+            to: Instant,
+        ): Flow<List<Transaction>> = dao.observeRecurringPayments(from, to).map { rows -> rows.map { it.toDomain() } }
+
         // shortcut: SQLite LIKE ignores case only for ASCII, so "cafe" misses "Café"; normalize text if the PO asks
         private fun like(query: String): String {
             val text = query.trim()
@@ -311,6 +326,111 @@ class TransactionRepositoryImpl
             return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         }
     }
+
+class RecurringRepositoryImpl
+    @Inject
+    constructor(
+        private val db: FinanceDatabase,
+        private val dao: RecurringDao,
+        private val transactions: TransactionDao,
+        private val history: ChangeLogWriter,
+        private val clock: Clock,
+    ) : RecurringRepository {
+        override fun observeAll(): Flow<List<Recurring>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
+        override fun observe(id: UUID): Flow<Recurring?> = dao.observe(id).map { it?.toDomain() }
+
+        override suspend fun create(recurring: Recurring) {
+            val now = clock.now()
+            dao.upsert(listOf(recurring.toEntity(createdAt = now, updatedAt = now)))
+        }
+
+        override suspend fun update(recurring: Recurring) {
+            val stored = dao.get(recurring.id) ?: return
+            dao.upsert(listOf(recurring.toEntity(createdAt = stored.createdAt, updatedAt = clock.now())))
+        }
+
+        override suspend fun pay(
+            recurring: Recurring,
+            payment: Transaction,
+        ) = db.withTransaction {
+            val stored = dao.get(recurring.id) ?: return@withTransaction
+            val now = clock.now()
+            val row = payment.toEntity(createdAt = now, updatedAt = now)
+            transactions.upsert(listOf(row))
+            history.log("CREATE", null, row, now)
+            dao.upsert(listOf(recurring.toEntity(createdAt = stored.createdAt, updatedAt = now)))
+        }
+
+        override suspend fun markNotified(
+            id: UUID,
+            on: LocalDate,
+        ) = dao.markNotified(id, on, clock.now())
+    }
+
+/** Only the reminder fields change from here; homeCards stays as stored until Personalizar inicio (S11). */
+class SettingsRepositoryImpl
+    @Inject
+    constructor(
+        private val dao: SettingsDao,
+        private val clock: Clock,
+    ) : SettingsRepository {
+        override fun observe(): Flow<Settings> =
+            dao.observe().map { row ->
+                row?.let { Settings(it.reminderLeadDays, it.notificationsEnabled, it.homeBalanceView, it.amountDecimals) } ?: Settings()
+            }
+
+        override suspend fun update(settings: Settings) {
+            val stored = dao.observe().first() ?: return
+            dao.upsert(
+                stored.copy(
+                    reminderLeadDays = settings.reminderLeadDays,
+                    notificationsEnabled = settings.notificationsEnabled,
+                    updatedAt = clock.now(),
+                    syncState = SyncState.PENDING,
+                    syncError = null,
+                ),
+            )
+        }
+    }
+
+internal fun Recurring.toEntity(
+    createdAt: Instant,
+    updatedAt: Instant,
+) = RecurringExpenseEntity(
+    id = id,
+    name = name,
+    estimatedAmount = estimatedAmount.scaled,
+    lastPaidAmount = lastPaidAmount?.scaled,
+    accountId = accountId,
+    categoryId = categoryId,
+    startDate = startDate,
+    frequency = frequency.name,
+    intervalCount = intervalCount,
+    intervalUnit = intervalUnit?.name,
+    nextDueDate = nextDueDate,
+    lastNotifiedOn = lastNotifiedOn,
+    active = active,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+internal fun RecurringExpenseEntity.toDomain() =
+    Recurring(
+        id = id,
+        name = name,
+        estimatedAmount = Money(estimatedAmount),
+        accountId = accountId,
+        categoryId = categoryId,
+        startDate = startDate,
+        frequency = Frequency.valueOf(frequency),
+        nextDueDate = nextDueDate,
+        intervalCount = intervalCount,
+        intervalUnit = intervalUnit?.let(IntervalUnit::valueOf),
+        lastPaidAmount = lastPaidAmount?.let(::Money),
+        lastNotifiedOn = lastNotifiedOn,
+        active = active,
+    )
 
 internal fun Transaction.toEntity(
     createdAt: Instant,

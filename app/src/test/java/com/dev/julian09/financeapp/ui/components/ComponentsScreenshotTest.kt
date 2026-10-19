@@ -25,6 +25,7 @@ import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
+import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.SearchTotals
@@ -56,6 +57,10 @@ import com.dev.julian09.financeapp.ui.feature.history.HistoryRow
 import com.dev.julian09.financeapp.ui.feature.history.HistoryUiState
 import com.dev.julian09.financeapp.ui.feature.home.HomeContent
 import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringChoices
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormActions
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormContent
+import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormState
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsUiState
@@ -160,6 +165,9 @@ class ComponentsScreenshotTest {
 
     @Test
     fun transactionTransferLight() = capture("transaction_transfer_light", dark = false) { TransactionForm(TransactionType.TRANSFER) }
+
+    @Test
+    fun recurringFormLight() = capture("recurring_form_light", dark = false) { RecurringForm() }
 
     @Test
     fun transactionDetailLight() = capture("transaction_detail_light", dark = false) { TransactionDetailPreview() }
@@ -298,6 +306,23 @@ class ComponentsScreenshotTest {
             TransactionFormActions(),
             today = TODAY,
             zone = ZoneOffset.UTC,
+        )
+    }
+
+    @Composable
+    private fun RecurringForm() {
+        val home = Category(UUID(2, 3), "Hogar", CategoryKind.EXPENSE, icon = "home")
+        RecurringFormContent(
+            RecurringFormState(
+                name = "Plan celular",
+                amountDigits = "65000",
+                accountId = BALANCES[1].account.id,
+                categoryId = UUID(2, 4),
+                startDate = TODAY,
+                frequency = Frequency.CUSTOM,
+            ),
+            RecurringChoices(BALANCES, listOf(home, Category(UUID(2, 4), "Servicios públicos", CategoryKind.EXPENSE, home.id))),
+            RecurringFormActions(),
         )
     }
 
