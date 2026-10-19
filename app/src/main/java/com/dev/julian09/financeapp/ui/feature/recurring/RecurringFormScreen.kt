@@ -89,7 +89,17 @@ fun RecurringFormScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val choices by viewModel.choices.collectAsStateWithLifecycle()
-    LaunchedEffect(state.saved) { if (state.saved) onBack() }
+    // A new one asks for the notification permission if it is missing (S6-DAT02), then leaves
+    val requestPermission = rememberNotificationPermissionRequest(onDone = onBack)
+    LaunchedEffect(state.saved) {
+        if (state.saved) {
+            if (state.editingId == null) {
+                requestPermission()
+            } else {
+                onBack()
+            }
+        }
+    }
     RecurringFormContent(
         state = state,
         choices = choices,

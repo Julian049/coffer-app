@@ -30,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -65,6 +66,7 @@ import com.dev.julian09.financeapp.ui.feature.recurring.PendingSheets
 import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
 import com.dev.julian09.financeapp.ui.feature.recurring.dueSentence
 import com.dev.julian09.financeapp.ui.feature.recurring.urgencyTint
+import com.dev.julian09.financeapp.ui.navigation.PendingLink
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.math.BigDecimal
@@ -93,6 +95,13 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var pending by rememberSaveable { mutableStateOf<String?>(null) }
+    val link by PendingLink.recurringId.collectAsStateWithLifecycle()
+    LaunchedEffect(link) {
+        link?.let {
+            pending = it.toString()
+            PendingLink.recurringId.value = null
+        }
+    }
     PendingSheets(pending?.let(UUID::fromString), onDismiss = { pending = null })
     HomeContent(
         state,

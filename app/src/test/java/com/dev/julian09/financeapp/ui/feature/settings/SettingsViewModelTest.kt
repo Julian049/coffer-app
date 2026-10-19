@@ -7,6 +7,7 @@ import com.dev.julian09.financeapp.domain.usecase.Logout
 import com.dev.julian09.financeapp.domain.usecase.ObserveSession
 import com.dev.julian09.financeapp.domain.usecase.RefreshProfile
 import com.dev.julian09.financeapp.ui.FakeAuthRepository
+import com.dev.julian09.financeapp.ui.FakeReminderScheduler
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.PROFILE
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +41,12 @@ class SettingsViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel() =
-        SettingsViewModel(CheckServerStatus(server), ObserveSession(auth), RefreshProfile(auth), Logout(auth, scheduler))
+        SettingsViewModel(
+            CheckServerStatus(server),
+            ObserveSession(auth),
+            RefreshProfile(auth),
+            Logout(auth, scheduler, FakeReminderScheduler()),
+        )
 
     @Test
     fun `reports the server state and retries`() {

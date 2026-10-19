@@ -96,6 +96,7 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneOffset
 import java.util.UUID
+import com.dev.julian09.financeapp.domain.model.Settings as UserSettings
 
 /**
  * Reference images of the base components in light and dark (src/test/screenshots).
@@ -289,6 +290,7 @@ class ComponentsScreenshotTest {
             onBack = {},
             onRetry = {},
             syncStatus = SyncStatus.Synced(null),
+            reminders = UserSettings(),
         )
     }
 

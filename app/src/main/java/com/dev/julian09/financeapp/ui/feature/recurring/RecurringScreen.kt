@@ -54,7 +54,6 @@ import com.dev.julian09.financeapp.ui.feature.home.monthName
 import com.dev.julian09.financeapp.ui.feature.transactions.CircleIcon
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
-import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -308,7 +307,7 @@ private fun PaidRow(
                     maxLines = 1,
                 )
                 Text(
-                    "Pagado el ${LONG_DATE.format(LocalDate.ofInstant(t.occurredAt, zone))}",
+                    "Pagado el ${LONG_DATE.format(t.occurredAt.atZone(zone))}",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary,
                 )

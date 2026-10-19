@@ -7,6 +7,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -52,6 +53,9 @@ fun AppNavHost(
     val openTransaction = { id: UUID -> navController.navigate(TransactionDetailRoute(id.toString())) }
 
     val newTransaction = { type: TransactionType -> navController.navigate(TransactionFormRoute(type.name)) }
+    // A tapped notice opens its sheet in Home, from wherever the app was
+    val pendingLink by PendingLink.recurringId.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingLink) { if (pendingLink != null) navController.navigateToTab(Tab.Home) }
     Scaffold(
         containerColor = CofferTheme.colors.background,
         bottomBar = { if (currentTab != null) BottomBar(selected = currentTab, onSelect = navController::navigateToTab) },

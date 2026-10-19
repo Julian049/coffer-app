@@ -64,3 +64,11 @@ data class RecurringOverview(
     val paid: List<RecurringPayment>,
     val summary: RecurringSummary,
 )
+
+/** REQ-REC-09: one notice when the window opens and one on the due date if still unpaid. */
+enum class ReminderKind { WINDOW_OPEN, DUE_TODAY }
+
+data class Reminder(
+    val recurring: Recurring,
+    val kind: ReminderKind,
+)
