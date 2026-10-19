@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-19
+
 ### Added
 
 - Import from Cashew (S8-H01): Ajustes → Importar y exportar asks where the file comes from (only Cashew for now), reads the CSV in streaming (separator and encoding detected), suggests the column mapping (editable), and before importing shows the rows ready, the rows with errors, the possible duplicates (skipped by default) and the unknown accounts and categories, each created or associated with an existing one ("Crear todas"); Cashew's two-row transfers become one transfer and its budget becomes the tag; `ImportWorker` writes batches of 500 in the background, all pending sync, and the screen keeps the last summary
