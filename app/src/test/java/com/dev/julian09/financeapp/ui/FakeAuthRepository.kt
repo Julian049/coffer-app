@@ -22,6 +22,13 @@ class FakeAuthRepository : AuthRepository {
 
     override suspend fun login(input: LoginInput) = respond()
 
+    var googleTokens = mutableListOf<String>()
+
+    override suspend fun loginWithGoogle(idToken: String): Result<UserProfile> {
+        googleTokens += idToken
+        return respond()
+    }
+
     override suspend fun logout() {
         loggedOut = true
         session.value = SessionState.SignedOut

@@ -18,3 +18,12 @@ class Login
             return if (errors.isNotEmpty()) Result.failure(AuthFailure.Invalid(errors)) else repository.login(input)
         }
     }
+
+/** SEQ-01 §1.3: the ID token comes from Credential Manager; the server validates it and finds, links or creates the user. */
+class LoginWithGoogle
+    @Inject
+    constructor(
+        private val repository: AuthRepository,
+    ) {
+        suspend operator fun invoke(idToken: String): Result<UserProfile> = repository.loginWithGoogle(idToken)
+    }

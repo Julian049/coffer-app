@@ -1,6 +1,7 @@
 package com.dev.julian09.financeapp.data.remote
 
 import com.dev.julian09.financeapp.data.remote.dto.AuthResponseDto
+import com.dev.julian09.financeapp.data.remote.dto.GoogleLoginRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.LoginRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.RefreshRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.RegisterRequestDto
@@ -21,6 +22,11 @@ interface AuthApi {
         @Body body: LoginRequestDto,
     ): AuthResponseDto
 
+    @POST("api/v1/auth/google")
+    suspend fun google(
+        @Body body: GoogleLoginRequestDto,
+    ): AuthResponseDto
+
     /** Blocking on purpose: it runs inside OkHttp's Authenticator, which is already on a background thread. */
     @POST("api/v1/auth/refresh")
     fun refresh(
@@ -37,6 +43,6 @@ interface AuthApi {
 
     companion object {
         /** Routes that must never carry a bearer token nor trigger a refresh. */
-        val PUBLIC_PATHS = setOf("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh")
+        val PUBLIC_PATHS = setOf("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/google", "/api/v1/auth/refresh")
     }
 }

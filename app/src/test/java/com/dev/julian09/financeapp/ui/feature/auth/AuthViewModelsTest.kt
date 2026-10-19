@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.ui.feature.auth
 import com.dev.julian09.financeapp.domain.model.AuthFailure
 import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.domain.usecase.Login
+import com.dev.julian09.financeapp.domain.usecase.LoginWithGoogle
 import com.dev.julian09.financeapp.domain.usecase.RegisterUser
 import com.dev.julian09.financeapp.ui.FakeAuthRepository
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +15,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -34,6 +36,23 @@ class AuthViewModelsTest {
 
         assertEquals(setOf(AuthField.Identifier, AuthField.Password), vm.state.value.errors.keys)
         assertEquals(0, repository.calls)
+    }
+
+    @Test
+    fun `google signs in with the token and explains a refused one`() {
+        val vm = GoogleSignInViewModel(LoginWithGoogle(repository))
+        vm.started()
+        assertTrue(vm.state.value.loading)
+        vm.signIn("google-id-token-0123456789")
+        assertEquals(listOf("google-id-token-0123456789"), repository.googleTokens)
+        assertEquals(GoogleSignInState(), vm.state.value)
+
+        repository.next = Result.failure(AuthFailure.WrongCredentials)
+        vm.signIn("google-id-token-0123456789")
+        assertEquals("No pudimos validar tu cuenta de Google. Inténtalo de nuevo.", vm.state.value.error)
+        // Closing the account picker is not an error
+        vm.failed(null)
+        assertEquals(GoogleSignInState(), vm.state.value)
     }
 
     @Test

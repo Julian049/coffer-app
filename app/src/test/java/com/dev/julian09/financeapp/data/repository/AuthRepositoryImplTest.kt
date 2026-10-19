@@ -49,6 +49,23 @@ class AuthRepositoryImplTest {
         }
 
     @Test
+    fun `google sends the id token without a bearer and saves the session`() =
+        runTest {
+            server.enqueue(json(200, authBody("a", "r-0123456789012345678")))
+
+            val result = repository.loginWithGoogle("google-id-token-0123456789")
+
+            assertEquals("julianb", result.getOrThrow().username)
+            val request = server.takeRequest()
+            assertEquals("/api/v1/auth/google", request.url.encodedPath)
+            assertNull(request.headers["Authorization"])
+            assertEquals(true, request.body?.utf8()?.contains("google-id-token-0123456789"))
+
+            server.enqueue(json(401, """{"code":"FIN-AUTH-INVALID","detail":"No pudimos validar tu cuenta de Google."}"""))
+            assertEquals(AuthFailure.WrongCredentials, repository.loginWithGoogle("google-id-token-0123456789").exceptionOrNull())
+        }
+
+    @Test
     fun `server problems become failures the screens understand`() =
         runTest {
             server.enqueue(json(401, """{"code":"FIN-AUTH-INVALID","detail":"Usuario o contraseña incorrectos."}"""))

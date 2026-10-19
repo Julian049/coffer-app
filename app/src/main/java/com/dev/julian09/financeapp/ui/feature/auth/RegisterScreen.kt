@@ -37,9 +37,18 @@ import com.dev.julian09.financeapp.ui.theme.CofferTheme
 fun RegisterScreen(
     onBack: () -> Unit,
     viewModel: RegisterViewModel = hiltViewModel(),
+    googleViewModel: GoogleSignInViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    RegisterContent(state, viewModel::onChange, viewModel::submit, onBack)
+    val google by googleViewModel.state.collectAsStateWithLifecycle()
+    RegisterContent(
+        state,
+        viewModel::onChange,
+        viewModel::submit,
+        onBack,
+        onGoogle = rememberGoogleSignIn(googleViewModel),
+        google = google,
+    )
 }
 
 /** Registro (Figma "Crear cuenta"). After success the root opens the app (S3 adds the initial download). */
@@ -50,6 +59,8 @@ fun RegisterContent(
     onSubmit: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onGoogle: (() -> Unit)? = null,
+    google: GoogleSignInState = GoogleSignInState(),
 ) {
     Column(modifier.fillMaxSize()) {
         AppHeader(title = "Crear cuenta", onBack = onBack)
@@ -114,7 +125,14 @@ fun RegisterContent(
                 enabled = !state.loading,
                 modifier = Modifier.fillMaxWidth(),
             )
-            AuthAlternatives(separator = "o", question = "¿Ya tienes una cuenta?", link = "Inicia sesión", onLink = onBack)
+            AuthAlternatives(
+                separator = "o",
+                question = "¿Ya tienes una cuenta?",
+                link = "Inicia sesión",
+                onLink = onBack,
+                onGoogle = onGoogle,
+                google = google,
+            )
         }
     }
 }
