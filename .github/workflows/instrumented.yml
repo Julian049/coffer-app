@@ -33,4 +33,11 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: ./gradlew connectedDebugAndroidTest
+          # On failure, print the failing tests: Gradle only points to the HTML report
+          script: ./gradlew connectedDebugAndroidTest || (grep -h -A15 "<failure" app/build/outputs/androidTest-results/connected/debug/*.xml; exit 1)
+      - name: Upload the report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: instrumented-report
+          path: app/build/reports/androidTests/connected/
