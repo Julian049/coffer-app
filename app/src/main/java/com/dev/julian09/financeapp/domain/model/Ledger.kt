@@ -72,6 +72,10 @@ data class Transaction(
     val installmentId: UUID? = null,
     val recurringId: UUID? = null,
     val paymentKind: String? = null,
+    /** When it was registered; null until stored. */
+    val createdAt: Instant? = null,
+    /** Not yet in the cloud (shown in the detail). */
+    val pendingSync: Boolean = false,
 )
 
 data class HomeCard(
@@ -120,6 +124,23 @@ data class PeriodTotals(
     val expense: Money = Money.ZERO,
 )
 
+/** History filters (REQ-TRX-09, 10): empty sets mean "any"; [query] matches note, category, account and tag. */
+data class TransactionFilter(
+    val from: Instant,
+    val to: Instant,
+    val types: Set<TransactionType> = emptySet(),
+    val categoryIds: Set<UUID> = emptySet(),
+    val accountIds: Set<UUID> = emptySet(),
+    val tagIds: Set<UUID> = emptySet(),
+    val query: String = "",
+)
+
+data class SearchTotals(
+    val income: Money = Money.ZERO,
+    val expense: Money = Money.ZERO,
+    val count: Int = 0,
+)
+
 /** Expenses or income of one category in a period, without its subcategories. */
 data class CategoryTotal(
     val categoryId: UUID,
@@ -139,4 +160,9 @@ enum class LedgerError {
     ONE_LEVEL_ONLY,
     KIND_MISMATCH,
     SYSTEM_CATEGORY_IN_USE,
+    AMOUNT_REQUIRED,
+    ACCOUNT_REQUIRED,
+    CATEGORY_REQUIRED,
+    SAME_ACCOUNT,
+    NOTE_TOO_LONG,
 }

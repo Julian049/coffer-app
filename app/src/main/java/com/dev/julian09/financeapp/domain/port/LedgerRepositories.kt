@@ -6,7 +6,10 @@ import com.dev.julian09.financeapp.domain.model.AccountImpact
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
+import com.dev.julian09.financeapp.domain.model.SearchTotals
+import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.Transaction
+import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.util.UUID
@@ -66,7 +69,25 @@ interface CategoryRepository {
     )
 }
 
+interface TagRepository {
+    fun observeAll(): Flow<List<Tag>>
+
+    suspend fun create(tag: Tag)
+}
+
 interface TransactionRepository {
+    fun observe(id: UUID): Flow<Transaction?>
+
+    /** SEQ-04: the account of the last movement registered, if it is still active. */
+    suspend fun lastUsedAccountId(): UUID?
+
+    /** Each write and its change_log row go in one database transaction (REQ-HIS-01). */
+    suspend fun insert(transaction: Transaction)
+
+    suspend fun update(transaction: Transaction)
+
+    suspend fun delete(id: UUID)
+
     /** Newest first, not deleted. */
     fun observeRecent(limit: Int): Flow<List<Transaction>>
 
@@ -83,4 +104,14 @@ interface TransactionRepository {
     ): Flow<PeriodTotals>
 
     fun observeCount(): Flow<Int>
+
+    /** Newest first by occurredAt, at most [limit] rows; category ids are taken as given (no subcategories added). */
+    fun search(
+        filter: TransactionFilter,
+        limit: Int,
+    ): Flow<List<Transaction>>
+
+    fun searchTotals(filter: TransactionFilter): Flow<SearchTotals>
+
+    fun observeFirstOccurredAt(): Flow<Instant?>
 }

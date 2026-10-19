@@ -15,4 +15,9 @@ fun LedgerError.message(): String =
         LedgerError.ONE_LEVEL_ONLY -> "Las subcategorías no pueden tener subcategorías"
         LedgerError.KIND_MISMATCH -> "La subcategoría debe ser del mismo tipo que su categoría"
         LedgerError.SYSTEM_CATEGORY_IN_USE -> "La app usa esta categoría para los intereses de tus tarjetas y préstamos"
+        LedgerError.AMOUNT_REQUIRED -> "El monto debe ser mayor que cero"
+        LedgerError.ACCOUNT_REQUIRED -> "Elige una cuenta"
+        LedgerError.CATEGORY_REQUIRED -> "Elige una categoría"
+        LedgerError.SAME_ACCOUNT -> "El destino debe ser otra cuenta"
+        LedgerError.NOTE_TOO_LONG -> "La nota es muy larga"
     }

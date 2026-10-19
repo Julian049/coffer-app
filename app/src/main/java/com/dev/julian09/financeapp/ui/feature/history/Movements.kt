@@ -1,6 +1,7 @@
 package com.dev.julian09.financeapp.ui.feature.history
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -40,6 +42,10 @@ data class HistoryRow(
     val amount: Money,
     val type: TransactionType,
     val icon: String? = null,
+    /** Opens the detail (S5-H03); null in previews. */
+    val id: UUID? = null,
+    /** Shown in Historial, not in Home. */
+    val time: LocalTime? = null,
 )
 
 data class HistoryDay(
@@ -74,13 +80,17 @@ fun buildDays(
                 dayTransactions.map { tx ->
                     val from = accountNames[tx.accountId] ?: "Cuenta"
                     val category = tx.categoryId?.let(byId::get)
+                    val parent = category?.parentId?.let(byId::get)
                     val where = tx.destinationAccountId?.let { "$from → ${accountNames[it] ?: "Cuenta"}" } ?: from
+                    val categoryLabel = category?.let { c -> parent?.let { "${it.name} > ${c.name}" } ?: c.name }
                     HistoryRow(
                         title = tx.note ?: category?.name ?: label(tx.type),
-                        subtitle = listOfNotNull(category?.name?.takeIf { tx.note != null }, where).joinToString(" · "),
+                        subtitle = listOfNotNull(categoryLabel?.takeIf { tx.note != null }, where).joinToString(" · "),
                         amount = tx.amount,
                         type = tx.type,
-                        icon = category?.icon ?: category?.parentId?.let(byId::get)?.icon,
+                        icon = category?.icon ?: parent?.icon,
+                        id = tx.id,
+                        time = tx.occurredAt.atZone(zone).toLocalTime(),
                     )
                 },
             )
@@ -119,6 +129,8 @@ fun DayGroup(
     day: HistoryDay,
     today: LocalDate,
     modifier: Modifier = Modifier,
+    showTime: Boolean = false,
+    onOpen: ((UUID) -> Unit)? = null,
 ) {
     val colors = CofferTheme.colors
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -135,16 +147,27 @@ fun DayGroup(
         AppCard {
             day.rows.forEachIndexed { i, row ->
                 if (i > 0) HorizontalDivider(thickness = 1.dp, color = colors.border)
-                MovementRow(row)
+                MovementRow(row, showTime, onOpen)
             }
         }
     }
 }
 
+private val TIME = DateTimeFormatter.ofPattern("h:mm a", Locale.forLanguageTag("es-CO"))
+
 @Composable
-private fun MovementRow(row: HistoryRow) {
+private fun MovementRow(
+    row: HistoryRow,
+    showTime: Boolean,
+    onOpen: ((UUID) -> Unit)?,
+) {
     val colors = CofferTheme.colors
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    val click = if (onOpen != null && row.id != null) Modifier.clickable(onClickLabel = "Ver detalle") { onOpen(row.id) } else Modifier
+    Row(
+        Modifier.fillMaxWidth().then(click),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
             Icon(
                 if (row.type == TransactionType.TRANSFER) TransferIcon else categoryIcon(row.icon),
@@ -157,14 +180,19 @@ private fun MovementRow(row: HistoryRow) {
             Text(row.title, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
             Text(row.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
         }
-        MoneyText(
-            row.amount,
-            kind =
-                when (row.type) {
-                    TransactionType.EXPENSE -> MoneyKind.Expense
-                    TransactionType.INCOME -> MoneyKind.Income
-                    TransactionType.TRANSFER -> MoneyKind.Transfer
-                },
-        )
+        Column(horizontalAlignment = Alignment.End) {
+            MoneyText(
+                row.amount,
+                kind =
+                    when (row.type) {
+                        TransactionType.EXPENSE -> MoneyKind.Expense
+                        TransactionType.INCOME -> MoneyKind.Income
+                        TransactionType.TRANSFER -> MoneyKind.Transfer
+                    },
+            )
+            if (showTime && row.time != null) {
+                Text(TIME.format(row.time), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            }
+        }
     }
 }

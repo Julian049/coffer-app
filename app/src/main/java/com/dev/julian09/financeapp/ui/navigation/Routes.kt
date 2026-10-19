@@ -42,3 +42,15 @@ data object DeactivatedAccountsRoute
 
 @Serializable
 data object CategoriesRoute
+
+/** New movement of [type] (EXPENSE, INCOME, TRANSFER), or the edit of [id]. */
+@Serializable
+data class TransactionFormRoute(
+    val type: String = "EXPENSE",
+    val id: String? = null,
+)
+
+@Serializable
+data class TransactionDetailRoute(
+    val id: String,
+)

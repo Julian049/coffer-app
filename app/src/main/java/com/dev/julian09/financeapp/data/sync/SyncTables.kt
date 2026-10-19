@@ -4,6 +4,7 @@ import com.dev.julian09.financeapp.data.local.FinanceDatabase
 import com.dev.julian09.financeapp.data.local.dao.SyncInfo
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
+import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
@@ -248,23 +249,7 @@ class SyncTables
                         t.createdAt,
                         t.updatedAt,
                         t.deletedAt,
-                        buildJsonObject {
-                            put("type", t.type)
-                            put("amount", amount(t.amount))
-                            put("occurredAt", t.occurredAt.toString())
-                            put("accountId", t.accountId.toString())
-                            put("destinationAccountId", t.destinationAccountId?.toString())
-                            put("categoryId", t.categoryId?.toString())
-                            put("tagId", t.tagId?.toString())
-                            put("note", t.note)
-                            put("installments", t.installments)
-                            put("principal", t.principal?.let(::amount))
-                            put("interest", t.interest?.let(::amount))
-                            put("fees", t.fees?.let(::amount))
-                            put("installmentId", t.installmentId?.toString())
-                            put("recurringId", t.recurringId?.toString())
-                            put("paymentKind", t.paymentKind)
-                        },
+                        transactionData(t),
                     )
                 },
                 decode = { c ->
@@ -294,8 +279,51 @@ class SyncTables
                 },
             )
 
-        /** Dependency order: settings, accounts, categories, tags, transactions. */
-        val all: List<SyncTable<*>> = listOf(settings, accounts, categories, tags, transactions)
+        val changeLog =
+            SyncTable(
+                entity = "changeLog",
+                pending = { db.changeLog().pending(it) },
+                syncInfo = { db.changeLog().syncInfo(it) },
+                upsert = { db.changeLog().upsert(listOf(it)) },
+                markSynced = { id, at -> db.changeLog().markSynced(id, at) },
+                markFailed = { id, at, e -> db.changeLog().markFailed(id, at, e) },
+                idOf = ChangeLogEntity::id,
+                updatedAtOf = ChangeLogEntity::updatedAt,
+                encode = { l ->
+                    envelope(
+                        "changeLog",
+                        l.id,
+                        l.createdAt,
+                        l.updatedAt,
+                        l.deletedAt,
+                        buildJsonObject {
+                            put("transactionId", l.transactionId.toString())
+                            put("action", l.action)
+                            put("beforeValue", l.beforeValue?.let(Json::parseToJsonElement) ?: JsonNull)
+                            put("afterValue", l.afterValue?.let(Json::parseToJsonElement) ?: JsonNull)
+                            put("changedAt", l.changedAt.toString())
+                        },
+                    )
+                },
+                decode = { c ->
+                    val d = c.data
+                    ChangeLogEntity(
+                        id = UUID.fromString(c.id),
+                        transactionId = UUID.fromString(d.text("transactionId")!!),
+                        action = d.text("action")!!,
+                        beforeValue = d["beforeValue"]?.takeUnless { it is JsonNull }?.toString(),
+                        afterValue = d["afterValue"]?.takeUnless { it is JsonNull }?.toString(),
+                        changedAt = Instant.parse(d.text("changedAt")!!),
+                        createdAt = Instant.parse(c.createdAt),
+                        updatedAt = Instant.parse(c.updatedAt),
+                        deletedAt = c.deletedAt?.let(Instant::parse),
+                        syncState = SyncState.SYNCED,
+                    )
+                },
+            )
+
+        /** Dependency order: settings, accounts, categories, tags, transactions, then their history. */
+        val all: List<SyncTable<*>> = listOf(settings, accounts, categories, tags, transactions, changeLog)
 
         val byEntity: Map<String, SyncTable<*>> = all.associateBy { it.entity }
     }
@@ -308,6 +336,26 @@ private fun envelope(
     deletedAt: Instant?,
     data: JsonObject,
 ) = ChangeDto(entity, id.toString(), createdAt.toString(), updatedAt.toString(), deletedAt?.toString(), data)
+
+/** The contract's TransactionData; also the before and after values of change_log. */
+internal fun transactionData(t: TransactionEntity): JsonObject =
+    buildJsonObject {
+        put("type", t.type)
+        put("amount", amount(t.amount))
+        put("occurredAt", t.occurredAt.toString())
+        put("accountId", t.accountId.toString())
+        put("destinationAccountId", t.destinationAccountId?.toString())
+        put("categoryId", t.categoryId?.toString())
+        put("tagId", t.tagId?.toString())
+        put("note", t.note)
+        put("installments", t.installments)
+        put("principal", t.principal?.let(::amount))
+        put("interest", t.interest?.let(::amount))
+        put("fees", t.fees?.let(::amount))
+        put("installmentId", t.installmentId?.toString())
+        put("recurringId", t.recurringId?.toString())
+        put("paymentKind", t.paymentKind)
+    }
 
 /** Long ×10⁴ ↔ the contract's Amount string ("28000.0000"), never through a Double (ADR-0004). */
 internal fun amount(scaled: Long): String = Money(scaled).toBigDecimal().toPlainString()

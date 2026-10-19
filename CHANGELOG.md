@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-18
+
+### Added
+
+- Record expenses, income and transfers (S5-H01): one form with tabs, amount, category (main ones at hand, all in "Ver todas"), date and time now but editable, the last account used, one tag with "Nueva etiqueta" inline, and note; Home's quick actions and the + button of Home and History open it
+- `change_log` (Room 2, auto-migration tested with `MigrationTestHelper`): every create, edit and delete of a movement writes its before and after in the same database transaction, and syncs as `changeLog`; the pending badge still counts one per movement
+- Full History (S5-H02): month chips, live search in note, category, account and tag, type chips, a filter sheet (type, category with its subcategories, account as origin or destination, tag, date range), the month summary and rows loaded 150 at a time
+- Movement detail, edit and delete with confirmation (S5-H03); rows of Home, History and account detail open it
+- Tests: `RegisterTransactionTest` (including a save under 300 ms), `RegisterTransferTest`, `EditDeleteTransactionTest`, `TransactionDaoTest`, `FinanceDatabaseMigrationTest`, a new `HistoryViewModelTest` and screenshots of the form, the transfer and the detail
+
+### Changed
+
+- Within a day the newest movement goes first (PO, 2026-10-18)
+
 ## [0.5.0] - 2026-10-18
 
 ### Added
