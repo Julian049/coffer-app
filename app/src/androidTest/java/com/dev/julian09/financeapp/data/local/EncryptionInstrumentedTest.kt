@@ -26,7 +26,7 @@ class EncryptionInstrumentedTest {
     private val name = "encryption-test.db"
 
     @Test
-    fun theFileIsEncryptedAndReadableOnlyWithTheKey() =
+    fun theFileIsEncryptedAndReadableOnlyWithTheKey(): Unit =
         runBlocking {
             context.deleteDatabase(name)
             System.loadLibrary("sqlcipher")

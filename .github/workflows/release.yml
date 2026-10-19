@@ -8,7 +8,12 @@ permissions:
   contents: write
 
 jobs:
+  # S8-OPS02: no release without the instrumented tests on the oldest Android the app supports
+  instrumented:
+    uses: ./.github/workflows/instrumented.yml
+
   release:
+    needs: instrumented
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

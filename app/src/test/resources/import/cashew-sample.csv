@@ -1,0 +1,15 @@
+account,amount,amount unpaid,currency,title,note,date,income,type,category name,subcategory name,color,icon,emoji,budget,objective,extra
+Banco,50000.0,,COP,,,2026-10-17 00:35:22.000,true,default,Non-recurring income,,0XFFFF7043,money-bag,,,,repeat every 1 month
+Tarjeta A,-18000.0,,COP,Pizza,,2026-10-17 00:35:06.000,false,default,Dining,,0XFF607D8B,cutlery,,,,repeat every 1 month
+Cash,-2500.0,,COP,Bus,,2026-10-17 00:34:57.000,false,default,Transport,,0XFFFFEB3B,tram,,,,repeat every 1 month
+Banco,30000.0,,COP,Banco Transfer In,"Transferred Balance
+Tarjeta A → Banco",2026-10-15 15:20:31.000,true,default,Balance Correction,,0XFF607D8B,charts,,,,
+Tarjeta A,-30000.0,,COP,Tarjeta A Transfer Out,"Transferred Balance
+Tarjeta A → Banco",2026-10-15 15:20:30.000,false,default,Balance Correction,,0XFF607D8B,charts,,,,
+Tarjeta B,-7000.0,,COP,Uber,,2026-10-15 15:17:54.000,false,default,Transport,,0XFFFFEB3B,tram,,Going out,,repeat every 1 month
+Tarjeta A,-12000.0,,COP,Lunch,"con, coma",2026-10-15 15:13:57.000,false,default,Dining,,0XFF607D8B,cutlery,,Going out,,repeat every 1 month
+Cash,-1000.0,,COP,,,2026-10-14 16:29:26.000,false,default,Drinks,,0XFF8D6E63,coffee-cup,,,,repeat every 1 month
+Banco,-150000.0,,COP,Cuota moto,,2026-10-14 14:16:46.000,false,subscription,Finance,Debts,0XFFFFA726,dollar-coin,,,,repeat every 1 month
+Banco,400000.0,,COP,,,2026-10-14 12:51:21.000,true,default,Income,,0XFF9575CD,coin,,,,repeat every 1 month
+Cash,-2500.0,,COP,Bus,,2026-10-17 00:34:57.000,false,default,Transport,,0XFFFFEB3B,tram,,,,repeat every 1 month
+Cash,-900.0,,COP,Paper,,ayer,false,default,University,,,note,,,,repeat every 1 month

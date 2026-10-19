@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Import from Cashew (S8-H01): Ajustes → Importar y exportar asks where the file comes from (only Cashew for now), reads the CSV in streaming (separator and encoding detected), suggests the column mapping (editable), and before importing shows the rows ready, the rows with errors, the possible duplicates (skipped by default) and the unknown accounts and categories, each created or associated with an existing one ("Crear todas"); Cashew's two-row transfers become one transfer and its budget becomes the tag; `ImportWorker` writes batches of 500 in the background, all pending sync, and the screen keeps the last summary
+- Export to CSV (S8-H02) with an optional range (all, this month, last month, custom) in Coffer's native format (`date, type, amount, account, destination_account, category, subcategory, tag, note`)
+- Release pipeline (S8-OPS02): the instrumented tests run on an API 31 emulator before signing (`instrumented.yml`, also on PRs that touch them)
+- Tests: `CsvReaderTest`, `CashewFormatTest` (anonymized Cashew export), `ImportTest` (AT-HU11-1 to 3, 5.000 rows, export), `PerformanceTest` (Home with 10.000 movements) and screenshots of Importar y exportar
+
 ## [0.8.0] - 2026-10-19
 
 ### Added

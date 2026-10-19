@@ -63,3 +63,6 @@ data object RecurringRoute
 data class RecurringFormRoute(
     val id: String? = null,
 )
+
+@Serializable
+data object ImportExportRoute

@@ -28,6 +28,7 @@ import com.dev.julian09.financeapp.ui.feature.accounts.DeactivatedAccountsScreen
 import com.dev.julian09.financeapp.ui.feature.categories.CategoriesScreen
 import com.dev.julian09.financeapp.ui.feature.history.HistoryScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
@@ -102,8 +103,10 @@ fun AppNavHost(
                     onOpenCategories = { navController.navigate(CategoriesRoute) },
                     onOpenDeactivated = { navController.navigate(DeactivatedAccountsRoute) },
                     onOpenRecurring = { navController.navigate(RecurringRoute) },
+                    onOpenImportExport = { navController.navigate(ImportExportRoute) },
                 )
             }
+            composable<ImportExportRoute> { ImportExportScreen(onBack = navController::popBackStack) }
             composable<RecurringRoute> {
                 RecurringScreen(
                     onBack = navController::popBackStack,
