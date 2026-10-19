@@ -192,6 +192,23 @@ class ChangeLogWriter
     constructor(
         private val db: FinanceDatabase,
     ) {
+        suspend fun logCreated(
+            rows: List<TransactionEntity>,
+            now: Instant,
+        ) = db.changeLog().upsert(
+            rows.map {
+                ChangeLogEntity(
+                    id = UUID.randomUUID(),
+                    transactionId = it.id,
+                    action = "CREATE",
+                    afterValue = transactionData(it).toString(),
+                    changedAt = now,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+            },
+        )
+
         suspend fun log(
             action: String,
             before: TransactionEntity?,
@@ -249,6 +266,14 @@ class TransactionRepositoryImpl
                 val row = transaction.toEntity(createdAt = now, updatedAt = now)
                 dao.upsert(listOf(row))
                 history.log("CREATE", null, row, now)
+            }
+
+        override suspend fun insertAll(transactions: List<Transaction>) =
+            db.withTransaction {
+                val now = clock.now()
+                val rows = transactions.map { it.toEntity(createdAt = now, updatedAt = now) }
+                dao.upsert(rows)
+                history.logCreated(rows, now)
             }
 
         override suspend fun update(transaction: Transaction) =

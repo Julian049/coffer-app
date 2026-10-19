@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.EventRepeat
+import androidx.compose.material.icons.outlined.ImportExport
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -67,6 +68,7 @@ fun SettingsScreen(
     onOpenCategories: () -> Unit,
     onOpenDeactivated: () -> Unit,
     onOpenRecurring: () -> Unit,
+    onOpenImportExport: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
     reminderViewModel: ReminderSettingsViewModel = hiltViewModel(),
@@ -87,6 +89,7 @@ fun SettingsScreen(
         onOpenCategories = onOpenCategories,
         onOpenDeactivated = onOpenDeactivated,
         onOpenRecurring = onOpenRecurring,
+        onOpenImportExport = onOpenImportExport,
         reminders = reminders,
         onNotifications = { enabled ->
             reminderViewModel.setNotifications(enabled)
@@ -110,6 +113,7 @@ fun SettingsContent(
     onOpenCategories: () -> Unit = {},
     onOpenDeactivated: () -> Unit = {},
     onOpenRecurring: () -> Unit = {},
+    onOpenImportExport: () -> Unit = {},
     reminders: Settings? = null,
     onNotifications: (Boolean) -> Unit = {},
     onLeadDays: (Int) -> Unit = {},
@@ -182,6 +186,8 @@ fun SettingsContent(
                 LinkRow(Icons.Outlined.EventRepeat, "Gastos recurrentes", onOpenRecurring)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.AccountBalance, "Cuentas desactivadas", onOpenDeactivated)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.ImportExport, "Importar y exportar", onOpenImportExport)
             }
             if (state.user != null) {
                 AppButton(
