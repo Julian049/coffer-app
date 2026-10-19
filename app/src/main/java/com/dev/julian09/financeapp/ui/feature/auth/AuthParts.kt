@@ -19,13 +19,15 @@ import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
-/** "o continúa con" divider, Google button disabled until Sprint 11 (REQ-AUT-03) and the link to the other screen. */
+/** "o continúa con" divider, "Continuar con Google" (REQ-AUT-03; disabled when [onGoogle] is null) and the other screen. */
 @Composable
 internal fun AuthAlternatives(
     separator: String,
     question: String,
     link: String,
     onLink: () -> Unit,
+    onGoogle: (() -> Unit)? = null,
+    google: GoogleSignInState = GoogleSignInState(),
 ) {
     val colors = CofferTheme.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -34,8 +36,15 @@ internal fun AuthAlternatives(
         HorizontalDivider(Modifier.weight(1f), color = colors.border)
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        AppButton("Continuar con Google", onClick = {}, kind = ButtonKind.Secondary, enabled = false, modifier = Modifier.fillMaxWidth())
-        Text("Disponible pronto", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        AppButton(
+            if (google.loading) "Conectando con Google…" else "Continuar con Google",
+            onClick = { onGoogle?.invoke() },
+            kind = ButtonKind.Secondary,
+            enabled = onGoogle != null && !google.loading,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (onGoogle == null) Text("Disponible pronto", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        google.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.expense, textAlign = TextAlign.Center) }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         Text("$question ", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)

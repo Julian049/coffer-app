@@ -92,6 +92,9 @@ interface TransactionRepository {
 
     suspend fun update(transaction: Transaction)
 
+    /** An import batch (S8-DAT02): every movement and its CREATE history in one database transaction. */
+    suspend fun insertAll(transactions: List<Transaction>)
+
     suspend fun delete(id: UUID)
 
     /** Newest first, not deleted. */

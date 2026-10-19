@@ -1,6 +1,8 @@
 package com.dev.julian09.financeapp.di
 
 import com.dev.julian09.financeapp.data.clock.SystemClock
+import com.dev.julian09.financeapp.data.importing.ImportSchedulerImpl
+import com.dev.julian09.financeapp.data.io.ContentCsvFiles
 import com.dev.julian09.financeapp.data.reminder.NotificationPublisher
 import com.dev.julian09.financeapp.data.reminder.ReminderSchedulerImpl
 import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
@@ -18,6 +20,8 @@ import com.dev.julian09.financeapp.domain.port.AuthRepository
 import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.CsvFiles
+import com.dev.julian09.financeapp.domain.port.ImportScheduler
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.ReminderNotifier
 import com.dev.julian09.financeapp.domain.port.ReminderScheduler
@@ -70,6 +74,12 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindReminderScheduler(impl: ReminderSchedulerImpl): ReminderScheduler
+
+    @Binds
+    abstract fun bindCsvFiles(impl: ContentCsvFiles): CsvFiles
+
+    @Binds
+    abstract fun bindImportScheduler(impl: ImportSchedulerImpl): ImportScheduler
 
     @Binds
     abstract fun bindSyncScheduler(impl: SyncSchedulerImpl): SyncScheduler

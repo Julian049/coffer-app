@@ -46,10 +46,21 @@ fun LoginScreen(
     onRegister: () -> Unit,
     expiredUser: String?,
     viewModel: LoginViewModel = hiltViewModel(),
+    googleViewModel: GoogleSignInViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(expiredUser) { expiredUser?.let(viewModel::prefill) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LoginContent(state, sessionExpired = expiredUser != null, viewModel::onIdentifier, viewModel::onPassword, viewModel::submit, onRegister)
+    val google by googleViewModel.state.collectAsStateWithLifecycle()
+    LoginContent(
+        state,
+        sessionExpired = expiredUser != null,
+        viewModel::onIdentifier,
+        viewModel::onPassword,
+        viewModel::submit,
+        onRegister,
+        onGoogle = rememberGoogleSignIn(googleViewModel),
+        google = google,
+    )
 }
 
 /** Iniciar Sesión (Figma 1:1911). "¿Olvidaste tu contraseña?" is out of scope for v1.0 (08-ui README §3). */
@@ -62,6 +73,8 @@ fun LoginContent(
     onSubmit: () -> Unit,
     onRegister: () -> Unit,
     modifier: Modifier = Modifier,
+    onGoogle: (() -> Unit)? = null,
+    google: GoogleSignInState = GoogleSignInState(),
 ) {
     val colors = CofferTheme.colors
     Column(
@@ -124,6 +137,13 @@ fun LoginContent(
             enabled = !state.loading,
             modifier = Modifier.fillMaxWidth(),
         )
-        AuthAlternatives(separator = "o continúa con", question = "¿No tienes una cuenta?", link = "Regístrate", onLink = onRegister)
+        AuthAlternatives(
+            separator = "o continúa con",
+            question = "¿No tienes una cuenta?",
+            link = "Regístrate",
+            onLink = onRegister,
+            onGoogle = onGoogle,
+            google = google,
+        )
     }
 }

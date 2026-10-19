@@ -22,6 +22,7 @@ import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
 import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
+import com.dev.julian09.financeapp.domain.model.AccountResolution
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.domain.model.CardOverview
@@ -29,9 +30,13 @@ import com.dev.julian09.financeapp.domain.model.CardPeriod
 import com.dev.julian09.financeapp.domain.model.CardStatement
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
+import com.dev.julian09.financeapp.domain.model.CategoryRef
+import com.dev.julian09.financeapp.domain.model.CategoryResolution
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Frequency
+import com.dev.julian09.financeapp.domain.model.ImportPreview
+import com.dev.julian09.financeapp.domain.model.ImportSummary
 import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
 import com.dev.julian09.financeapp.domain.model.Installment
 import com.dev.julian09.financeapp.domain.model.InstallmentStatus
@@ -41,11 +46,14 @@ import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.RecurringOverview
 import com.dev.julian09.financeapp.domain.model.RecurringPayment
 import com.dev.julian09.financeapp.domain.model.RecurringSummary
+import com.dev.julian09.financeapp.domain.model.RowError
+import com.dev.julian09.financeapp.domain.model.RowProblem
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.port.ImportStatus
 import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
 import com.dev.julian09.financeapp.ui.PROFILE
 import com.dev.julian09.financeapp.ui.feature.accounts.AccountDetailContent
@@ -77,6 +85,12 @@ import com.dev.julian09.financeapp.ui.feature.history.HistoryRow
 import com.dev.julian09.financeapp.ui.feature.history.HistoryUiState
 import com.dev.julian09.financeapp.ui.feature.home.HomeContent
 import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
+import com.dev.julian09.financeapp.ui.feature.importexport.ExportChoice
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportCatalog
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportActions
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportContent
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportState
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportStep
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringActions
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringChoices
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringContent
@@ -204,6 +218,15 @@ class ComponentsScreenshotTest {
 
     @Test
     fun transactionDetailLight() = capture("transaction_detail_light", dark = false) { TransactionDetailPreview() }
+
+    @Test
+    fun importExportLight() = capture("import_export_light", dark = false) { ImportExport() }
+
+    @Test
+    fun importExportDark() = capture("import_export_dark", dark = true) { ImportExport() }
+
+    @Test
+    fun importReviewLight() = capture("import_review_light", dark = false) { ImportReview() }
 
     @Test
     fun cardFormLight() = capture("card_form_light", dark = false) { CardForm() }
@@ -444,6 +467,49 @@ class ComponentsScreenshotTest {
             onEdit = {},
             onDelete = {},
             today = TODAY,
+            zone = ZoneOffset.UTC,
+        )
+    }
+
+    @Composable
+    private fun ImportExport() {
+        ImportExportContent(
+            ImportExportState(export = ExportChoice.THIS_MONTH),
+            ImportCatalog(
+                status =
+                    ImportStatus(
+                        last = ImportSummary("cashew.csv", Instant.parse("2026-10-19T15:00:00Z"), 4_870, 12, 3),
+                    ),
+            ),
+            ImportExportActions(),
+            zone = ZoneOffset.UTC,
+        )
+    }
+
+    @Composable
+    private fun ImportReview() {
+        val dining = CategoryRef(CategoryKind.EXPENSE, "Dining")
+        ImportExportContent(
+            ImportExportState(
+                step = ImportStep.REVIEW,
+                fileName = "cashew.csv",
+                preview =
+                    ImportPreview(
+                        headers = listOf("account", "amount", "date"),
+                        mapping = emptyMap(),
+                        sample = emptyList(),
+                        valid = 33,
+                        errors = listOf(RowError(15, RowProblem.DATE)),
+                        errorCount = 1,
+                        duplicates = 2,
+                        unknownAccounts = listOf("RappiCard"),
+                        unknownCategories = listOf(dining),
+                    ),
+                accounts = mapOf("RappiCard" to AccountResolution.Create(AccountType.DEBIT)),
+                categories = mapOf(dining to CategoryResolution.Use(CATEGORY_FOOD.id)),
+            ),
+            ImportCatalog(accounts = BALANCES.map { it.account }, categories = listOf(CATEGORY_FOOD)),
+            ImportExportActions(),
             zone = ZoneOffset.UTC,
         )
     }
