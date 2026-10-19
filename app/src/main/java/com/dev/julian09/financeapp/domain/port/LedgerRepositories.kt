@@ -5,6 +5,9 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountImpact
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
+import com.dev.julian09.financeapp.domain.model.CreditCard
+import com.dev.julian09.financeapp.domain.model.DeferredPurchase
+import com.dev.julian09.financeapp.domain.model.Installment
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
@@ -152,4 +155,51 @@ interface SettingsRepository {
     fun observe(): Flow<Settings>
 
     suspend fun update(settings: Settings)
+}
+
+/** Credit cards (S7): terms, deferred purchases and their plans; every write is atomic like the rest of the ledger. */
+interface CardRepository {
+    /** Terms of every not deleted card. */
+    fun observeCards(): Flow<List<CreditCard>>
+
+    /** Not deleted deferred purchases of every card. */
+    fun observeDeferred(): Flow<List<DeferredPurchase>>
+
+    /** Not deleted installments of every deferred purchase. */
+    fun observeInstallments(): Flow<List<Installment>>
+
+    /** Not deleted movements where a card is the source or the destination, newest first. */
+    fun observeCardTransactions(): Flow<List<Transaction>>
+
+    /** The CREDIT_CARD account and its terms together (REQ-TC-01). */
+    suspend fun create(
+        account: Account,
+        card: CreditCard,
+    )
+
+    suspend fun update(
+        account: Account,
+        card: CreditCard,
+    )
+
+    /** SEQ-06: the expense, its history, the deferred purchase and its plan in one database transaction. */
+    suspend fun insertDeferred(
+        purchase: Transaction,
+        deferred: DeferredPurchase,
+        installments: List<Installment>,
+    )
+
+    /** SEQ-07: the payment transfer, its history and the installments it settles in one database transaction. */
+    suspend fun pay(
+        payment: Transaction,
+        installments: List<Installment>,
+    )
+
+    /** Notices of a card statement are local to the phone: card terms have no lastNotifiedOn. */
+    suspend fun lastNotifiedOn(cardId: UUID): LocalDate?
+
+    suspend fun markNotified(
+        cardId: UUID,
+        on: LocalDate,
+    )
 }

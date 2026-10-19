@@ -5,6 +5,9 @@ import com.dev.julian09.financeapp.data.local.dao.SyncInfo
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
+import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
+import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
+import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
 import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
@@ -338,6 +341,153 @@ class SyncTables
                 },
             )
 
+        val cards =
+            SyncTable(
+                entity = "creditCardDetails",
+                pending = { db.cards().pendingCard(it) },
+                syncInfo = { db.cards().syncInfoCard(it) },
+                upsert = { db.cards().upsertCards(listOf(it)) },
+                markSynced = { id, at -> db.cards().markSyncedCard(id, at) },
+                markFailed = { id, at, e -> db.cards().markFailedCard(id, at, e) },
+                idOf = CreditCardDetailsEntity::id,
+                updatedAtOf = CreditCardDetailsEntity::updatedAt,
+                encode = { k ->
+                    envelope(
+                        "creditCardDetails",
+                        k.id,
+                        k.createdAt,
+                        k.updatedAt,
+                        k.deletedAt,
+                        buildJsonObject {
+                            put("creditLimit", amount(k.creditLimit))
+                            put("cutOffDay", k.cutOffDay)
+                            put("paymentDay", k.paymentDay)
+                            put("rate", k.rate)
+                            put("rateType", k.rateType)
+                            put("firstInstallmentInterestFree", k.firstInstallmentInterestFree)
+                        },
+                    )
+                },
+                decode = { c ->
+                    val d = c.data
+                    CreditCardDetailsEntity(
+                        id = UUID.fromString(c.id),
+                        creditLimit = scaled(d.text("creditLimit")!!),
+                        cutOffDay = d.int("cutOffDay"),
+                        paymentDay = d.int("paymentDay"),
+                        rate = d.text("rate")!!,
+                        rateType = d.text("rateType")!!,
+                        firstInstallmentInterestFree = d.bool("firstInstallmentInterestFree"),
+                        createdAt = Instant.parse(c.createdAt),
+                        updatedAt = Instant.parse(c.updatedAt),
+                        deletedAt = c.deletedAt?.let(Instant::parse),
+                        syncState = SyncState.SYNCED,
+                    )
+                },
+            )
+
+        val deferred =
+            SyncTable(
+                entity = "deferredPurchase",
+                pending = { db.cards().pendingDeferred(it) },
+                syncInfo = { db.cards().syncInfoDeferred(it) },
+                upsert = { db.cards().upsertDeferred(listOf(it)) },
+                markSynced = { id, at -> db.cards().markSyncedDeferred(id, at) },
+                markFailed = { id, at, e -> db.cards().markFailedDeferred(id, at, e) },
+                idOf = DeferredPurchaseEntity::id,
+                updatedAtOf = DeferredPurchaseEntity::updatedAt,
+                encode = { p ->
+                    envelope(
+                        "deferredPurchase",
+                        p.id,
+                        p.createdAt,
+                        p.updatedAt,
+                        p.deletedAt,
+                        buildJsonObject {
+                            put("cardAccountId", p.cardAccountId.toString())
+                            put("purchaseTransactionId", p.purchaseTransactionId.toString())
+                            put("amount", amount(p.amount))
+                            put("installmentsCount", p.installmentsCount)
+                            put("rate", p.rate)
+                            put("rateType", p.rateType)
+                            put("firstInstallmentInterestFree", p.firstInstallmentInterestFree)
+                            put("firstDueDate", p.firstDueDate.toString())
+                        },
+                    )
+                },
+                decode = { c ->
+                    val d = c.data
+                    DeferredPurchaseEntity(
+                        id = UUID.fromString(c.id),
+                        cardAccountId = UUID.fromString(d.text("cardAccountId")!!),
+                        purchaseTransactionId = UUID.fromString(d.text("purchaseTransactionId")!!),
+                        amount = scaled(d.text("amount")!!),
+                        installmentsCount = d.int("installmentsCount"),
+                        rate = d.text("rate")!!,
+                        rateType = d.text("rateType")!!,
+                        firstInstallmentInterestFree = d.bool("firstInstallmentInterestFree"),
+                        firstDueDate = LocalDate.parse(d.text("firstDueDate")!!),
+                        createdAt = Instant.parse(c.createdAt),
+                        updatedAt = Instant.parse(c.updatedAt),
+                        deletedAt = c.deletedAt?.let(Instant::parse),
+                        syncState = SyncState.SYNCED,
+                    )
+                },
+            )
+
+        val installments =
+            SyncTable(
+                entity = "installment",
+                pending = { db.cards().pendingInstallment(it) },
+                syncInfo = { db.cards().syncInfoInstallment(it) },
+                upsert = { db.cards().upsertInstallments(listOf(it)) },
+                markSynced = { id, at -> db.cards().markSyncedInstallment(id, at) },
+                markFailed = { id, at, e -> db.cards().markFailedInstallment(id, at, e) },
+                idOf = InstallmentEntity::id,
+                updatedAtOf = InstallmentEntity::updatedAt,
+                encode = { i ->
+                    envelope(
+                        "installment",
+                        i.id,
+                        i.createdAt,
+                        i.updatedAt,
+                        i.deletedAt,
+                        buildJsonObject {
+                            put("deferredPurchaseId", i.deferredPurchaseId?.toString())
+                            put("loanAccountId", i.loanAccountId?.toString())
+                            put("number", i.number)
+                            put("dueDate", i.dueDate.toString())
+                            put("principal", amount(i.principal))
+                            put("interest", amount(i.interest))
+                            put("insurance", amount(i.insurance))
+                            put("otherCosts", amount(i.otherCosts))
+                            put("status", i.status)
+                            put("paidAt", i.paidAt?.toString())
+                        },
+                    )
+                },
+                decode = { c ->
+                    val d = c.data
+                    InstallmentEntity(
+                        id = UUID.fromString(c.id),
+                        deferredPurchaseId = d.text("deferredPurchaseId")?.let(UUID::fromString),
+                        loanAccountId = d.text("loanAccountId")?.let(UUID::fromString),
+                        number = d.int("number"),
+                        dueDate = LocalDate.parse(d.text("dueDate")!!),
+                        principal = scaled(d.text("principal")!!),
+                        interest = scaled(d.text("interest")!!),
+                        insurance = scaled(d.text("insurance")!!),
+                        otherCosts = scaled(d.text("otherCosts")!!),
+                        status = d.text("status")!!,
+                        paidAt = d.text("paidAt")?.let(Instant::parse),
+                        createdAt = Instant.parse(c.createdAt),
+                        updatedAt = Instant.parse(c.updatedAt),
+                        deletedAt = c.deletedAt?.let(Instant::parse),
+                        syncState = SyncState.SYNCED,
+                    )
+                },
+            )
+
         val changeLog =
             SyncTable(
                 entity = "changeLog",
@@ -381,8 +531,12 @@ class SyncTables
                 },
             )
 
-        /** Dependency order: settings, accounts, categories, tags, recurring expenses, transactions, then their history. */
-        val all: List<SyncTable<*>> = listOf(settings, accounts, categories, tags, recurring, transactions, changeLog)
+        /**
+         * Dependency order: settings, accounts and their card terms, categories, tags, recurring expenses, transactions,
+         * deferred purchases and their installments, then the history.
+         */
+        val all: List<SyncTable<*>> =
+            listOf(settings, accounts, cards, categories, tags, recurring, transactions, deferred, installments, changeLog)
 
         val byEntity: Map<String, SyncTable<*>> = all.associateBy { it.entity }
     }

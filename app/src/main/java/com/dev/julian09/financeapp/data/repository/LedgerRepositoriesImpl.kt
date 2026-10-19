@@ -3,15 +3,21 @@ package com.dev.julian09.financeapp.data.repository
 import androidx.room.withTransaction
 import com.dev.julian09.financeapp.data.local.FinanceDatabase
 import com.dev.julian09.financeapp.data.local.dao.AccountDao
+import com.dev.julian09.financeapp.data.local.dao.CardDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
 import com.dev.julian09.financeapp.data.local.dao.RecurringDao
 import com.dev.julian09.financeapp.data.local.dao.SettingsDao
+import com.dev.julian09.financeapp.data.local.dao.SyncMetaDao
 import com.dev.julian09.financeapp.data.local.dao.TagDao
 import com.dev.julian09.financeapp.data.local.dao.TransactionDao
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
+import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
+import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
+import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
 import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
+import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
@@ -24,10 +30,15 @@ import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
+import com.dev.julian09.financeapp.domain.model.CreditCard
+import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Frequency
+import com.dev.julian09.financeapp.domain.model.Installment
+import com.dev.julian09.financeapp.domain.model.InstallmentStatus
 import com.dev.julian09.financeapp.domain.model.IntervalUnit
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
+import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.Settings
@@ -36,6 +47,7 @@ import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
+import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
@@ -45,6 +57,7 @@ import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -222,6 +235,7 @@ class TransactionRepositoryImpl
     constructor(
         private val db: FinanceDatabase,
         private val dao: TransactionDao,
+        private val cards: CardDao,
         private val history: ChangeLogWriter,
         private val clock: Clock,
     ) : TransactionRepository {
@@ -252,6 +266,9 @@ class TransactionRepositoryImpl
                 val now = clock.now()
                 dao.upsert(listOf(before.copy(deletedAt = now, updatedAt = now, syncState = SyncState.PENDING, syncError = null)))
                 history.log("DELETE", before, null, now)
+                // A deferred card purchase takes its plan with it
+                cards.deletePlanOf(id, now)
+                cards.deleteDeferredOf(id, now)
             }
 
         override fun observeRecent(limit: Int): Flow<List<Transaction>> =
@@ -367,6 +384,159 @@ class RecurringRepositoryImpl
             on: LocalDate,
         ) = dao.markNotified(id, on, clock.now())
     }
+
+class CardRepositoryImpl
+    @Inject
+    constructor(
+        private val db: FinanceDatabase,
+        private val dao: CardDao,
+        private val accounts: AccountDao,
+        private val transactions: TransactionDao,
+        private val meta: SyncMetaDao,
+        private val history: ChangeLogWriter,
+        private val clock: Clock,
+    ) : CardRepository {
+        override fun observeCards(): Flow<List<CreditCard>> = dao.observeCards().map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeDeferred(): Flow<List<DeferredPurchase>> = dao.observeDeferred().map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeInstallments(): Flow<List<Installment>> = dao.observeInstallments().map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeCardTransactions(): Flow<List<Transaction>> =
+            dao.observeCardTransactions().map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun create(
+            account: Account,
+            card: CreditCard,
+        ) = db.withTransaction {
+            val now = clock.now()
+            accounts.upsert(listOf(account.toEntity(createdAt = now, updatedAt = now)))
+            dao.upsertCards(listOf(card.toEntity(createdAt = now, updatedAt = now)))
+        }
+
+        override suspend fun update(
+            account: Account,
+            card: CreditCard,
+        ) = db.withTransaction {
+            val stored = accounts.get(account.id) ?: return@withTransaction
+            val now = clock.now()
+            accounts.upsert(listOf(account.toEntity(createdAt = stored.createdAt, updatedAt = now)))
+            dao.upsertCards(listOf(card.toEntity(createdAt = dao.getCard(card.accountId)?.createdAt ?: now, updatedAt = now)))
+        }
+
+        override suspend fun insertDeferred(
+            purchase: Transaction,
+            deferred: DeferredPurchase,
+            installments: List<Installment>,
+        ) = db.withTransaction {
+            val now = clock.now()
+            val row = purchase.toEntity(createdAt = now, updatedAt = now)
+            transactions.upsert(listOf(row))
+            history.log("CREATE", null, row, now)
+            dao.upsertDeferred(listOf(deferred.toEntity(createdAt = now, updatedAt = now)))
+            dao.upsertInstallments(installments.map { it.toEntity(createdAt = now, updatedAt = now) })
+        }
+
+        override suspend fun pay(
+            payment: Transaction,
+            installments: List<Installment>,
+        ) = db.withTransaction {
+            val now = clock.now()
+            val row = payment.toEntity(createdAt = now, updatedAt = now)
+            transactions.upsert(listOf(row))
+            history.log("CREATE", null, row, now)
+            dao.upsertInstallments(
+                installments.map { i -> i.toEntity(createdAt = dao.getInstallment(i.id)?.createdAt ?: now, updatedAt = now) },
+            )
+        }
+
+        override suspend fun lastNotifiedOn(cardId: UUID): LocalDate? = meta.get(notifiedKey(cardId))?.let(LocalDate::parse)
+
+        override suspend fun markNotified(
+            cardId: UUID,
+            on: LocalDate,
+        ) = meta.put(SyncMetaEntity(notifiedKey(cardId), on.toString()))
+
+        private fun notifiedKey(cardId: UUID) = "card_notified:$cardId"
+    }
+
+internal fun CreditCard.toEntity(
+    createdAt: Instant,
+    updatedAt: Instant,
+) = CreditCardDetailsEntity(
+    id = accountId,
+    creditLimit = creditLimit.scaled,
+    cutOffDay = cutOffDay,
+    paymentDay = paymentDay,
+    rate = rate.toPlainString(),
+    rateType = rateType.name,
+    firstInstallmentInterestFree = firstInstallmentInterestFree,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+internal fun CreditCardDetailsEntity.toDomain() =
+    CreditCard(id, Money(creditLimit), cutOffDay, paymentDay, BigDecimal(rate), RateType.valueOf(rateType), firstInstallmentInterestFree)
+
+internal fun DeferredPurchase.toEntity(
+    createdAt: Instant,
+    updatedAt: Instant,
+) = DeferredPurchaseEntity(
+    id = id,
+    cardAccountId = cardAccountId,
+    purchaseTransactionId = purchaseTransactionId,
+    amount = amount.scaled,
+    installmentsCount = installmentsCount,
+    rate = rate.toPlainString(),
+    rateType = rateType.name,
+    firstInstallmentInterestFree = firstInstallmentInterestFree,
+    firstDueDate = firstDueDate,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+internal fun DeferredPurchaseEntity.toDomain() =
+    DeferredPurchase(
+        id,
+        cardAccountId,
+        purchaseTransactionId,
+        Money(amount),
+        installmentsCount,
+        BigDecimal(rate),
+        RateType.valueOf(rateType),
+        firstInstallmentInterestFree,
+        firstDueDate,
+    )
+
+internal fun Installment.toEntity(
+    createdAt: Instant,
+    updatedAt: Instant,
+) = InstallmentEntity(
+    id = id,
+    deferredPurchaseId = deferredPurchaseId,
+    number = number,
+    dueDate = dueDate,
+    principal = principal.scaled,
+    interest = interest.scaled,
+    otherCosts = otherCosts.scaled,
+    status = status.name,
+    paidAt = paidAt,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+internal fun InstallmentEntity.toDomain() =
+    Installment(
+        id = id,
+        deferredPurchaseId = deferredPurchaseId!!,
+        number = number,
+        dueDate = dueDate,
+        principal = Money(principal),
+        interest = Money(interest),
+        otherCosts = Money(otherCosts),
+        status = InstallmentStatus.valueOf(status),
+        paidAt = paidAt,
+    )
 
 /** Only the reminder fields change from here; homeCards stays as stored until Personalizar inicio (S11). */
 class SettingsRepositoryImpl
