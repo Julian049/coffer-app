@@ -44,7 +44,13 @@ class HomeViewModelTest {
 
     private suspend fun state() =
         HomeViewModel(
-            ObserveHomeDashboard(f.accounts, f.transactions, ObservePendingPayments(f.recurring, f.settings, f.clock), f.clock),
+            ObserveHomeDashboard(
+                f.accounts,
+                f.transactions,
+                ObservePendingPayments(f.recurring, f.settings, f.clock),
+                f.cardDues,
+                f.clock,
+            ),
             f.categories,
         ).state.filterNotNull().first()
 

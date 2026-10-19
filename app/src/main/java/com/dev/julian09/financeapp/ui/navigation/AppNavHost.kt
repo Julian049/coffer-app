@@ -55,7 +55,8 @@ fun AppNavHost(
     val newTransaction = { type: TransactionType -> navController.navigate(TransactionFormRoute(type.name)) }
     // A tapped notice opens its sheet in Home, from wherever the app was
     val pendingLink by PendingLink.recurringId.collectAsStateWithLifecycle()
-    LaunchedEffect(pendingLink) { if (pendingLink != null) navController.navigateToTab(Tab.Home) }
+    val cardLink by PendingLink.cardId.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingLink, cardLink) { if (pendingLink != null || cardLink != null) navController.navigateToTab(Tab.Home) }
     Scaffold(
         containerColor = CofferTheme.colors.background,
         bottomBar = { if (currentTab != null) BottomBar(selected = currentTab, onSelect = navController::navigateToTab) },

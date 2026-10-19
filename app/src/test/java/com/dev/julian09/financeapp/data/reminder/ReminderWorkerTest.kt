@@ -9,21 +9,29 @@ import androidx.work.testing.TestListenableWorkerBuilder
 import com.dev.julian09.financeapp.data.local.FixedClock
 import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
+import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.ReminderKind
 import com.dev.julian09.financeapp.domain.model.Settings
+import com.dev.julian09.financeapp.domain.usecase.CardDraft
+import com.dev.julian09.financeapp.domain.usecase.CreateCard
+import com.dev.julian09.financeapp.domain.usecase.ObserveCardDues
+import com.dev.julian09.financeapp.domain.usecase.ObserveCards
 import com.dev.julian09.financeapp.domain.usecase.SendReminders
 import com.dev.julian09.financeapp.ui.FakeReminderNotifier
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -39,7 +47,11 @@ class ReminderWorkerTest {
     @After
     fun close() = f.db.close()
 
-    private fun on(day: String) = SendReminders(f.recurring, f.settings, notifier, scheduler, FixedClock(Instant.parse("${day}T13:00:00Z")))
+    private fun on(day: String): SendReminders {
+        val clock = FixedClock(Instant.parse("${day}T13:00:00Z"))
+        val dues = ObserveCardDues(ObserveCards(f.accounts, f.cards, clock), f.settings, clock)
+        return SendReminders(f.recurring, f.cards, dues, f.settings, notifier, scheduler, clock)
+    }
 
     private suspend fun recurring(due: String): Recurring {
         val r =
@@ -103,6 +115,24 @@ class ReminderWorkerTest {
             recurring(due = "2026-10-21")
             assertEquals(1, on("2026-10-19")())
             assertEquals(ReminderKind.WINDOW_OPEN, notifier.sent.single().kind)
+        }
+
+    @Test
+    fun aCardStatementGetsTheSameNoticesAsARecurringExpense() =
+        runBlocking {
+            // A card created with $300.000 of debt on Oct 7: due on Nov 5 (cut 20, payment 5)
+            CreateCard(f.accounts, f.cards, scheduler)(
+                CardDraft("Visa", Money.ofPesos(1_000_000), Money.ofPesos(700_000), 20, 5, BigDecimal("0.02"), RateType.MV, false),
+            )
+            assertEquals(0, on("2026-10-30")())
+            assertEquals(1, on("2026-10-31")())
+            val notice = notifier.sent.single()
+            assertEquals(ReminderKind.WINDOW_OPEN, notice.kind)
+            assertTrue(notice.payment is CardDue)
+            assertEquals(Money.ofPesos(300_000), notice.payment.amount)
+            assertEquals(0, on("2026-11-01")())
+            assertEquals(1, on("2026-11-05")())
+            assertEquals(ReminderKind.DUE_TODAY, notifier.sent.last().kind)
         }
 
     @Test
