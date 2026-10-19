@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-19
+
 ### Added
 
 - Credit cards (S7-H01): Nueva tarjeta de crédito (name, credit limit, current available credit — the difference is the initial debt, due as a purchase in one installment of the period —, cut and payment days, rate in M.V. or E.A. with the conversion visible, first installment interest-free), reached by choosing Tarjeta de crédito in Nueva cuenta, and its edit; Detalle de tarjeta with the debt and credit used, what is due this period, the terms and the active deferred purchases; synced as `creditCardDetails`, `deferredPurchase` and `installment` (Room version 4)
