@@ -51,6 +51,7 @@ import com.dev.julian09.financeapp.ui.components.accountIcon
 import com.dev.julian09.financeapp.ui.components.accountTypeLabel
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
+import com.dev.julian09.financeapp.ui.feature.cards.CardFormScreen
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 @Composable
@@ -60,6 +61,11 @@ fun AccountFormScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.saved) { if (state.saved) onBack() }
+    // A card has its own form, for a new one and for the edit (S7-UI01)
+    if (state.type == AccountType.CREDIT_CARD) {
+        CardFormScreen(onBack = onBack)
+        return
+    }
     AccountFormContent(
         state = state,
         onBack = onBack,
@@ -144,7 +150,7 @@ fun AccountFormContent(
                 Label("Tipo de cuenta")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AccountType.entries.forEach { type ->
-                        val available = type in AVAILABLE_ACCOUNT_TYPES
+                        val available = type in AVAILABLE_ACCOUNT_TYPES || type == AccountType.CREDIT_CARD
                         AppChip(
                             if (available) accountTypeLabel(type) else "${accountTypeLabel(type)} · Disponible pronto",
                             selected = state.type == type,

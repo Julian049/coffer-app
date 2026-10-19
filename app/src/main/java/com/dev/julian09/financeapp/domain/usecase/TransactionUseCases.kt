@@ -20,9 +20,9 @@ private const val NOTE_MAX = 500
 /** The fields a movement got wrong, by field; empty when it can be saved. */
 typealias TransactionErrors = Map<TransactionField, LedgerError>
 
-enum class TransactionField { AMOUNT, ACCOUNT, DESTINATION, CATEGORY, NOTE }
+enum class TransactionField { AMOUNT, ACCOUNT, DESTINATION, CATEGORY, NOTE, INSTALLMENTS, RATE }
 
-/** REQ-TRX-01, 02: the same rules on create and on edit; a card purchase (S7) will branch here. */
+/** REQ-TRX-01, 02: the same rules on create and on edit, for card purchases and card payments too (S7). */
 class TransactionValidator
     @Inject
     constructor(
@@ -133,7 +133,7 @@ class CreateTag
     }
 
 /** A transfer has no category and an expense or income no destination (server ck_tx_transfer, ck_tx_category). */
-private fun Transaction.normalized() =
+internal fun Transaction.normalized() =
     copy(
         note = note?.trim()?.ifEmpty { null },
         categoryId = categoryId.takeIf { type != TransactionType.TRANSFER },

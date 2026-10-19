@@ -34,12 +34,15 @@ enum class Urgency { UPCOMING, SOON, OVERDUE }
 /** The next occurrence of a recurring expense; computed, never stored. */
 data class PendingPayment(
     val recurring: Recurring,
-    /** Negative when overdue. */
-    val daysLeft: Long,
-    val urgency: Urgency,
-    /** Inside the reminder window: shown in Home (REQ-REC-04). */
-    val inWindow: Boolean,
-)
+    override val daysLeft: Long,
+    override val urgency: Urgency,
+    override val inWindow: Boolean,
+) : DuePayment {
+    override val id: UUID get() = recurring.id
+    override val title: String get() = recurring.name
+    override val amount: Money get() = recurring.suggestedAmount
+    override val dueDate: LocalDate get() = recurring.nextDueDate
+}
 
 /** A payment registered from a recurring expense this month. */
 data class RecurringPayment(
@@ -68,7 +71,8 @@ data class RecurringOverview(
 /** REQ-REC-09: one notice when the window opens and one on the due date if still unpaid. */
 enum class ReminderKind { WINDOW_OPEN, DUE_TODAY }
 
+/** A notice for a recurring expense or a card statement (S7: same window and notices, PO 2026-10-19). */
 data class Reminder(
-    val recurring: Recurring,
+    val payment: DuePayment,
     val kind: ReminderKind,
 )

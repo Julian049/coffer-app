@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.data.reminder.NotificationPublisher
 import com.dev.julian09.financeapp.data.reminder.ReminderSchedulerImpl
 import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.AuthRepositoryImpl
+import com.dev.julian09.financeapp.data.repository.CardRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CategoryRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.RecurringRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ServerStatusRepositoryImpl
@@ -14,6 +15,7 @@ import com.dev.julian09.financeapp.data.repository.TransactionRepositoryImpl
 import com.dev.julian09.financeapp.data.sync.SyncSchedulerImpl
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.AuthRepository
+import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
@@ -56,6 +58,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindRecurringRepository(impl: RecurringRepositoryImpl): RecurringRepository
+
+    @Binds
+    abstract fun bindCardRepository(impl: CardRepositoryImpl): CardRepository
 
     @Binds
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository

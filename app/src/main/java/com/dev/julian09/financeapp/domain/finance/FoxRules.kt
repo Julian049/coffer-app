@@ -1,7 +1,7 @@
 package com.dev.julian09.financeapp.domain.finance
 
+import com.dev.julian09.financeapp.domain.model.DuePayment
 import com.dev.julian09.financeapp.domain.model.Money
-import com.dev.julian09.financeapp.domain.model.PendingPayment
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -18,7 +18,7 @@ data class FoxMood(
     /** GOOD: percent above last month's close. */
     val change: BigDecimal? = null,
     /** ATTENTIVE: the closest payment. */
-    val payment: PendingPayment? = null,
+    val payment: DuePayment? = null,
 )
 
 /** Rules approved by the PO on 2026-10-17: the first that holds wins. */
@@ -32,7 +32,7 @@ object FoxRules {
         month: PeriodTotals,
         previousMonth: PeriodTotals,
         today: LocalDate,
-        pending: List<PendingPayment> = emptyList(),
+        pending: List<DuePayment> = emptyList(),
     ): FoxMood {
         val saved = previousMonth.income - previousMonth.expense
         val closest = pending.minByOrNull { it.daysLeft }

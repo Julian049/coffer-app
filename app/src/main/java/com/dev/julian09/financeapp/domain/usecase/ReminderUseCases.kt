@@ -4,12 +4,14 @@ import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
 import com.dev.julian09.financeapp.domain.model.Reminder
 import com.dev.julian09.financeapp.domain.model.ReminderKind
 import com.dev.julian09.financeapp.domain.model.Settings
+import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.ReminderNotifier
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import kotlinx.coroutines.flow.first
+import java.time.LocalDate
 import javax.inject.Inject
 
 private const val LEAD_MAX = 30
@@ -22,6 +24,8 @@ class SendReminders
     @Inject
     constructor(
         private val recurring: RecurringRepository,
+        private val cards: CardRepository,
+        private val cardDues: ObserveCardDues,
         private val settings: SettingsRepository,
         private val notifier: ReminderNotifier,
         private val scheduler: SyncScheduler,
@@ -32,24 +36,38 @@ class SendReminders
             val s = settings.observe().first()
             if (!s.notificationsEnabled || !notifier.canNotify()) return 0
             val today = clock.today()
+            val lead = s.reminderLeadDays
+
+            fun kind(
+                dueDate: LocalDate,
+                last: LocalDate?,
+            ): ReminderKind? {
+                val opens = dueDate.minusDays(lead.toLong())
+                return when {
+                    dueDate == today && last != today -> ReminderKind.DUE_TODAY
+                    today.isBefore(dueDate) &&
+                        RecurrenceCalculator.inWindow(dueDate, today, lead) &&
+                        (last == null || last.isBefore(opens)) -> ReminderKind.WINDOW_OPEN
+                    else -> null
+                }
+            }
             val due =
                 recurring.observeAll().first().filter { it.active }.mapNotNull { r ->
-                    val opens = r.nextDueDate.minusDays(s.reminderLeadDays.toLong())
-                    val last = r.lastNotifiedOn
-                    when {
-                        r.nextDueDate == today && last != today -> Reminder(r, ReminderKind.DUE_TODAY)
-                        today.isBefore(r.nextDueDate) &&
-                            RecurrenceCalculator.inWindow(r.nextDueDate, today, s.reminderLeadDays) &&
-                            (last == null || last.isBefore(opens)) -> Reminder(r, ReminderKind.WINDOW_OPEN)
-                        else -> null
-                    }
+                    kind(r.nextDueDate, r.lastNotifiedOn)?.let { Reminder(RecurrenceCalculator.pending(r, today, lead), it) }
                 }
+            // Card statements (PO, 2026-10-19): the same notices, remembered on the phone
+            val cardDue =
+                cardDues().first().mapNotNull { c -> kind(c.dueDate, cards.lastNotifiedOn(c.id))?.let { Reminder(c, it) } }
             due.forEach {
                 notifier.notify(it)
-                recurring.markNotified(it.recurring.id, today)
+                recurring.markNotified(it.payment.id, today)
+            }
+            cardDue.forEach {
+                notifier.notify(it)
+                cards.markNotified(it.payment.id, today)
             }
             if (due.isNotEmpty()) scheduler.requestSync()
-            return due.size
+            return due.size + cardDue.size
         }
     }
 

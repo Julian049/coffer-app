@@ -7,6 +7,9 @@ import androidx.room.Upsert
 import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
+import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
+import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
+import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
 import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
@@ -534,6 +537,117 @@ interface RecurringDao {
 
     @Query("UPDATE recurring_expenses SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
     suspend fun markFailed(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
+}
+
+/** Card terms, deferred purchases and installments (V8); the sync queries come once per table. */
+@Dao
+interface CardDao {
+    @Upsert
+    suspend fun upsertCards(rows: List<CreditCardDetailsEntity>)
+
+    @Upsert
+    suspend fun upsertDeferred(rows: List<DeferredPurchaseEntity>)
+
+    @Upsert
+    suspend fun upsertInstallments(rows: List<InstallmentEntity>)
+
+    @Query("SELECT * FROM credit_card_details WHERE deletedAt IS NULL")
+    fun observeCards(): Flow<List<CreditCardDetailsEntity>>
+
+    @Query("SELECT * FROM credit_card_details WHERE id = :id")
+    suspend fun getCard(id: UUID): CreditCardDetailsEntity?
+
+    @Query("SELECT * FROM deferred_purchases WHERE deletedAt IS NULL ORDER BY firstDueDate DESC")
+    fun observeDeferred(): Flow<List<DeferredPurchaseEntity>>
+
+    @Query("SELECT * FROM installments WHERE deletedAt IS NULL AND deferredPurchaseId IS NOT NULL ORDER BY dueDate, number")
+    fun observeInstallments(): Flow<List<InstallmentEntity>>
+
+    @Query("SELECT * FROM installments WHERE id = :id")
+    suspend fun getInstallment(id: UUID): InstallmentEntity?
+
+    @Query(
+        "SELECT t.* FROM transactions t WHERE t.deletedAt IS NULL AND (" +
+            "t.accountId IN (SELECT id FROM accounts WHERE type = 'CREDIT_CARD') OR " +
+            "t.destinationAccountId IN (SELECT id FROM accounts WHERE type = 'CREDIT_CARD')) ORDER BY t.occurredAt DESC",
+    )
+    fun observeCardTransactions(): Flow<List<TransactionEntity>>
+
+    /** Deleting a purchase takes its plan with it (logical delete, synced). */
+    @Query(
+        "UPDATE installments SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' WHERE deletedAt IS NULL " +
+            "AND deferredPurchaseId IN (SELECT id FROM deferred_purchases WHERE purchaseTransactionId = :transactionId)",
+    )
+    suspend fun deletePlanOf(
+        transactionId: UUID,
+        now: Instant,
+    )
+
+    @Query(
+        "UPDATE deferred_purchases SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' " +
+            "WHERE deletedAt IS NULL AND purchaseTransactionId = :transactionId",
+    )
+    suspend fun deleteDeferredOf(
+        transactionId: UUID,
+        now: Instant,
+    )
+
+    @Query("SELECT * FROM credit_card_details WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pendingCard(limit: Int): List<CreditCardDetailsEntity>
+
+    @Query("SELECT syncState, updatedAt FROM credit_card_details WHERE id = :id")
+    suspend fun syncInfoCard(id: UUID): SyncInfo?
+
+    @Query("UPDATE credit_card_details SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSyncedCard(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE credit_card_details SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailedCard(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
+
+    @Query("SELECT * FROM deferred_purchases WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pendingDeferred(limit: Int): List<DeferredPurchaseEntity>
+
+    @Query("SELECT syncState, updatedAt FROM deferred_purchases WHERE id = :id")
+    suspend fun syncInfoDeferred(id: UUID): SyncInfo?
+
+    @Query("UPDATE deferred_purchases SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSyncedDeferred(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE deferred_purchases SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailedDeferred(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
+
+    @Query("SELECT * FROM installments WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pendingInstallment(limit: Int): List<InstallmentEntity>
+
+    @Query("SELECT syncState, updatedAt FROM installments WHERE id = :id")
+    suspend fun syncInfoInstallment(id: UUID): SyncInfo?
+
+    @Query("UPDATE installments SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSyncedInstallment(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE installments SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailedInstallment(
         id: UUID,
         sentUpdatedAt: Instant,
         error: String,

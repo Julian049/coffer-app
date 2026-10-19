@@ -5,12 +5,15 @@ import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
 import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
+import com.dev.julian09.financeapp.data.repository.CardRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CategoryRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ChangeLogWriter
 import com.dev.julian09.financeapp.data.repository.RecurringRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.SettingsRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TagRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TransactionRepositoryImpl
+import com.dev.julian09.financeapp.domain.usecase.ObserveCardDues
+import com.dev.julian09.financeapp.domain.usecase.ObserveCards
 import java.time.Instant
 import java.util.UUID
 
@@ -21,10 +24,13 @@ class LedgerFixture(
     val db = inMemoryDatabase()
     val accounts = AccountRepositoryImpl(db, db.accounts(), db.transactions(), clock)
     val categories = CategoryRepositoryImpl(db, db.categories(), db.transactions(), clock)
-    val transactions = TransactionRepositoryImpl(db, db.transactions(), ChangeLogWriter(db), clock)
+    val transactions = TransactionRepositoryImpl(db, db.transactions(), db.cards(), ChangeLogWriter(db), clock)
     val tags = TagRepositoryImpl(db.tags(), clock)
     val recurring = RecurringRepositoryImpl(db, db.recurring(), db.transactions(), ChangeLogWriter(db), clock)
     val settings = SettingsRepositoryImpl(db.settings(), clock)
+    val cards = CardRepositoryImpl(db, db.cards(), db.accounts(), db.transactions(), db.syncMeta(), ChangeLogWriter(db), clock)
+    val observeCards = ObserveCards(accounts, cards, clock)
+    val cardDues = ObserveCardDues(observeCards, settings, clock)
     private val past: Instant = Instant.parse("2026-01-01T00:00:00Z")
 
     suspend fun account(

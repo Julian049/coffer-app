@@ -47,7 +47,8 @@ import com.dev.julian09.financeapp.R
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.AccountBalance
-import com.dev.julian09.financeapp.domain.model.PendingPayment
+import com.dev.julian09.financeapp.domain.model.CardDue
+import com.dev.julian09.financeapp.domain.model.DuePayment
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.Urgency
@@ -61,6 +62,7 @@ import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.components.accountIcon
 import com.dev.julian09.financeapp.ui.components.accountTypeShortLabel
 import com.dev.julian09.financeapp.ui.components.formatMoney
+import com.dev.julian09.financeapp.ui.feature.cards.PayCardSheet
 import com.dev.julian09.financeapp.ui.feature.history.DayGroup
 import com.dev.julian09.financeapp.ui.feature.recurring.PendingSheets
 import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
@@ -95,14 +97,23 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var pending by rememberSaveable { mutableStateOf<String?>(null) }
+    var paying by rememberSaveable { mutableStateOf<String?>(null) }
     val link by PendingLink.recurringId.collectAsStateWithLifecycle()
+    val cardLink by PendingLink.cardId.collectAsStateWithLifecycle()
     LaunchedEffect(link) {
         link?.let {
             pending = it.toString()
             PendingLink.recurringId.value = null
         }
     }
+    LaunchedEffect(cardLink) {
+        cardLink?.let {
+            paying = it.toString()
+            PendingLink.cardId.value = null
+        }
+    }
     PendingSheets(pending?.let(UUID::fromString), onDismiss = { pending = null })
+    PayCardSheet(paying?.let(UUID::fromString), onDismiss = { paying = null })
     HomeContent(
         state,
         onOpenSettings,
@@ -114,7 +125,7 @@ fun HomeScreen(
         onNewTransaction = onNewTransaction,
         onOpenTransaction = onOpenTransaction,
         onOpenRecurring = onOpenRecurring,
-        onOpenPending = { pending = it.toString() },
+        onOpenPending = { p -> if (p is CardDue) paying = p.id.toString() else pending = p.id.toString() },
     )
 }
 
@@ -132,7 +143,7 @@ fun HomeContent(
     onNewTransaction: (TransactionType) -> Unit = {},
     onOpenTransaction: (UUID) -> Unit = {},
     onOpenRecurring: () -> Unit = {},
-    onOpenPending: (UUID) -> Unit = {},
+    onOpenPending: (DuePayment) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
@@ -226,9 +237,9 @@ private fun paymentChip(daysLeft: Long) =
 /** Próximos pagos (S6-UI02): only the ones inside the reminder window (PO, 2026-10-18); they never touch the balance. */
 @Composable
 private fun UpcomingPayments(
-    pending: List<PendingPayment>,
+    pending: List<DuePayment>,
     onOpenRecurring: () -> Unit,
-    onOpen: (UUID) -> Unit,
+    onOpen: (DuePayment) -> Unit,
 ) {
     val colors = CofferTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -242,20 +253,20 @@ private fun UpcomingPayments(
             color = colors.textSecondary,
         )
         pending.forEach { p ->
-            AppCard(Modifier.fillMaxWidth(), onClick = { onOpen(p.recurring.id) }) {
+            AppCard(Modifier.fillMaxWidth(), onClick = { onOpen(p) }) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(Modifier.size(8.dp).background(urgencyTint(p), CircleShape))
                     Column(Modifier.weight(1f)) {
-                        Text(p.recurring.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
+                        Text(p.title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
                         Text(
-                            "${dueSentence(p.daysLeft)} · ${dayMonth(p.recurring.nextDueDate)}",
+                            "${dueSentence(p.daysLeft)} · ${dayMonth(p.dueDate)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = urgencyTint(p),
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            formatMoney(p.recurring.suggestedAmount),
+                            formatMoney(p.amount),
                             style = MaterialTheme.typography.titleSmall,
                             color = colors.textPrimary,
                         )
@@ -325,8 +336,8 @@ fun FoxCard(
                     Triple(
                         R.drawable.mascot_attentive,
                         "Tienes un pago cerca",
-                        "${p.recurring.name}: ${dueSentence(p.daysLeft).replaceFirstChar { it.lowercase() }} · " +
-                            formatMoney(p.recurring.suggestedAmount) + ".",
+                        "${p.title}: ${dueSentence(p.daysLeft).replaceFirstChar { it.lowercase() }} · " +
+                            formatMoney(p.amount) + ".",
                     )
                 }
             FoxState.WORRIED ->

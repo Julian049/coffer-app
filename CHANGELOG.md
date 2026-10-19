@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-19
+
+### Added
+
+- Credit cards (S7-H01): Nueva tarjeta de crédito (name, credit limit, current available credit — the difference is the initial debt, due as a purchase in one installment of the period —, cut and payment days, rate in M.V. or E.A. with the conversion visible, first installment interest-free), reached by choosing Tarjeta de crédito in Nueva cuenta, and its edit; Detalle de tarjeta with the debt and credit used, what is due this period, the terms and the active deferred purchases; synced as `creditCardDetails`, `deferredPurchase` and `installment` (Room version 4)
+- Card engine: `RateConverter` (2 % M.V. ↔ 26,8242 % E.A.), `InstallmentCalculator` (fixed principal, interest on the balance with a 30-day month, the last installment absorbs the rounding) and `CardPeriodCalculator` (cuts on the 28th to 31st follow short months; payment on the first payment day after the cut; purchases between the cut and the payment carry no extra interest, PO 2026-10-19)
+- Purchases in installments (S7-H02): choosing a card in Nueva transacción shows Condiciones del crédito with 1 installment by default; from 2 on, the card's rate, editable (0 % agreements); the plan is written with the expense in one database transaction, and deleting the expense deletes its plan
+- Card payment (S7-H03): Hoja · Pagar tarjeta with pago mínimo (what is due) or pago total (the whole debt plus the period's interest, no future interest), source account and an editable amount split into fees, interest and principal; only the principal lowers the debt; the minimum settles the period's installments and the total cancels the future ones; the card's payment is a pending payment in Home and Gastos recurrentes with the same window, urgency and notices as recurring expenses; the detail of a payment shows its split
+- Tests: `RateConverterTest`, `InstallmentCalculatorTest`, `CardPeriodCalculatorTest`, `CreditCardTest`, `CardCodecTest`, the 3 → 4 migration, a card notice in `ReminderWorkerTest` and screenshots of the card screens
+
+### Changed
+
+- A deferred purchase or a card payment is not edited from its detail: it is deleted and registered again
+- Editing a movement keeps what the form does not show, such as the recurring expense a payment came from
+
 ## [0.7.0] - 2026-10-18
 
 ### Added

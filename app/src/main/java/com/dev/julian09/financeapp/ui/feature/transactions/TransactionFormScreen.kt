@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.AlertDialog
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.model.AccountBalance
+import com.dev.julian09.financeapp.domain.model.CardOverview
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.Money
@@ -73,6 +75,10 @@ import com.dev.julian09.financeapp.ui.components.accountIcon
 import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
+import com.dev.julian09.financeapp.ui.feature.cards.parsePercent
+import com.dev.julian09.financeapp.ui.feature.cards.percentText
+import com.dev.julian09.financeapp.ui.feature.cards.rateLabel
+import com.dev.julian09.financeapp.ui.feature.cards.rateTypeLabel
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.Instant
@@ -111,6 +117,8 @@ fun TransactionFormScreen(
                 onClearTagError = viewModel::clearTagError,
                 onNote = viewModel::setNote,
                 onSave = viewModel::save,
+                onInstallments = viewModel::setInstallments,
+                onRate = viewModel::setRate,
             ),
     )
 }
@@ -129,6 +137,8 @@ class TransactionFormActions(
     val onClearTagError: () -> Unit = {},
     val onNote: (String) -> Unit = {},
     val onSave: () -> Unit = {},
+    val onInstallments: (Int) -> Unit = {},
+    val onRate: (String) -> Unit = {},
 )
 
 private val TYPES = listOf(TransactionType.EXPENSE, TransactionType.INCOME, TransactionType.TRANSFER)
@@ -205,7 +215,15 @@ fun TransactionFormContent(
             }
             DateTimeCard(state.occurredAt, actions.onOccurredAt, today, zone)
             if (!transfer) {
-                AccountPicker("Cuenta", choices.accounts, state.accountId, state.errors[TransactionField.ACCOUNT], actions.onAccount)
+                AccountPicker(
+                    "Cuenta",
+                    choices.accounts,
+                    state.accountId,
+                    state.errors[TransactionField.ACCOUNT],
+                    actions.onAccount,
+                    subtitle = { a -> choices.cards[a.account.id]?.let { "Cupo ${formatMoney(it.available)}" } ?: formatMoney(a.balance) },
+                )
+                choices.cardOf(state)?.let { CreditConditions(state, it, actions) }
             }
             AppCard {
                 if (!transfer) TagPicker(state, choices, actions)
@@ -404,6 +422,7 @@ internal fun AccountPicker(
     selectedId: UUID?,
     error: com.dev.julian09.financeapp.domain.model.LedgerError?,
     onSelect: (UUID) -> Unit,
+    subtitle: (AccountBalance) -> String = { formatMoney(it.balance) },
 ) {
     val colors = CofferTheme.colors
     AppCard {
@@ -436,7 +455,7 @@ internal fun AccountPicker(
                         CircleIcon(accountIcon(item.account.icon, item.account.type))
                         Column {
                             Text(item.account.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
-                            Text(formatMoney(item.balance), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                            Text(subtitle(item), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                         }
                     }
                 }
@@ -503,5 +522,60 @@ private fun TagPicker(
                 }) { Text("Cancelar") }
             },
         )
+    }
+}
+
+private val QUICK_INSTALLMENTS = listOf(1, 6, 12, 24)
+
+/** Condiciones del crédito (S7-UI02): installments, and the card's rate, editable, from 2 on (REQ-TC-05, 06, RNF-15). */
+@Composable
+private fun CreditConditions(
+    state: TransactionFormState,
+    card: CardOverview,
+    actions: TransactionFormActions,
+) {
+    val colors = CofferTheme.colors
+    val count = state.installments
+    val rateType = state.rateType ?: card.card.rateType
+    val rateText = state.rateText ?: percentText(card.card.rate)
+    AppCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Condiciones del crédito", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+            if (count > 1) Text("Diferido", style = MaterialTheme.typography.labelMedium, color = colors.warning)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Número de cuotas", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            IconButton(onClick = { actions.onInstallments(count - 1) }, enabled = count > 1) {
+                Icon(Icons.Outlined.Remove, contentDescription = "Menos cuotas", tint = colors.textPrimary)
+            }
+            Text(
+                if (count == 1) "1 cuota" else "$count cuotas",
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.textPrimary,
+            )
+            IconButton(onClick = { actions.onInstallments(count + 1) }, enabled = count < MAX_INSTALLMENTS) {
+                Icon(Icons.Outlined.Add, contentDescription = "Más cuotas", tint = colors.textPrimary)
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(QUICK_INSTALLMENTS) { n ->
+                AppChip(if (n == 1) "1 cuota" else "$n cuotas", selected = count == n, onClick = { actions.onInstallments(n) })
+            }
+        }
+        state.errors[TransactionField.INSTALLMENTS]?.let {
+            Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense)
+        }
+        if (count > 1) {
+            AppTextField(
+                value = rateText,
+                onValueChange = actions.onRate,
+                label = "Tasa de interés pactada (% ${rateTypeLabel(rateType)})",
+                keyboardType = KeyboardType.Decimal,
+                error = state.errors[TransactionField.RATE]?.message(),
+                help =
+                    parsePercent(rateText)?.let { "Editable para convenios con tasa 0 o preferencial · " + rateLabel(it, rateType) }
+                        ?: "Editable para convenios con tasa 0 o preferencial",
+            )
+        }
     }
 }

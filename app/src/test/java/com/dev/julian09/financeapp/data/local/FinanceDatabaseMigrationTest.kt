@@ -71,4 +71,28 @@ class FinanceDatabaseMigrationTest {
             close()
         }
     }
+
+    @Test
+    fun version3To4KeepsTheDataAndAddsTheCardTables() {
+        helper.createDatabase(3).apply {
+            execSQL(
+                "INSERT INTO accounts (id, name, type, initialBalance, includeInTotal, active, sortOrder, createdAt, updatedAt, " +
+                    "syncState) VALUES ('a1', 'Efectivo', 'CASH', 0, 1, 1, 0, 0, 0, 'SYNCED')",
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(4).apply {
+            prepare("SELECT name FROM accounts").use {
+                it.step()
+                assertEquals("Efectivo", it.getText(0))
+            }
+            listOf("credit_card_details", "deferred_purchases", "installments").forEach { table ->
+                prepare("SELECT COUNT(*) FROM $table").use {
+                    it.step()
+                    assertEquals(0L, it.getLong(0))
+                }
+            }
+            close()
+        }
+    }
 }
