@@ -140,6 +140,65 @@ data class RecurringExpenseEntity(
     val syncError: String? = null,
 )
 
+/** Terms of a CREDIT_CARD account (V8); [id] is the account's id. [rate] is the decimal fraction as text ("0.020000"). */
+@Entity(tableName = "credit_card_details", indices = [Index("syncState")])
+data class CreditCardDetailsEntity(
+    @PrimaryKey val id: UUID,
+    val creditLimit: Long,
+    val cutOffDay: Int,
+    val paymentDay: Int,
+    val rate: String,
+    /** EA or MV. */
+    val rateType: String,
+    val firstInstallmentInterestFree: Boolean = false,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.PENDING,
+    val syncError: String? = null,
+)
+
+/** A card purchase in 2 or more installments (V8); the plan is in installments. */
+@Entity(tableName = "deferred_purchases", indices = [Index("syncState"), Index("cardAccountId"), Index("purchaseTransactionId")])
+data class DeferredPurchaseEntity(
+    @PrimaryKey val id: UUID,
+    val cardAccountId: UUID,
+    val purchaseTransactionId: UUID,
+    val amount: Long,
+    val installmentsCount: Int,
+    val rate: String,
+    val rateType: String,
+    val firstInstallmentInterestFree: Boolean,
+    val firstDueDate: LocalDate,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.PENDING,
+    val syncError: String? = null,
+)
+
+/** One installment of a deferred purchase or, from S10, of a loan (exactly one owner, V8 ck_inst_owner). */
+@Entity(tableName = "installments", indices = [Index("syncState"), Index("deferredPurchaseId"), Index("dueDate")])
+data class InstallmentEntity(
+    @PrimaryKey val id: UUID,
+    val deferredPurchaseId: UUID? = null,
+    val loanAccountId: UUID? = null,
+    val number: Int,
+    val dueDate: LocalDate,
+    val principal: Long,
+    val interest: Long = 0,
+    val insurance: Long = 0,
+    val otherCosts: Long = 0,
+    /** SCHEDULED, PAID or CANCELLED. */
+    val status: String = "SCHEDULED",
+    val paidAt: Instant? = null,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.PENDING,
+    val syncError: String? = null,
+)
+
 /** History of a transaction (REQ-HIS-01): before and after are its synced data as JSON, null when it did not exist. */
 @Entity(tableName = "change_log", indices = [Index("syncState"), Index("transactionId")])
 data class ChangeLogEntity(
@@ -157,7 +216,7 @@ data class ChangeLogEntity(
     val syncError: String? = null,
 )
 
-/** Local-only key/value: pull_cursor, last_sync_at, last_sync_result, legacy_migrated. */
+/** Local-only key/value: pull_cursor, last_sync_at, last_sync_result, legacy_migrated, card_notified:<id>. */
 @Entity(tableName = "sync_meta")
 data class SyncMetaEntity(
     @PrimaryKey val key: String,

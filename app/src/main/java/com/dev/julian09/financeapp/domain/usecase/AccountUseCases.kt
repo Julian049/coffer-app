@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 private const val ACCOUNT_NAME_MAX = 60
 
-/** Cards and loans arrive in S7 and S10 (S4-UI01). */
+/** Accounts created by CreateAccount; a card goes through CreateCard (S7) and loans arrive in S10. */
 val AVAILABLE_ACCOUNT_TYPES = listOf(AccountType.CASH, AccountType.DEBIT, AccountType.SAVINGS)
 
 private fun nameError(name: String): LedgerError? =

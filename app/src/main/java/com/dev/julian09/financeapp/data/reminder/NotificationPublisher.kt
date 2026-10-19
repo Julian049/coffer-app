@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.dev.julian09.financeapp.MainActivity
 import com.dev.julian09.financeapp.R
+import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.Reminder
 import com.dev.julian09.financeapp.domain.model.ReminderKind
 import com.dev.julian09.financeapp.domain.port.ReminderNotifier
@@ -41,38 +42,38 @@ class NotificationPublisher
 
         override fun notify(reminder: Reminder) {
             if (!canNotify()) return
-            val r = reminder.recurring
+            val p = reminder.payment
             val manager = NotificationManagerCompat.from(context)
             manager.createNotificationChannel(
                 NotificationChannel(CHANNEL, "Pagos pendientes", NotificationManager.IMPORTANCE_DEFAULT),
             )
-            val amount = "$" + DecimalFormat("#,##0", DecimalFormatSymbols(ES_CO)).format(r.suggestedAmount.toBigDecimal())
+            val amount = "$" + DecimalFormat("#,##0", DecimalFormatSymbols(ES_CO)).format(p.amount.toBigDecimal())
             val title =
                 when (reminder.kind) {
-                    ReminderKind.WINDOW_OPEN -> "${r.name} vence el ${DAY_MONTH.format(r.nextDueDate).replace(".", "")}"
-                    ReminderKind.DUE_TODAY -> "Hoy vence ${r.name}"
+                    ReminderKind.WINDOW_OPEN -> "${p.title} vence el ${DAY_MONTH.format(p.dueDate).replace(".", "")}"
+                    ReminderKind.DUE_TODAY -> "Hoy vence ${p.title}"
                 }
             val open =
                 Intent(context, MainActivity::class.java)
-                    .putExtra(MainActivity.EXTRA_RECURRING_ID, r.id.toString())
+                    .putExtra(if (p is CardDue) MainActivity.EXTRA_CARD_ID else MainActivity.EXTRA_RECURRING_ID, p.id.toString())
                     .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             val notification =
                 NotificationCompat
                     .Builder(context, CHANNEL)
                     .setSmallIcon(R.drawable.ic_launcher_monochrome)
                     .setContentTitle(title)
-                    .setContentText("$amount · Toca para pagarlo u omitirlo")
+                    .setContentText(if (p is CardDue) "$amount · Toca para pagarla" else "$amount · Toca para pagarlo u omitirlo")
                     .setAutoCancel(true)
                     .setContentIntent(
                         PendingIntent.getActivity(
                             context,
-                            r.id.hashCode(),
+                            p.id.hashCode(),
                             open,
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                         ),
                     ).build()
             try {
-                manager.notify(r.id.hashCode(), notification)
+                manager.notify(p.id.hashCode(), notification)
             } catch (_: SecurityException) {
                 // The permission was revoked between the check and the call: no notice this time
             }

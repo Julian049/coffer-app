@@ -31,6 +31,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
@@ -133,9 +135,12 @@ fun TransactionDetailContent(
                     Line("Cuenta", d.accountName)
                 }
                 Line("Fecha y hora", dateTimeLabel(t.occurredAt, today, zone))
+                if (t.installments > 1) Line("Cuotas", "${t.installments} cuotas")
+                paymentKindLabel(t.paymentKind)?.let { Line("Tipo de pago", it) }
                 d.tagName?.let { Line("Etiqueta", "#$it") }
                 t.note?.let { Line("Nota", it) }
             }
+            if (t.principal != null) PaymentBreakdownCard(t)
             val created =
                 t.createdAt
                     ?.let {
@@ -152,14 +157,18 @@ fun TransactionDetailContent(
                 color = colors.textSecondary,
                 textAlign = TextAlign.Center,
             )
+            // A plan or a payment split cannot follow an edit: they are deleted and registered again
+            val editable = t.installments <= 1 && t.paymentKind == null
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                AppButton(
-                    "Editar",
-                    onClick = { onEdit(d) },
-                    kind = ButtonKind.Secondary,
-                    icon = Icons.Outlined.Edit,
-                    modifier = Modifier.weight(1f),
-                )
+                if (editable) {
+                    AppButton(
+                        "Editar",
+                        onClick = { onEdit(d) },
+                        kind = ButtonKind.Secondary,
+                        icon = Icons.Outlined.Edit,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 AppButton(
                     "Eliminar",
                     onClick = { confirming = true },
@@ -195,4 +204,29 @@ private fun Line(
         Text(label, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         Text(value, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, textAlign = TextAlign.End)
     }
+}
+
+private fun paymentKindLabel(kind: String?) =
+    when (kind) {
+        "CARD_MIN" -> "Pago mínimo"
+        "CARD_TOTAL" -> "Pago total"
+        else -> null
+    }
+
+/** Detalle de transacción · Pago de tarjeta (S7-UI03): only the principal lowers the debt (REQ-TC-11). */
+@Composable
+private fun PaymentBreakdownCard(t: Transaction) {
+    val colors = CofferTheme.colors
+    AppCard {
+        Text("Desglose del pago", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+        Line("Capital", formatMoney(t.principal ?: Money.ZERO))
+        Line("Intereses", formatMoney(t.interest ?: Money.ZERO))
+        Line("Otros cargos", formatMoney(t.fees ?: Money.ZERO))
+        Line("Total", formatMoney(t.amount))
+    }
+    Text(
+        "Intereses y cargos suman en la categoría «Intereses y cargos financieros» en la fecha de pago.",
+        style = MaterialTheme.typography.bodySmall,
+        color = colors.textSecondary,
+    )
 }

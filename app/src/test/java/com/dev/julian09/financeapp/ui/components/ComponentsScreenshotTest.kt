@@ -24,11 +24,19 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.AuthField
+import com.dev.julian09.financeapp.domain.model.CardOverview
+import com.dev.julian09.financeapp.domain.model.CardPeriod
+import com.dev.julian09.financeapp.domain.model.CardStatement
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
+import com.dev.julian09.financeapp.domain.model.CreditCard
+import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
+import com.dev.julian09.financeapp.domain.model.Installment
+import com.dev.julian09.financeapp.domain.model.InstallmentStatus
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.RecurringOverview
 import com.dev.julian09.financeapp.domain.model.RecurringPayment
@@ -49,6 +57,13 @@ import com.dev.julian09.financeapp.ui.feature.auth.LoginContent
 import com.dev.julian09.financeapp.ui.feature.auth.LoginUiState
 import com.dev.julian09.financeapp.ui.feature.auth.RegisterContent
 import com.dev.julian09.financeapp.ui.feature.auth.RegisterUiState
+import com.dev.julian09.financeapp.ui.feature.cards.CardDetailSections
+import com.dev.julian09.financeapp.ui.feature.cards.CardFormActions
+import com.dev.julian09.financeapp.ui.feature.cards.CardFormContent
+import com.dev.julian09.financeapp.ui.feature.cards.CardFormState
+import com.dev.julian09.financeapp.ui.feature.cards.PayCardActions
+import com.dev.julian09.financeapp.ui.feature.cards.PayCardContent
+import com.dev.julian09.financeapp.ui.feature.cards.PayCardState
 import com.dev.julian09.financeapp.ui.feature.categories.CategoriesContent
 import com.dev.julian09.financeapp.ui.feature.categories.CategoriesState
 import com.dev.julian09.financeapp.ui.feature.categories.CategoryLine
@@ -189,6 +204,24 @@ class ComponentsScreenshotTest {
 
     @Test
     fun transactionDetailLight() = capture("transaction_detail_light", dark = false) { TransactionDetailPreview() }
+
+    @Test
+    fun cardFormLight() = capture("card_form_light", dark = false) { CardForm() }
+
+    @Test
+    fun cardDetailLight() = capture("card_detail_light", dark = false) { CardDetail() }
+
+    @Test
+    fun cardDetailDark() = capture("card_detail_dark", dark = true) { CardDetail() }
+
+    @Test
+    fun payCardLight() = capture("pay_card_light", dark = false) { PayCard() }
+
+    @Test
+    fun transactionCardLight() = capture("transaction_card_light", dark = false) { TransactionWithCard() }
+
+    @Test
+    fun cardPaymentDetailLight() = capture("card_payment_detail_light", dark = false) { CardPaymentDetail() }
 
     private fun capture(
         name: String,
@@ -416,6 +449,89 @@ class ComponentsScreenshotTest {
     }
 
     @Composable
+    private fun CardForm() {
+        CardFormContent(
+            CardFormState(
+                name = "Visa Platinum",
+                limitDigits = "5000000",
+                availableDigits = "4200000",
+                cutOffDay = "20",
+                paymentDay = "5",
+                rateText = "2,0",
+                firstInstallmentInterestFree = true,
+            ),
+            CardFormActions(),
+        )
+    }
+
+    @Composable
+    private fun CardDetail() {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            CardDetailSections(CARD_OVERVIEW, onPay = {})
+        }
+    }
+
+    @Composable
+    private fun PayCard() {
+        Column(Modifier.padding(16.dp)) {
+            PayCardContent(
+                PayCardState(CARD_OVERVIEW, amountDigits = "250000", sourceId = BALANCES[1].account.id),
+                BALANCES,
+                PayCardActions(),
+            )
+        }
+    }
+
+    @Composable
+    private fun TransactionWithCard() {
+        TransactionFormContent(
+            TransactionFormState(
+                amountDigits = "1200000",
+                categoryId = CATEGORY_FOOD.id,
+                accountId = CARD_ID,
+                occurredAt = Instant.parse("2026-10-17T18:10:00Z"),
+                installments = 12,
+            ),
+            TransactionChoices(BALANCES + CARD_OVERVIEW.account, listOf(CATEGORY_FOOD), listOf(TAG), mapOf(CARD_ID to CARD_OVERVIEW)),
+            TransactionFormActions(),
+            today = TODAY,
+            zone = ZoneOffset.UTC,
+        )
+    }
+
+    @Composable
+    private fun CardPaymentDetail() {
+        TransactionDetailContent(
+            TransactionDetail(
+                Transaction(
+                    UUID(3, 2),
+                    TransactionType.TRANSFER,
+                    Money.ofPesos(250_000),
+                    Instant.parse("2026-10-17T14:02:00Z"),
+                    BALANCES[1].account.id,
+                    destinationAccountId = CARD_ID,
+                    note = "Pago Visa Platinum",
+                    principal = Money.ofPesos(218_000),
+                    interest = Money.ofPesos(32_000),
+                    fees = Money.ZERO,
+                    paymentKind = "CARD_MIN",
+                    createdAt = Instant.parse("2026-10-17T14:03:00Z"),
+                ),
+                null,
+                null,
+                "Bancolombia",
+                "Visa Platinum",
+                null,
+            ),
+            onBack = {},
+            onEdit = {},
+            onDelete = {},
+            today = TODAY,
+            zone = ZoneOffset.UTC,
+        )
+    }
+
+    @Composable
     private fun Accounts() {
         AccountsContent(BALANCES, onOpenSettings = {
         }, onNewAccount = {}, onOpenAccount = {}, onOpenOptions = {}, onOpenDeactivated = {}, avatarInitial = 'J')
@@ -553,3 +669,50 @@ class ComponentsScreenshotTest {
             )
     }
 }
+
+private val CARD_ID = UUID(9, 9)
+private val CARD_PURCHASE = UUID(9, 1)
+
+private val CARD_OVERVIEW =
+    CardOverview(
+        CreditCard(CARD_ID, Money.ofPesos(5_000_000), 20, 5, BigDecimal("0.02"), RateType.MV, true),
+        AccountBalance(
+            Account(CARD_ID, "Visa Platinum", AccountType.CREDIT_CARD, Money.ZERO),
+            AccountFlows(expense = Money.ofPesos(800_000)),
+        ),
+        CardStatement(
+            CardPeriod(LocalDate.parse("2026-09-21"), LocalDate.parse("2026-10-20"), LocalDate.parse("2026-11-05")),
+            onePayment = Money.ofPesos(38_000),
+            installmentsPrincipal = Money.ofPesos(180_000),
+            interest = Money.ofPesos(32_000),
+            fees = Money.ZERO,
+            paid = Money.ZERO,
+            debt = Money.ofPesos(800_000),
+            pendingInterest = Money.ofPesos(32_000),
+            pendingFees = Money.ZERO,
+        ),
+        listOf(
+            DeferredPurchase(
+                CARD_PURCHASE,
+                CARD_ID,
+                UUID(9, 2),
+                Money.ofPesos(1_200_000),
+                12,
+                BigDecimal("0.02"),
+                RateType.MV,
+                true,
+                LocalDate.parse("2026-09-05"),
+            ),
+        ),
+        (1..12).map {
+            Installment(
+                UUID(9, 100L + it),
+                CARD_PURCHASE,
+                it,
+                LocalDate.parse("2026-09-05").plusMonths(it - 1L),
+                Money.ofPesos(100_000),
+                if (it == 1) Money.ZERO else Money.ofPesos((13L - it) * 2_000),
+                status = if (it < 3) InstallmentStatus.PAID else InstallmentStatus.SCHEDULED,
+            )
+        },
+    )

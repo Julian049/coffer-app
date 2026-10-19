@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +40,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.Category
+import com.dev.julian09.financeapp.domain.model.DuePayment
 import com.dev.julian09.financeapp.domain.model.PendingPayment
 import com.dev.julian09.financeapp.domain.model.RecurringPayment
 import com.dev.julian09.financeapp.domain.model.Urgency
@@ -50,6 +53,7 @@ import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.EmptyState
 import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
+import com.dev.julian09.financeapp.ui.feature.cards.PayCardSheet
 import com.dev.julian09.financeapp.ui.feature.home.monthName
 import com.dev.julian09.financeapp.ui.feature.transactions.CircleIcon
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
@@ -74,7 +78,7 @@ fun dueLabel(daysLeft: Long): String =
 
 /** design-system: secondary when far, warning inside the window, danger when due in ≤ 2 days or overdue. */
 @Composable
-fun urgencyTint(pending: PendingPayment): Color {
+fun urgencyTint(pending: DuePayment): Color {
     val colors = CofferTheme.colors
     return when {
         pending.urgency != Urgency.UPCOMING -> colors.expense
@@ -93,10 +97,21 @@ fun RecurringScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var paying by rememberSaveable { mutableStateOf<String?>(null) }
+    var payingCard by rememberSaveable { mutableStateOf<String?>(null) }
     PendingSheets(paying?.let(UUID::fromString), onDismiss = { paying = null }, payNow = true)
+    PayCardSheet(payingCard?.let(UUID::fromString), onDismiss = { payingCard = null })
     RecurringContent(
         state,
-        RecurringActions(onBack, onNew, onEdit, onOpenTransaction, viewModel::setFilter, viewModel::skip) { paying = it.toString() },
+        RecurringActions(
+            onBack,
+            onNew,
+            onEdit,
+            onOpenTransaction,
+            viewModel::setFilter,
+            viewModel::skip,
+            onPay = { paying = it.toString() },
+            onPayCard = { payingCard = it.toString() },
+        ),
     )
 }
 
@@ -108,6 +123,7 @@ class RecurringActions(
     val onFilter: (RecurringFilter) -> Unit = {},
     val onSkip: (UUID) -> Unit = {},
     val onPay: (UUID) -> Unit = {},
+    val onPayCard: (UUID) -> Unit = {},
 )
 
 /** Gastos recurrentes (S6-UI01): the month's commitments, the next payments and what was paid this month. */
@@ -164,11 +180,13 @@ fun RecurringContent(
             )
             val overdue = overview.upcoming.filter { it.urgency == Urgency.OVERDUE }
             val upcoming = overview.upcoming - overdue.toSet()
+            val overdueCards = state.cards.filter { it.urgency == Urgency.OVERDUE }
+            val upcomingCards = state.cards - overdueCards.toSet()
             val chips =
                 listOf(
-                    RecurringFilter.ALL to "Todos (${overview.upcoming.size + overview.paid.size})",
-                    RecurringFilter.UPCOMING to "Próximos (${upcoming.size})",
-                    RecurringFilter.OVERDUE to "Vencidos (${overdue.size})",
+                    RecurringFilter.ALL to "Todos (${overview.upcoming.size + state.cards.size + overview.paid.size})",
+                    RecurringFilter.UPCOMING to "Próximos (${upcoming.size + upcomingCards.size})",
+                    RecurringFilter.OVERDUE to "Vencidos (${overdue.size + overdueCards.size})",
                     RecurringFilter.PAID to "Pagados (${overview.paid.size})",
                 )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 8.dp)) {
@@ -184,17 +202,25 @@ fun RecurringContent(
                     RecurringFilter.OVERDUE -> overdue
                     RecurringFilter.PAID -> emptyList()
                 }
+            val shownCards =
+                when (state.filter) {
+                    RecurringFilter.ALL -> state.cards
+                    RecurringFilter.UPCOMING -> upcomingCards
+                    RecurringFilter.OVERDUE -> overdueCards
+                    RecurringFilter.PAID -> emptyList()
+                }
             if (overview.upcoming.isEmpty() && overview.paid.isEmpty()) {
                 EmptyState(
                     title = "Sin gastos recurrentes",
                     message = "Programa el arriendo, los servicios o tus suscripciones y te avisaremos antes de cada pago.",
                 )
             }
-            if (shown.isNotEmpty()) {
+            if (shown.isNotEmpty() || shownCards.isNotEmpty()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Pagos próximos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
                     Text("Orden por vencimiento", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                 }
+                shownCards.forEach { CardRow(it, actions.onPayCard) }
                 shown.forEach { UpcomingRow(it, state.categories, actions) }
             }
             if (overview.paid.isNotEmpty() && (state.filter == RecurringFilter.ALL || state.filter == RecurringFilter.PAID)) {
@@ -280,6 +306,40 @@ private fun UpcomingRow(
                     TextButton(onClick = { actions.onSkip(r.id) }) { Text("Omitir", color = colors.textSecondary) }
                     TextButton(onClick = { actions.onEdit(r.id) }) { Text("Editar", color = colors.textSecondary) }
                     AppButton("Registrar pago", onClick = { actions.onPay(r.id) }, icon = Icons.Outlined.Check)
+                }
+            }
+        }
+    }
+}
+
+/** The payment of a card statement (S7-UI03): paid from Hoja · Pagar tarjeta, never skipped. */
+@Composable
+private fun CardRow(
+    due: CardDue,
+    onPay: (UUID) -> Unit,
+) {
+    val colors = CofferTheme.colors
+    AppCard(Modifier.fillMaxWidth()) {
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.width(4.dp).fillMaxHeight().background(urgencyTint(due), CofferShapes.pill))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CircleIcon(Icons.Outlined.CreditCard)
+                    Column(Modifier.weight(1f)) {
+                        Text(due.title, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary, maxLines = 1)
+                        Text(
+                            "Vence ${LONG_DATE.format(due.dueDate)} · pago mínimo",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(formatMoney(due.amount), style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                        Text(dueLabel(due.daysLeft), style = MaterialTheme.typography.labelMedium, color = urgencyTint(due))
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    AppButton("Pagar tarjeta", onClick = { onPay(due.id) }, icon = Icons.Outlined.Check)
                 }
             }
         }

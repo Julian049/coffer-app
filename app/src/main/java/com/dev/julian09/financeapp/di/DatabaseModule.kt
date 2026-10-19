@@ -50,4 +50,7 @@ object DatabaseModule {
 
     @Provides
     fun provideRecurringDao(db: FinanceDatabase) = db.recurring()
+
+    @Provides
+    fun provideCardDao(db: FinanceDatabase) = db.cards()
 }
