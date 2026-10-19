@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-18
+
 ### Added
 
 - Recurring expenses (S6-H01): Gastos recurrentes with the month's commitments (paid plus pending), filters Todos, Próximos, Vencidos and Pagados, and the form with weekly, biweekly, monthly, quarterly, yearly or custom frequencies; months are added to the start date, so the 31st falls on the last day of short months; a start in the past begins at the next date from today; reached from Settings; synced as `recurringExpense` (Room version 3)
