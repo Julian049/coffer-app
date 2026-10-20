@@ -55,6 +55,7 @@ import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.EmptyState
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
+import com.dev.julian09.financeapp.ui.feature.transactions.categoryLabel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -279,8 +280,9 @@ private fun FiltersSheet(
                 }
             }
             Section("Categoría y subcategoría") {
-                choices.categories.forEach { c ->
-                    AppChip(c.name, c.id in f.categoryIds, onClick = {
+                // "Padre > Sub", sorted so each subcategory follows its parent (E3, #77)
+                choices.categories.map { it to categoryLabel(it, choices.categories) }.sortedBy { it.second }.forEach { (c, label) ->
+                    AppChip(label, c.id in f.categoryIds, onClick = {
                         f =
                             f.copy(categoryIds = f.categoryIds.toggle(c.id))
                     })
