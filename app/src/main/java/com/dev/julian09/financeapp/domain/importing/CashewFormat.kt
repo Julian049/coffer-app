@@ -21,13 +21,16 @@ import java.time.format.DateTimeParseException
  * The CSV that Cashew exports (S8-H01, planning of 2026-10-19): `account, amount, …, title, note, date, income, …,
  * category name, subcategory name, …, budget, …`. One signed amount (negative = expense); a transfer is two rows,
  * "<A> Transfer Out" and "<B> Transfer In", with the note "Transferred Balance\nA → B", one second apart. The budget
- * is how Cashew users group expenses (SRS §1.2): it becomes the tag.
+ * is how Cashew users group expenses (SRS §1.2): it becomes the tag. Cashew also exports what is not paid yet
+ * (pending loans, future subscriptions) with an "amount unpaid"; only the paid part counts in its balances, so only
+ * that part is imported (coffer-app#72).
  */
 object CashewFormat {
     private val COLUMNS =
         mapOf(
             ImportField.DATE to "date",
             ImportField.AMOUNT to "amount",
+            ImportField.AMOUNT_UNPAID to "amount unpaid",
             ImportField.ACCOUNT to "account",
             ImportField.CATEGORY to "category name",
             ImportField.SUBCATEGORY to "subcategory name",
@@ -57,25 +60,29 @@ object CashewFormat {
     ): Sequence<ParsedRow> =
         sequence {
             val index = mapping.mapValues { (_, column) -> column?.let { headers.indexOf(it) }?.takeIf { it >= 0 } }
-            var waiting: Raw.Row? = null
+            // Transfer halves waiting for their pair, which is not always the next row (coffer-app#72)
+            val waiting = mutableListOf<Raw.Row>()
             for (record in records) {
                 val raw = read(record, index, zone)
-                val half = waiting
-                if (half != null) {
-                    waiting = null
-                    if (raw is Raw.Row && half.pairsWith(raw)) {
-                        yield(half.transferWith(raw))
-                        continue
-                    }
-                    yield(half.alone())
+                if (raw is Raw.Row) {
+                    // A half more than a minute away from this row will not find its pair any more
+                    val stale = waiting.filter { !it.closeTo(raw) }
+                    waiting -= stale.toSet()
+                    stale.forEach { yield(it.alone()) }
                 }
                 if (raw is Raw.Row && raw.transferNote != null) {
-                    waiting = raw
+                    val partner = waiting.firstOrNull { it.pairsWith(raw) }
+                    if (partner != null) {
+                        waiting -= partner
+                        yield(partner.transferWith(raw))
+                    } else {
+                        waiting += raw
+                    }
                 } else {
                     yield(raw.alone())
                 }
             }
-            waiting?.let { yield(it.alone()) }
+            waiting.forEach { yield(it.alone()) }
         }
 
     private sealed interface Raw {
@@ -87,6 +94,12 @@ object CashewFormat {
             override fun alone() = ParsedRow.Invalid(error)
         }
 
+        data class Unpaid(
+            val line: Int,
+        ) : Raw {
+            override fun alone() = ParsedRow.Unpaid(line)
+        }
+
         data class Row(
             val row: ImportRow,
             /** "A → B" of a transfer half. */
@@ -96,11 +109,13 @@ object CashewFormat {
             override fun alone(): ParsedRow =
                 if (row.category == null) ParsedRow.Invalid(RowError(row.line, RowProblem.CATEGORY)) else ParsedRow.Valid(row)
 
+            fun closeTo(other: Row) = Duration.between(row.occurredAt, other.row.occurredAt).abs().seconds <= PAIR_SECONDS
+
             fun pairsWith(other: Row) =
                 transferNote == other.transferNote &&
                     signed.signum() != other.signed.signum() &&
                     signed.abs().compareTo(other.signed.abs()) == 0 &&
-                    Duration.between(row.occurredAt, other.row.occurredAt).abs().seconds <= PAIR_SECONDS
+                    closeTo(other)
 
             /** The outgoing half gives the source and the incoming one the destination. */
             fun transferWith(other: Row): ParsedRow {
@@ -128,9 +143,12 @@ object CashewFormat {
 
         val line = record.line
         val at = field(ImportField.DATE)?.let { date(it) } ?: return Raw.Bad(RowError(line, RowProblem.DATE))
-        val signed =
+        val total =
             field(ImportField.AMOUNT)?.toBigDecimalOrNull()?.takeIf { it.signum() != 0 && it.abs() < MAX_AMOUNT }
                 ?: return Raw.Bad(RowError(line, RowProblem.AMOUNT))
+        // Only the paid part: "amount unpaid" has the same sign as the amount
+        val signed = total - (field(ImportField.AMOUNT_UNPAID)?.toBigDecimalOrNull() ?: BigDecimal.ZERO)
+        if (signed.signum() == 0 || signed.signum() != total.signum()) return Raw.Unpaid(line)
         val account = field(ImportField.ACCOUNT) ?: return Raw.Bad(RowError(line, RowProblem.ACCOUNT))
         val note = field(ImportField.NOTE)
         val transfer = note?.lines()?.firstOrNull { ARROW in it }?.trim()
