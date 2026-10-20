@@ -37,7 +37,8 @@ class CashewFormatTest {
     @Test
     fun theTwoHalvesOfATransferBecomeOneTransfer() {
         val transfers = rows().filterIsInstance<ParsedRow.Valid>().map { it.row }.filter { it.type == TransactionType.TRANSFER }
-        val t = transfers.single()
+        assertEquals(2, transfers.size)
+        val t = transfers.single { it.account == "Tarjeta A" }
         assertEquals("Tarjeta A", t.account)
         assertEquals("Banco", t.destination)
         assertEquals(Money.ofPesos(30_000), t.amount)
@@ -48,7 +49,7 @@ class CashewFormatTest {
     @Test
     fun rowsKeepTheirSignTitleNoteBudgetAndSubcategory() {
         val valid = rows().filterIsInstance<ParsedRow.Valid>().map { it.row }
-        assertEquals(10, valid.size)
+        assertEquals(13, valid.size)
         val lunch = valid.first { it.note?.startsWith("Lunch") == true }
         assertEquals("Lunch · con, coma", lunch.note)
         assertEquals("Going out", lunch.tag)
@@ -56,6 +57,19 @@ class CashewFormatTest {
         val bike = valid.first { it.subcategory != null }
         assertEquals("Finance" to "Debts", bike.category to bike.subcategory)
         assertTrue(valid.any { it.type == TransactionType.INCOME && it.amount == Money.ofPesos(400_000) })
+    }
+
+    @Test
+    fun onlyWhatIsPaidIsImportedAndHalvesPairEvenWhenNotNextToEachOther() {
+        val all = rows()
+        assertEquals(2, all.count { it is ParsedRow.Unpaid })
+        val valid = all.filterIsInstance<ParsedRow.Valid>().map { it.row }
+        // A loan of 10.000 with 4.000 still unpaid counts 6.000
+        assertEquals(Money.ofPesos(6_000), valid.single { it.note == "Préstamo a Leo" }.amount)
+        val cashToBank = valid.single { it.type == TransactionType.TRANSFER && it.account == "Cash" }
+        assertEquals("Banco", cashToBank.destination)
+        assertEquals(Money.ofPesos(5_000), cashToBank.amount)
+        assertTrue(valid.any { it.note == "Tinto" })
     }
 
     @Test
@@ -88,11 +102,13 @@ class CashewFormatTest {
     }
 
     @Test
-    fun theSameMinuteAmountAccountAndTypeIsADuplicate() {
+    fun onlyWhatIsAlreadyStoredIsADuplicate() {
         val at = Instant.parse("2026-10-17T05:34:57Z")
         val detector = DuplicateDetector(listOf(DuplicateKey.of(at, Money.ofPesos(2_500), "cash", TransactionType.EXPENSE)))
         assertTrue(detector.isDuplicate(DuplicateKey.of(at.plusSeconds(2), Money.ofPesos(2_500), "cash", TransactionType.EXPENSE)))
-        assertTrue(!detector.isDuplicate(DuplicateKey.of(at, Money.ofPesos(2_500), "cash", TransactionType.INCOME)))
-        assertTrue(detector.isDuplicate(DuplicateKey.of(at, Money.ofPesos(2_500), "cash", TransactionType.INCOME)))
+        // Two equal rows of the same file are two real movements (coffer-app#72)
+        val fare = DuplicateKey.of(at, Money.ofPesos(2_500), "cash", TransactionType.INCOME)
+        assertTrue(!detector.isDuplicate(fare))
+        assertTrue(!detector.isDuplicate(fare))
     }
 }

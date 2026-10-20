@@ -108,11 +108,13 @@ class PreviewImport
                 var errorCount = 0
                 var valid = 0
                 var duplicates = 0
+                var unpaid = 0
                 val unknownAccounts = linkedSetOf<String>()
                 val unknownCategories = linkedSetOf<CategoryRef>()
                 val accountNames = known.map { nameKey(it.name) }.toSet()
                 for (parsed in parse(source, table, used, clock)) {
                     when (parsed) {
+                        is ParsedRow.Unpaid -> unpaid++
                         is ParsedRow.Invalid -> {
                             errorCount++
                             if (errors.size < ERRORS_SHOWN) errors += parsed.error
@@ -144,6 +146,7 @@ class PreviewImport
                     errors = errors,
                     errorCount = errorCount,
                     duplicates = duplicates,
+                    unpaid = unpaid,
                     unknownAccounts = unknownAccounts.toList(),
                     unknownCategories = unknownCategories.toList(),
                 )
@@ -206,6 +209,10 @@ class RunImport
             files.read(plan.uri).use { table ->
                 for (parsed in parse(plan.source, table, plan.mapping, clock)) {
                     handled++
+                    if (parsed is ParsedRow.Unpaid) {
+                        skipped++
+                        continue
+                    }
                     val row = (parsed as? ParsedRow.Valid)?.row
                     val account = row?.let { accountIds[nameKey(it.account)] }
                     val destination = row?.destination?.let { accountIds[nameKey(it)] }

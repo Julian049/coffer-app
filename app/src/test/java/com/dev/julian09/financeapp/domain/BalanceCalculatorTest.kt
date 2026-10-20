@@ -35,6 +35,8 @@ class BalanceCalculatorTest {
         val card = account(AccountType.CREDIT_CARD, initial = 1_000_000)
         val debt = AccountFlows(expense = pesos(200_000), transfersIn = pesos(300_000))
         assertEquals(pesos(-900_000), BalanceCalculator.balance(card, debt))
+        // A refund on the card lowers the debt too (coffer-app#72)
+        assertEquals(pesos(-850_000), BalanceCalculator.balance(card, debt.copy(income = pesos(50_000))))
     }
 
     @Test
