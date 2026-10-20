@@ -188,7 +188,7 @@ private fun Cards(
     val colors = CofferTheme.colors
     val status = catalog.status
     AppCard(Modifier.fillMaxWidth()) {
-        CircleIcon(Icons.Outlined.FileUpload)
+        CircleIcon(Icons.Outlined.FileDownload)
         Text("Importar movimientos", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
         Text(
             "Desde el CSV que exporta Cashew. Podrás revisar las columnas, ver una vista previa y decidir qué hacer con las " +
@@ -250,7 +250,7 @@ private fun ExportCard(
     val colors = CofferTheme.colors
     var picking by rememberSaveable { mutableStateOf(false) }
     AppCard(Modifier.fillMaxWidth()) {
-        CircleIcon(Icons.Outlined.FileDownload)
+        CircleIcon(Icons.Outlined.FileUpload)
         Text("Exportar a CSV", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
         Text("Descarga tus transacciones en un archivo CSV.", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
         Text("Rango de fechas (opcional)", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
@@ -278,7 +278,7 @@ private fun ExportCard(
             "Exportar CSV",
             onClick = actions.onExport,
             kind = ButtonKind.Secondary,
-            icon = Icons.Outlined.FileDownload,
+            icon = Icons.Outlined.FileUpload,
             modifier = Modifier.fillMaxWidth(),
         )
     }
