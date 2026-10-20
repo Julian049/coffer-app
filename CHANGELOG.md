@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `develop` carries the `v1.0.1` hotfix (back-merge from `main`); CLAUDE.md describes it and the pause after `v1.0.0`
+
 ## [1.0.1] - 2026-10-20
 
 ### Fixed
