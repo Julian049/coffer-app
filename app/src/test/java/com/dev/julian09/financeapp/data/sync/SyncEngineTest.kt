@@ -260,7 +260,7 @@ class SyncEngineTest {
         id: UUID,
         name: String,
         at: Instant,
-    ) = AccountEntity(id = id, name = name, type = "DEBIT", initialBalance = 0, createdAt = at, updatedAt = at)
+    ) = AccountEntity(id = id, name = name, type = "SAVINGS", initialBalance = 0, createdAt = at, updatedAt = at)
 
     private fun allApplied(body: JsonObject): MockResponse {
         val results = body["changes"]!!.jsonArray.joinToString(",") { """{"id":${it.jsonObject["id"]},"status":"APPLIED","version":1}""" }
@@ -284,7 +284,7 @@ class SyncEngineTest {
         change(
             "account",
             id,
-            """{"name":"Bancolombia","type":"DEBIT","initialBalance":"1250000.0000","includeInTotal":true,"active":true,"sortOrder":0}""",
+            """{"name":"Bancolombia","type":"SAVINGS","initialBalance":"1250000.0000","includeInTotal":true,"active":true,"sortOrder":0}""",
         )
 
     private fun categoryChange(id: UUID) =

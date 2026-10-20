@@ -53,8 +53,10 @@ import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.EmptyState
+import com.dev.julian09.financeapp.ui.components.FabClearance
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
+import com.dev.julian09.financeapp.ui.feature.transactions.categoryLabel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -155,7 +157,13 @@ fun HistoryContent(
                 .map { YearMonth.from(it.date) }
                 .distinct()
                 .size > 1
-        LazyColumn(state = listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // The field owns its text: echoing it back from the search flow moved the cursor while typing (E1, #75)
+        var query by rememberSaveable { mutableStateOf(state.query) }
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = FabClearance),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(state.months) { m ->
@@ -165,8 +173,11 @@ fun HistoryContent(
             }
             item {
                 AppTextField(
-                    value = state.query,
-                    onValueChange = actions.onQuery,
+                    value = query,
+                    onValueChange = {
+                        query = it
+                        actions.onQuery(it)
+                    },
                     label = "Buscar",
                     placeholder = "Nota, categoría, cuenta o etiqueta",
                     leadingIcon = Icons.Outlined.Search,
@@ -274,8 +285,9 @@ private fun FiltersSheet(
                 }
             }
             Section("Categoría y subcategoría") {
-                choices.categories.forEach { c ->
-                    AppChip(c.name, c.id in f.categoryIds, onClick = {
+                // "Padre > Sub", sorted so each subcategory follows its parent (E3, #77)
+                choices.categories.map { it to categoryLabel(it, choices.categories) }.sortedBy { it.second }.forEach { (c, label) ->
+                    AppChip(label, c.id in f.categoryIds, onClick = {
                         f =
                             f.copy(categoryIds = f.categoryIds.toggle(c.id))
                     })

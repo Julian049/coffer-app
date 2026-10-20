@@ -29,7 +29,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.usecase.TransactionField
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
@@ -37,6 +36,7 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
+import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.transactions.AccountPicker
@@ -136,7 +136,8 @@ fun PendingSheets(
             ) {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     AppTextField(
-                        value = if (state.amountDigits.isEmpty()) "" else formatMoney(Money.ofPesos(state.amountDigits.toLong())),
+                        value = state.amountDigits,
+                        visualTransformation = PesosTransformation(),
                         onValueChange = viewModel::setAmount,
                         label = "Monto",
                         keyboardType = KeyboardType.Number,

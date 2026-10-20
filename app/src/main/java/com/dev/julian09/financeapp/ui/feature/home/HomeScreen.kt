@@ -57,6 +57,7 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
+import com.dev.julian09.financeapp.ui.components.FabClearance
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.components.accountIcon
@@ -157,7 +158,10 @@ fun HomeContent(
         if (state == null) return@Column
         val dashboard = state.dashboard
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = FabClearance),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -33,6 +33,7 @@ import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.ButtonKind
+import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
@@ -108,7 +109,8 @@ fun PayCardContent(
         ) { actions.onKind(CardPaymentKind.TOTAL) }
         AccountPicker("Cuenta de origen", sources, state.sourceId, state.errors[TransactionField.ACCOUNT], actions.onSource)
         AppTextField(
-            value = if (state.amountDigits.isEmpty()) "" else formatMoney(state.amount),
+            value = state.amountDigits,
+            visualTransformation = PesosTransformation(),
             onValueChange = actions.onAmount,
             label = "Monto a pagar",
             keyboardType = KeyboardType.Number,

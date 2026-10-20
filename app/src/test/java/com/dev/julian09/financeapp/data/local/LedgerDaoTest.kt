@@ -43,7 +43,7 @@ class LedgerDaoTest {
 
             val active = AccountRepositoryImpl(db, db.accounts(), db.transactions(), FixedClock()).observeActive().first()
             assertEquals(listOf("Bancolombia", "Ahorros"), active.map { it.name })
-            assertEquals(AccountType.DEBIT, active.first().type)
+            assertEquals(AccountType.SAVINGS, active.first().type)
             assertEquals(Money.ofPesos(1_250_000), active.first().initialBalance)
         }
 
@@ -91,7 +91,7 @@ class LedgerDaoTest {
     ) = AccountEntity(
         id = UUID.randomUUID(),
         name = name,
-        type = "DEBIT",
+        type = "SAVINGS",
         initialBalance = Money.ofPesos(1_250_000).scaled,
         active = active,
         sortOrder = sortOrder,

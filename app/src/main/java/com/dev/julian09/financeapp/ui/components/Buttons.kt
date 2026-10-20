@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +18,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+
+/** Bottom space for the lists under the + of Home and History: its 56 dp plus 16 dp around, so the last row shows (E7, #81). */
+val FabClearance = 88.dp
 
 /**
  * One family of actions (design-system.md §2): `Primary` (espresso / latte), `Secondary` (surface with border),
@@ -32,6 +36,8 @@ fun AppButton(
     kind: ButtonKind = ButtonKind.Primary,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    // false keeps a brand logo in its own colors (the Google "G")
+    tintIcon: Boolean = true,
 ) {
     val colors = CofferTheme.colors
     val (container, content) =
@@ -61,7 +67,7 @@ fun AppButton(
         elevation = null,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        ButtonContent(text, icon)
+        ButtonContent(text, icon, tintIcon)
     }
 }
 
@@ -69,9 +75,15 @@ fun AppButton(
 private fun RowScope.ButtonContent(
     text: String,
     icon: ImageVector?,
+    tintIcon: Boolean,
 ) {
     if (icon != null) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = if (tintIcon) LocalContentColor.current else Color.Unspecified,
+        )
         Spacer(Modifier.size(8.dp))
     }
     Text(text, style = MaterialTheme.typography.titleSmall)

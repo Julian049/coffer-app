@@ -505,7 +505,7 @@ class ComponentsScreenshotTest {
                         unknownAccounts = listOf("RappiCard"),
                         unknownCategories = listOf(dining),
                     ),
-                accounts = mapOf("RappiCard" to AccountResolution.Create(AccountType.DEBIT)),
+                accounts = mapOf("RappiCard" to AccountResolution.Create(AccountType.SAVINGS)),
                 categories = mapOf(dining to CategoryResolution.Use(CATEGORY_FOOD.id)),
             ),
             ImportCatalog(accounts = BALANCES.map { it.account }, categories = listOf(CATEGORY_FOOD)),
@@ -606,7 +606,7 @@ class ComponentsScreenshotTest {
     @Composable
     private fun AccountNew() {
         AccountFormContent(
-            AccountFormState(name = "Bancolombia Nómina", balanceDigits = "500000", type = AccountType.DEBIT, icon = "bank"),
+            AccountFormState(name = "Bancolombia Nómina", balanceDigits = "500000", type = AccountType.SAVINGS, icon = "bank"),
             onBack = {},
             onName = {},
             onBalance = {},
@@ -709,7 +709,7 @@ class ComponentsScreenshotTest {
             listOf(
                 AccountBalance(Account(UUID(0, 1), "Billetera", AccountType.CASH, Money.ofPesos(150_000), icon = "cash"), AccountFlows()),
                 AccountBalance(
-                    Account(UUID(0, 2), "Bancolombia", AccountType.DEBIT, Money.ofPesos(500_000), icon = "bank", color = "#2F7A45"),
+                    Account(UUID(0, 2), "Bancolombia", AccountType.SAVINGS, Money.ofPesos(500_000), icon = "bank", color = "#2F7A45"),
                     AccountFlows(Money.ofPesos(2_400_000), Money.ofPesos(1_264_000), Money.ofPesos(886_000), Money.ofPesos(100_000)),
                     38,
                 ),

@@ -35,7 +35,7 @@ class ConfirmDeleteAccountTest {
     val compose = createComposeRule()
 
     private val account =
-        AccountBalance(Account(UUID.randomUUID(), "Bancolombia Débito", AccountType.DEBIT, Money.ofPesos(850_000)), AccountFlows(), 38)
+        AccountBalance(Account(UUID.randomUUID(), "Bancolombia Débito", AccountType.SAVINGS, Money.ofPesos(850_000)), AccountFlows(), 38)
 
     @Test
     fun theButtonEnablesOnlyWithTheName() {

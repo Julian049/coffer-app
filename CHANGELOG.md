@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `develop` carries the `v1.0.1` hotfix (back-merge from `main`); CLAUDE.md describes it and the pause after `v1.0.0`
+- The debit account type is gone: it was the same as savings. Nueva cuenta no longer offers it and the Cashew import creates savings accounts (#84)
+
+### Fixed
+
+- Typing in an amount or in the history search no longer jumps the cursor back or reorders letters: amount fields keep only the digits and draw `$1.250.000` on top (#75)
+- The history search looks in the whole history, not just the selected month, unless Filtros set a date range (#79)
+- Filtros shows subcategories as "Padre > Sub", so two subcategories with the same name can be told apart (#77)
+- The name typed in Nueva cuenta is kept after choosing Tarjeta de crédito (#78)
+- Bottom sheets no longer draw a stray line across the screen (#80)
+- The last row of Home and History is no longer hidden behind the + button (#81)
+- The import and export icons were swapped (#82)
+- "Continuar con Google" shows the Google logo (#83)
 
 ## [1.0.1] - 2026-10-20
 
