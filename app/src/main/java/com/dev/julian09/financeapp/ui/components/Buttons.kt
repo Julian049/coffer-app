@@ -78,7 +78,12 @@ private fun RowScope.ButtonContent(
     tintIcon: Boolean,
 ) {
     if (icon != null) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = if (tintIcon) LocalContentColor.current else Color.Unspecified)
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = if (tintIcon) LocalContentColor.current else Color.Unspecified,
+        )
         Spacer(Modifier.size(8.dp))
     }
     Text(text, style = MaterialTheme.typography.titleSmall)

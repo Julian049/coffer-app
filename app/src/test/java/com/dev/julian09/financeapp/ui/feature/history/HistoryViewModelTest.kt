@@ -89,7 +89,10 @@ class HistoryViewModelTest {
             // Without a range, a search looks in the whole history, not just the month (E5)
             assertEquals(2, vm.current { !it.filters.customRange && it.query == "efect" }.totals.count)
             vm.setQuery("")
-            assertEquals(listOf(LocalDate.parse("2026-10-10")), vm.current { !it.filters.customRange && it.query.isEmpty() }.days.map { it.date })
+            assertEquals(
+                listOf(LocalDate.parse("2026-10-10")),
+                vm.current { !it.filters.customRange && it.query.isEmpty() }.days.map { it.date },
+            )
         }
 
     @Test

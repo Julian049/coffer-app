@@ -158,7 +158,10 @@ fun HomeContent(
         if (state == null) return@Column
         val dashboard = state.dashboard
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = FabClearance),
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = FabClearance),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
