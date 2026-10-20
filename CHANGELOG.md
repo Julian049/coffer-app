@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `develop` carries the `v1.0.1` hotfix (back-merge from `main`); CLAUDE.md describes it and the pause after `v1.0.0`
+
+## [1.0.1] - 2026-10-20
+
+### Fixed
+
+- A credit card's (or loan's) balance ignored its income: a refund, or a payment recorded as income, did not lower the debt (#72)
+- Importing from Cashew brought in what Cashew does not count yet (pending loans, future subscriptions with an "amount unpaid"); now only the paid part is imported and the rest is reported as pending (#72)
+- The two halves of a Cashew transfer are joined even when other rows sit between them, so they no longer count as an expense and an income (#72)
+- Rows of the same file are no longer flagged as duplicates of each other (two bus fares in the same minute are two movements); duplicates are looked for only among the movements already in Coffer (#72)
+
 ## [1.0.0] - 2026-10-19
 
 ### Added

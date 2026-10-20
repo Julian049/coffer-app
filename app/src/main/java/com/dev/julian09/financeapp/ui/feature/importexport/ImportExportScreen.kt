@@ -223,7 +223,7 @@ private fun Cards(
                 color = colors.textSecondary,
             )
             Figure("Importadas", last.imported.toString(), colors.income)
-            Figure("Omitidas por duplicadas", last.skipped.toString(), colors.textPrimary)
+            Figure("Omitidas (duplicadas o pendientes)", last.skipped.toString(), colors.textPrimary)
             Figure("Con error", last.errors.toString(), if (last.errors > 0) colors.expense else colors.textPrimary)
         }
     }
@@ -326,6 +326,7 @@ private fun fieldLabel(field: ImportField) =
     when (field) {
         ImportField.DATE -> "Fecha"
         ImportField.AMOUNT -> "Monto (negativo = gasto)"
+        ImportField.AMOUNT_UNPAID -> "Monto pendiente (no se importa)"
         ImportField.ACCOUNT -> "Cuenta"
         ImportField.CATEGORY -> "Categoría"
         ImportField.SUBCATEGORY -> "Subcategoría"
@@ -439,6 +440,7 @@ private fun ReviewStep(
             },
         )
         Figure("Posibles duplicadas", preview.duplicates.toString(), colors.textPrimary)
+        if (preview.unpaid > 0) Figure("Pendientes en Cashew (no se importan)", preview.unpaid.toString(), colors.textPrimary)
         preview.errors.take(5).forEach {
             Text("Fila ${it.line}: ${problemLabel(it.problem)}", style = MaterialTheme.typography.bodySmall, color = colors.expense)
         }

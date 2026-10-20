@@ -80,12 +80,32 @@ class ImportTest {
     fun thePreviewListsErrorsDuplicatesAndUnknownNames() =
         runBlocking {
             val p = preview(ImportSource.CASHEW, sample())
-            assertEquals(10, p.valid)
+            assertEquals(13, p.valid)
             assertEquals(1, p.errorCount)
-            assertEquals(1, p.duplicates)
+            // Rows of the same file are not duplicates of each other (coffer-app#72)
+            assertEquals(0, p.duplicates)
+            assertEquals(2, p.unpaid)
             assertEquals(listOf("Banco", "Tarjeta A", "Cash", "Tarjeta B"), p.unknownAccounts)
-            assertEquals(6, p.unknownCategories.size)
+            assertEquals(7, p.unknownCategories.size)
             assertTrue(CategoryRef(CategoryKind.EXPENSE, "Finance", "Debts") in p.unknownCategories)
+        }
+
+    @Test
+    fun aRefundOnACardLowersItsDebt() =
+        runBlocking {
+            val card = f.account("Tarjeta", type = "CREDIT_CARD")
+            val food = f.category("Comida")
+            val income = f.category("Reembolsos", kind = "INCOME")
+            f.tx("EXPENSE", 100_000, card, category = food)
+            f.tx("INCOME", 30_000, card, category = income)
+            assertEquals(
+                Money.ofPesos(-70_000),
+                f.accounts
+                    .observeBalances()
+                    .first()
+                    .single()
+                    .balance,
+            )
         }
 
     @Test
@@ -113,14 +133,14 @@ class ImportTest {
                 p.unknownCategories.associateWith { CategoryResolution.Create } +
                     (CategoryRef(CategoryKind.EXPENSE, "Dining") to CategoryResolution.Use(dining))
             val summary = run(plan(uri, accounts, categories, p.mapping))
-            assertEquals(9, summary.imported)
-            assertEquals(1, summary.skipped)
+            assertEquals(13, summary.imported)
+            assertEquals(2, summary.skipped) // the two unpaid ones
             assertEquals(1, summary.errors)
 
             val all = f.transactions.observeSince(Instant.EPOCH).first()
-            assertEquals(9, all.size)
+            assertEquals(13, all.size)
             assertEquals(2, all.count { it.categoryId == dining })
-            val transfer = all.single { it.type == TransactionType.TRANSFER }
+            val transfer = all.single { it.type == TransactionType.TRANSFER && it.amount == Money.ofPesos(30_000) }
             assertEquals(existing, transfer.destinationAccountId)
             assertEquals(Money.ofPesos(30_000), transfer.amount)
             assertTrue(all.all { it.pendingSync })
@@ -135,7 +155,7 @@ class ImportTest {
             val finance = f.categories.observeAll().first()
             assertTrue(finance.any { it.name == "Debts" && it.parentId == finance.single { c -> c.name == "Finance" }.id })
             assertEquals(
-                9,
+                13,
                 f.db
                     .changeLog()
                     .pending(100)
@@ -146,7 +166,7 @@ class ImportTest {
             // AT-HU11-3: the same file again only finds duplicates
             val again = run(plan(uri, accounts, categories, p.mapping))
             assertEquals(0, again.imported)
-            assertEquals(10, again.skipped)
+            assertEquals(15, again.skipped)
             assertEquals(
                 SyncState.PENDING,
                 f.db

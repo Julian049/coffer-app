@@ -14,8 +14,9 @@ object BalanceCalculator {
         flows: AccountFlows,
     ): Money =
         if (account.type.isDebt) {
-            // Only the principal of a payment lowers the debt; the query already sums coalesce(principal, amount)
-            -account.initialBalance - flows.expense - flows.transfersOut + flows.transfersIn
+            // Only the principal of a payment lowers the debt; the query already sums coalesce(principal, amount).
+            // An income (a refund, a payment recorded as income) lowers it too (coffer-app#72)
+            -account.initialBalance + flows.income - flows.expense - flows.transfersOut + flows.transfersIn
         } else {
             account.initialBalance + flows.income - flows.expense - flows.transfersOut + flows.transfersIn
         }
