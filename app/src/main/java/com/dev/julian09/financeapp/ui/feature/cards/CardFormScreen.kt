@@ -41,10 +41,13 @@ import com.dev.julian09.financeapp.ui.theme.CofferTheme
 @Composable
 fun CardFormScreen(
     onBack: () -> Unit,
+    name: String = "",
     viewModel: CardFormViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.saved) { if (state.saved) onBack() }
+    // Keeps the name typed in Nueva cuenta before choosing Tarjeta de crédito (E4, #78)
+    LaunchedEffect(Unit) { if (state.editingId == null && state.name.isEmpty()) viewModel.setName(name) }
     CardFormContent(
         state,
         CardFormActions(

@@ -62,7 +62,7 @@ fun AccountFormScreen(
     LaunchedEffect(state.saved) { if (state.saved) onBack() }
     // A card has its own form, for a new one and for the edit (S7-UI01)
     if (state.type == AccountType.CREDIT_CARD) {
-        CardFormScreen(onBack = onBack)
+        CardFormScreen(onBack = onBack, name = state.name)
         return
     }
     AccountFormContent(
