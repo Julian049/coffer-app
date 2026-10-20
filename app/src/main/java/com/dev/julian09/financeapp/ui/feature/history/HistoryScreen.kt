@@ -155,6 +155,8 @@ fun HistoryContent(
                 .map { YearMonth.from(it.date) }
                 .distinct()
                 .size > 1
+        // The field owns its text: echoing it back from the search flow moved the cursor while typing (E1, #75)
+        var query by rememberSaveable { mutableStateOf(state.query) }
         LazyColumn(state = listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -165,8 +167,11 @@ fun HistoryContent(
             }
             item {
                 AppTextField(
-                    value = state.query,
-                    onValueChange = actions.onQuery,
+                    value = query,
+                    onValueChange = {
+                        query = it
+                        actions.onQuery(it)
+                    },
                     label = "Buscar",
                     placeholder = "Nota, categoría, cuenta o etiqueta",
                     leadingIcon = Icons.Outlined.Search,

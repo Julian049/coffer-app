@@ -38,7 +38,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.LedgerError
-import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.usecase.AVAILABLE_ACCOUNT_TYPES
 import com.dev.julian09.financeapp.ui.components.ACCOUNT_COLORS
 import com.dev.julian09.financeapp.ui.components.ACCOUNT_ICONS
@@ -47,9 +46,9 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.accountIcon
 import com.dev.julian09.financeapp.ui.components.accountTypeLabel
-import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.cards.CardFormScreen
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -78,8 +77,6 @@ fun AccountFormScreen(
         onSave = viewModel::save,
     )
 }
-
-private fun balanceText(digits: String) = if (digits.isEmpty()) "" else formatMoney(Money.ofPesos(digits.toLong())).removePrefix("$")
 
 /** Nueva cuenta and Editar cuenta: the type is chosen once and never changes (S4-SRV01). */
 @OptIn(ExperimentalLayoutApi::class)
@@ -126,7 +123,8 @@ fun AccountFormContent(
             }
             val balanceField = @Composable {
                 AppTextField(
-                    value = balanceText(state.balanceDigits),
+                    value = state.balanceDigits,
+                    visualTransformation = PesosTransformation(symbol = false),
                     onValueChange = onBalance,
                     label = "Saldo inicial",
                     placeholder = "0",

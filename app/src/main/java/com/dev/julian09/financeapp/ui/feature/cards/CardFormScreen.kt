@@ -34,7 +34,7 @@ import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
-import com.dev.julian09.financeapp.ui.components.formatMoney
+import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
@@ -75,8 +75,6 @@ class CardFormActions(
     val onSave: () -> Unit = {},
 )
 
-private fun pesosText(digits: String) = if (digits.isEmpty()) "" else formatMoney(Money.ofPesos(digits.toLong())).removePrefix("$")
-
 /** Nueva tarjeta de crédito (S7-UI01, REQ-TC-01 to 03, 13); editing keeps the debt it was created with. */
 @Composable
 fun CardFormContent(
@@ -108,7 +106,8 @@ fun CardFormContent(
                 error = errors[CardField.NAME]?.message(),
             )
             AppTextField(
-                value = pesosText(state.limitDigits),
+                value = state.limitDigits,
+                visualTransformation = PesosTransformation(symbol = false),
                 onValueChange = actions.onLimit,
                 label = "Cupo total asignado",
                 placeholder = "0",
@@ -117,7 +116,8 @@ fun CardFormContent(
             )
             if (!editing) {
                 AppTextField(
-                    value = pesosText(state.availableDigits),
+                    value = state.availableDigits,
+                    visualTransformation = PesosTransformation(symbol = false),
                     onValueChange = actions.onAvailable,
                     label = "Cupo disponible actual",
                     placeholder = "0",
