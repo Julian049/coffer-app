@@ -68,7 +68,6 @@ fun accountIcon(
 ): ImageVector =
     ALL_ICONS[key] ?: when (type) {
         AccountType.CASH -> Icons.Outlined.Payments
-        AccountType.DEBIT -> Icons.Outlined.AccountBalance
         AccountType.SAVINGS -> Icons.Outlined.Savings
         AccountType.CREDIT_CARD, AccountType.LOAN -> Icons.Outlined.CreditCard
     }
@@ -80,7 +79,6 @@ val TransferIcon: ImageVector = Icons.Outlined.SwapHoriz
 fun accountTypeLabel(type: AccountType) =
     when (type) {
         AccountType.CASH -> "Efectivo"
-        AccountType.DEBIT -> "Cuenta corriente / Débito"
         AccountType.SAVINGS -> "Cuenta de ahorros"
         AccountType.CREDIT_CARD -> "Tarjeta de crédito"
         AccountType.LOAN -> "Préstamo"
@@ -90,7 +88,6 @@ fun accountTypeLabel(type: AccountType) =
 fun accountTypeShortLabel(type: AccountType) =
     when (type) {
         AccountType.CASH -> "Efectivo"
-        AccountType.DEBIT -> "Débito"
         AccountType.SAVINGS -> "Ahorros"
         AccountType.CREDIT_CARD -> "Tarjeta"
         AccountType.LOAN -> "Préstamo"

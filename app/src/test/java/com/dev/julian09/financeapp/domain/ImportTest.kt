@@ -127,7 +127,7 @@ class ImportTest {
             val existing = f.account("Mi banco")
             val dining = f.category("Comida")
             val accounts =
-                p.unknownAccounts.associateWith { AccountResolution.Create(AccountType.DEBIT) } +
+                p.unknownAccounts.associateWith { AccountResolution.Create(AccountType.SAVINGS) } +
                     ("Banco" to AccountResolution.Use(existing))
             val categories =
                 p.unknownCategories.associateWith { CategoryResolution.Create } +
@@ -192,7 +192,7 @@ class ImportTest {
                 run(
                     plan(
                         "big",
-                        mapOf("Banco" to AccountResolution.Create(AccountType.DEBIT)),
+                        mapOf("Banco" to AccountResolution.Create(AccountType.SAVINGS)),
                         mapOf(CategoryRef(CategoryKind.EXPENSE, "Dining") to CategoryResolution.Create),
                         p.mapping,
                     ),

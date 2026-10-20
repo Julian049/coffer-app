@@ -36,7 +36,7 @@ class LedgerFixture(
     suspend fun account(
         name: String,
         pesos: Long = 0,
-        type: String = "DEBIT",
+        type: String = "SAVINGS",
         active: Boolean = true,
         include: Boolean = true,
         createdAt: Instant = past,
