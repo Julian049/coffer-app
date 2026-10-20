@@ -12,9 +12,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.dev.julian09.financeapp.R
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -40,7 +43,9 @@ internal fun AuthAlternatives(
             if (google.loading) "Conectando con Google…" else "Continuar con Google",
             onClick = { onGoogle?.invoke() },
             kind = ButtonKind.Secondary,
+            icon = ImageVector.vectorResource(R.drawable.ic_google),
             enabled = onGoogle != null && !google.loading,
+            tintIcon = false,
             modifier = Modifier.fillMaxWidth(),
         )
         if (onGoogle == null) Text("Disponible pronto", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
