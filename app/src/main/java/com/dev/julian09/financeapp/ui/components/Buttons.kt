@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
+/** Bottom space for the lists under the + of Home and History: its 56 dp plus 16 dp around, so the last row shows (E7, #81). */
+val FabClearance = 88.dp
+
 /**
  * One family of actions (design-system.md §2): `Primary` (espresso / latte), `Secondary` (surface with border),
  * `Ghost` (text only) and `Danger` (destructive, outlined in the expense color).

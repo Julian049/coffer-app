@@ -53,6 +53,7 @@ import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.EmptyState
+import com.dev.julian09.financeapp.ui.components.FabClearance
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.feature.transactions.categoryLabel
@@ -158,7 +159,7 @@ fun HistoryContent(
                 .size > 1
         // The field owns its text: echoing it back from the search flow moved the cursor while typing (E1, #75)
         var query by rememberSaveable { mutableStateOf(state.query) }
-        LazyColumn(state = listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = FabClearance), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(state.months) { m ->
