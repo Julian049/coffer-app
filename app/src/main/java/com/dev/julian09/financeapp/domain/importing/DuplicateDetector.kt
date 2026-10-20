@@ -22,12 +22,14 @@ data class DuplicateKey<A>(
     }
 }
 
-/** A row is a possible duplicate if its key is already stored or came earlier in the same file. */
+/**
+ * A row is a possible duplicate if its key is already stored. Rows of the same file are never compared with each
+ * other: two bus fares in the same minute are two real movements (coffer-app#72).
+ */
 class DuplicateDetector<A>(
     existing: Iterable<DuplicateKey<A>>,
 ) {
-    private val seen = existing.toHashSet()
+    private val stored = existing.toHashSet()
 
-    /** True when [key] was seen; the first time it is remembered. */
-    fun isDuplicate(key: DuplicateKey<A>): Boolean = !seen.add(key)
+    fun isDuplicate(key: DuplicateKey<A>): Boolean = key in stored
 }

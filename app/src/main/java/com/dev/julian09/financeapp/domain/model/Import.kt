@@ -23,7 +23,7 @@ data class CsvRecord(
 enum class ImportSource { CASHEW, }
 
 /** What a column can feed (REQ-IMP-02). Cashew gives one signed amount: the sign says expense or income. */
-enum class ImportField { DATE, AMOUNT, ACCOUNT, CATEGORY, SUBCATEGORY, TAG, TITLE, NOTE }
+enum class ImportField { DATE, AMOUNT, AMOUNT_UNPAID, ACCOUNT, CATEGORY, SUBCATEGORY, TAG, TITLE, NOTE }
 
 /** Field → column header, null when no column feeds it. */
 typealias ImportMapping = Map<ImportField, String?>
@@ -58,6 +58,11 @@ sealed interface ParsedRow {
 
     data class Invalid(
         val error: RowError,
+    ) : ParsedRow
+
+    /** Not paid yet in the source app (a pending loan, a future subscription): it does not count in its balances. */
+    data class Unpaid(
+        val line: Int,
     ) : ParsedRow
 }
 
@@ -111,6 +116,8 @@ data class ImportPreview(
     val errors: List<RowError>,
     val errorCount: Int,
     val duplicates: Int,
+    /** Rows still unpaid in the source app; they are not imported (coffer-app#72). */
+    val unpaid: Int = 0,
     val unknownAccounts: List<String>,
     val unknownCategories: List<CategoryRef>,
 )
