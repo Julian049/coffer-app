@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.ui.feature.transactions
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SwapVert
@@ -61,6 +63,7 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.CardOverview
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
+import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.usecase.TransactionField
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
@@ -117,6 +120,7 @@ fun TransactionFormScreen(
                 onNewTag = viewModel::newTag,
                 onClearTagError = viewModel::clearTagError,
                 onNote = viewModel::setNote,
+                onSuggestion = viewModel::pickSuggestion,
                 onSave = viewModel::save,
                 onDelete = viewModel::delete,
                 onInstallments = viewModel::setInstallments,
@@ -138,6 +142,7 @@ class TransactionFormActions(
     val onNewTag: (String) -> Unit = {},
     val onClearTagError: () -> Unit = {},
     val onNote: (String) -> Unit = {},
+    val onSuggestion: (NoteSuggestion) -> Unit = {},
     val onSave: () -> Unit = {},
     val onDelete: () -> Unit = {},
     val onInstallments: (Int) -> Unit = {},
@@ -214,6 +219,43 @@ fun TransactionFormContent(
                 onSelect = { actions.onType(TYPES[it]) },
                 modifier = Modifier.fillMaxWidth(),
             )
+            // M5 (#89): the name first, with the notes used before
+            AppCard {
+                AppTextField(
+                    value = state.note,
+                    onValueChange = actions.onNote,
+                    label = "Nota o concepto",
+                    placeholder = if (transfer) "Retiro cajero para efectivo semanal" else "Almuerzo en restaurante",
+                    error = state.errors[TransactionField.NOTE]?.message(),
+                )
+                state.suggestions.forEach { s ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(onClickLabel = "Usar") { actions.onSuggestion(s) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(Icons.Outlined.History, contentDescription = null, tint = CofferTheme.colors.textSecondary)
+                        Text(
+                            s.note,
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = CofferTheme.colors.textPrimary,
+                        )
+                        s.categoryId?.let { id ->
+                            choices.categories.firstOrNull { it.id == id }?.let {
+                                Text(
+                                    categoryLabel(it, choices.categories),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = CofferTheme.colors.textSecondary,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
             AmountCard(state, actions.onAmount)
             if (transfer) {
                 AccountPicker(
@@ -254,16 +296,7 @@ fun TransactionFormContent(
                 )
                 choices.cardOf(state)?.let { CreditConditions(state, it, actions) }
             }
-            AppCard {
-                if (!transfer) TagPicker(state, choices, actions)
-                AppTextField(
-                    value = state.note,
-                    onValueChange = actions.onNote,
-                    label = "Nota o concepto",
-                    placeholder = if (transfer) "Retiro cajero para efectivo semanal" else "Almuerzo en restaurante",
-                    error = state.errors[TransactionField.NOTE]?.message(),
-                )
-            }
+            if (!transfer) AppCard { TagPicker(state, choices, actions) }
         }
         // M4 (#88): the save button stays visible while the form scrolls
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

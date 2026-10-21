@@ -11,6 +11,7 @@ import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Installment
 import com.dev.julian09.financeapp.domain.model.Loan
 import com.dev.julian09.financeapp.domain.model.LoanInstallment
+import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
@@ -19,6 +20,7 @@ import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
+import com.dev.julian09.financeapp.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.LocalDate
@@ -131,6 +133,13 @@ interface TransactionRepository {
 
     /** Undeletes a movement and logs RESTORE in the same database transaction (REQ-HIS-03); false when it is not deleted. */
     suspend fun restore(id: UUID): Boolean
+
+    /** M5: notes of earlier movements of [type] that contain [text], latest use first, each with its latest category. */
+    suspend fun suggestNotes(
+        type: TransactionType,
+        text: String,
+        limit: Int = 5,
+    ): List<NoteSuggestion>
 
     /** Newest first, not deleted. */
     fun observeRecent(limit: Int): Flow<List<Transaction>>

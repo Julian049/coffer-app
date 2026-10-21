@@ -91,6 +91,12 @@ data class Transaction(
     val pendingSync: Boolean = false,
 )
 
+/** M5: a note to reuse in the form, with the category it had last time. */
+data class NoteSuggestion(
+    val note: String,
+    val categoryId: UUID?,
+)
+
 /** A card purchase in installments or a payment is not edited: it is deleted and registered again (S7). */
 fun Transaction.isEditable() = installments <= 1 && paymentKind == null
 

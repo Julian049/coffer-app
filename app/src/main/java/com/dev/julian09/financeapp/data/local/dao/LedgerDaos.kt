@@ -49,6 +49,12 @@ data class TotalsRow(
     val expense: Long,
 )
 
+/** A note used before and the category of its latest movement (M5). */
+data class NoteRow(
+    val note: String,
+    val categoryId: UUID?,
+)
+
 data class SearchTotalsRow(
     val income: Long,
     val expense: Long,
@@ -300,6 +306,17 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun get(id: UUID): TransactionEntity?
+
+    // SQLite takes the bare categoryId from the row that holds MAX(occurredAt): the latest use of each note
+    @Query(
+        "SELECT note, categoryId FROM transactions WHERE deletedAt IS NULL AND type = :type AND note LIKE :like ESCAPE '\\' " +
+            "GROUP BY note ORDER BY MAX(occurredAt) DESC LIMIT :limit",
+    )
+    suspend fun notes(
+        type: String,
+        like: String,
+        limit: Int,
+    ): List<NoteRow>
 
     @Query("SELECT * FROM transactions WHERE id = :id AND deletedAt IS NULL")
     fun observe(id: UUID): Flow<TransactionEntity?>

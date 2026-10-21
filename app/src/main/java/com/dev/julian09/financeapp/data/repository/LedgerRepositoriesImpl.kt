@@ -48,6 +48,7 @@ import com.dev.julian09.financeapp.domain.model.Loan
 import com.dev.julian09.financeapp.domain.model.LoanInstallment
 import com.dev.julian09.financeapp.domain.model.LoanMode
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Recurring
@@ -390,6 +391,15 @@ class TransactionRepositoryImpl
 
         override fun observeRecent(limit: Int): Flow<List<Transaction>> =
             dao.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun suggestNotes(
+            type: TransactionType,
+            text: String,
+            limit: Int,
+        ): List<NoteSuggestion> {
+            val pattern = like(text).ifEmpty { return emptyList() }
+            return dao.notes(type.name, pattern, limit).map { NoteSuggestion(it.note, it.categoryId) }
+        }
 
         override fun observeSince(from: Instant): Flow<List<Transaction>> =
             dao.observeSince(from).map { rows -> rows.map { it.toDomain() } }

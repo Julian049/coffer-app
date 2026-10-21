@@ -13,15 +13,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -42,11 +45,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.model.AccountResolution
+import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryRef
 import com.dev.julian09.financeapp.domain.model.CategoryResolution
 import com.dev.julian09.financeapp.domain.model.ImportField
 import com.dev.julian09.financeapp.domain.model.ImportSource
+import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.RowProblem
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.usecase.AVAILABLE_ACCOUNT_TYPES
@@ -443,6 +448,26 @@ private fun ReviewStep(
         if (preview.unpaid > 0) Figure("Pendientes en Cashew (no se importan)", preview.unpaid.toString(), colors.textPrimary)
         preview.errors.take(5).forEach {
             Text("Fila ${it.line}: ${problemLabel(it.problem)}", style = MaterialTheme.typography.bodySmall, color = colors.expense)
+        }
+    }
+    // #67: a balance or a debt typed when the account was created comes back with the imported history
+    val opening =
+        catalog.accounts.filter { it.active && it.type != AccountType.LOAN && it.initialBalance != Money.ZERO }.map { it.name }
+    if (opening.isNotEmpty()) {
+        AppCard(Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = colors.warning, modifier = Modifier.size(20.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Revisa los saldos iniciales", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                    Text(
+                        "${opening.take(3).joinToString(", ")}${if (opening.size > 3) " y ${opening.size - 3} más" else ""} " +
+                            "ya tienen saldo o deuda inicial. Si el archivo trae su historial, la importación lo vuelve a sumar: " +
+                            "déjalos en cero antes de importar para no duplicarlo.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                    )
+                }
+            }
         }
     }
     if (preview.duplicates > 0) {

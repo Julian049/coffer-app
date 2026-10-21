@@ -139,7 +139,8 @@ fun changeDays(
                 dayLines.map { line ->
                     val e: ChangeEntry = line.entry
                     val movement = (e.after ?: e.before)!!
-                    val time = TIME.format(e.changedAt.atZone(zone)).lowercase()
+                    // "10:42 a. m." never splits across lines
+                    val time = TIME.format(e.changedAt.atZone(zone)).lowercase().replace(' ', '\u00A0')
                     val verb =
                         when (e.action) {
                             ChangeAction.CREATE -> "Creaste"
