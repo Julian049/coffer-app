@@ -141,7 +141,11 @@ fun AppNavHost(
             composable<TransactionDetailRoute> {
                 TransactionDetailScreen(
                     onBack = navController::popBackStack,
-                    onEdit = { d -> navController.navigate(TransactionFormRoute(d.transaction.type.name, d.transaction.id.toString())) },
+                    onEdit = { d ->
+                        navController.navigate(TransactionFormRoute(d.transaction.type.name, d.transaction.id.toString())) {
+                            popUpTo<TransactionDetailRoute> { inclusive = true }
+                        }
+                    },
                 )
             }
         }

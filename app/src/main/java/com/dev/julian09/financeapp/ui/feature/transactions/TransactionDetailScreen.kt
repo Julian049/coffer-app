@@ -60,8 +60,15 @@ fun TransactionDetailScreen(
     val detail by viewModel.detail.collectAsStateWithLifecycle()
     val deleted by viewModel.deleted.collectAsStateWithLifecycle()
     LaunchedEffect(deleted) { if (deleted) onBack() }
+    // M3 (#87): an editable movement opens its edit in one tap; the detail stays for plans and card payments
+    val editable = detail?.transaction?.isEditable()
+    LaunchedEffect(editable) { if (editable == true) onEdit(detail!!) }
+    if (editable == true) return
     TransactionDetailContent(detail, onBack, onEdit, viewModel::confirmDelete)
 }
+
+/** A plan or a payment split cannot follow an edit: they are deleted and registered again. */
+fun Transaction.isEditable() = installments <= 1 && paymentKind == null
 
 private val CREATED = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-CO"))
 
@@ -157,8 +164,7 @@ fun TransactionDetailContent(
                 color = colors.textSecondary,
                 textAlign = TextAlign.Center,
             )
-            // A plan or a payment split cannot follow an edit: they are deleted and registered again
-            val editable = t.installments <= 1 && t.paymentKind == null
+            val editable = t.isEditable()
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (editable) {
                     AppButton(
