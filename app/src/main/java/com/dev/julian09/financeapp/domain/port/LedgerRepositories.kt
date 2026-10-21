@@ -8,6 +8,8 @@ import com.dev.julian09.financeapp.domain.model.CategoryTotal
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Installment
+import com.dev.julian09.financeapp.domain.model.Loan
+import com.dev.julian09.financeapp.domain.model.LoanInstallment
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
@@ -239,5 +241,36 @@ interface CardRepository {
     suspend fun markNotified(
         cardId: UUID,
         on: LocalDate,
+    )
+}
+
+/** Loans (S10): terms and plan; every write goes with its movements in one database transaction. */
+interface LoanRepository {
+    fun observeLoans(): Flow<List<Loan>>
+
+    /** Not deleted installments of every loan, by due date. */
+    fun observeInstallments(): Flow<List<LoanInstallment>>
+
+    /** Payments to loans from [from] on (the pending payment of simple loans). */
+    fun observePaymentsSince(from: Instant): Flow<List<Transaction>>
+
+    /** SEQ-11: the LOAN account, its terms, its plan and the disbursement transfer (a new detailed loan only). */
+    suspend fun create(
+        account: Account,
+        loan: Loan,
+        installments: List<LoanInstallment>,
+        disbursement: Transaction?,
+    )
+
+    /** New terms and plan of a stored loan (REQ-PRE-09: simple to detailed). */
+    suspend fun update(
+        loan: Loan,
+        installments: List<LoanInstallment>,
+    )
+
+    /** A payment or an extra payment and the installments it settles, cancels or adds. */
+    suspend fun pay(
+        payment: Transaction,
+        installments: List<LoanInstallment>,
     )
 }

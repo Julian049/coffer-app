@@ -183,4 +183,5 @@ enum class LedgerError {
     RATE_INVALID,
     OVER_LIMIT,
     INSTALLMENTS_INVALID,
+    OVER_DEBT,
 }

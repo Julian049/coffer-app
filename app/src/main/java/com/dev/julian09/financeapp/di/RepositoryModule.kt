@@ -9,6 +9,7 @@ import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.AuthRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CardRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CategoryRepositoryImpl
+import com.dev.julian09.financeapp.data.repository.LoanRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.RecurringRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ServerStatusRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.SettingsRepositoryImpl
@@ -22,6 +23,7 @@ import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.CsvFiles
 import com.dev.julian09.financeapp.domain.port.ImportScheduler
+import com.dev.julian09.financeapp.domain.port.LoanRepository
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.ReminderNotifier
 import com.dev.julian09.financeapp.domain.port.ReminderScheduler
@@ -65,6 +67,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindCardRepository(impl: CardRepositoryImpl): CardRepository
+
+    @Binds
+    abstract fun bindLoanRepository(impl: LoanRepositoryImpl): LoanRepository
 
     @Binds
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository

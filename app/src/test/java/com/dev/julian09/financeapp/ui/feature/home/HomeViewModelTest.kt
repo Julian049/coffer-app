@@ -50,6 +50,7 @@ class HomeViewModelTest {
                 f.transactions,
                 ObservePendingPayments(f.recurring, f.settings, f.clock),
                 f.cardDues,
+                f.loanDues,
                 f.clock,
             ),
             f.categories,

@@ -40,10 +40,14 @@ class MainActivity : ComponentActivity() {
         intent?.getStringExtra(EXTRA_CARD_ID)?.let { id ->
             runCatching { UUID.fromString(id) }.onSuccess { PendingLink.cardId.value = it }
         }
+        intent?.getStringExtra(EXTRA_LOAN_ID)?.let { id ->
+            runCatching { UUID.fromString(id) }.onSuccess { PendingLink.loanId.value = it }
+        }
     }
 
     companion object {
         const val EXTRA_RECURRING_ID = "recurringId"
         const val EXTRA_CARD_ID = "cardId"
+        const val EXTRA_LOAN_ID = "loanId"
     }
 }

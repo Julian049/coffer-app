@@ -114,4 +114,27 @@ class FinanceDatabaseMigrationTest {
             close()
         }
     }
+
+    @Test
+    fun version5To6AddsTheLoanTerms() {
+        helper.createDatabase(5).apply {
+            execSQL(
+                "INSERT INTO accounts (id, name, type, initialBalance, includeInTotal, active, sortOrder, createdAt, updatedAt, " +
+                    "syncState) VALUES ('l1', 'Libre inversión', 'LOAN', 0, 1, 1, 0, 0, 0, 'SYNCED')",
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(6).apply {
+            execSQL(
+                "INSERT INTO loan_details (id, mode, paymentDay, lifeInsuranceMonthly, otherCostsMonthly, createdAt, updatedAt, " +
+                    "syncState) " +
+                    "VALUES ('l1', 'SIMPLE', 5, 0, 0, 0, 0, 'PENDING')",
+            )
+            prepare("SELECT amortization FROM loan_details").use {
+                it.step()
+                assertEquals("FIXED_PRINCIPAL", it.getText(0))
+            }
+            close()
+        }
+    }
 }

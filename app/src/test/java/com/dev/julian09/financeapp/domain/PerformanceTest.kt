@@ -57,6 +57,7 @@ class PerformanceTest {
                     f.transactions,
                     ObservePendingPayments(f.recurring, f.settings, f.clock),
                     f.cardDues,
+                    f.loanDues,
                     f.clock,
                 )
             val begin = System.nanoTime()

@@ -8,12 +8,15 @@ import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CardRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CategoryRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ChangeLogWriter
+import com.dev.julian09.financeapp.data.repository.LoanRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.RecurringRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.SettingsRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TagRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TransactionRepositoryImpl
 import com.dev.julian09.financeapp.domain.usecase.ObserveCardDues
 import com.dev.julian09.financeapp.domain.usecase.ObserveCards
+import com.dev.julian09.financeapp.domain.usecase.ObserveLoanDues
+import com.dev.julian09.financeapp.domain.usecase.ObserveLoans
 import java.time.Instant
 import java.util.UUID
 
@@ -31,6 +34,9 @@ class LedgerFixture(
     val cards = CardRepositoryImpl(db, db.cards(), db.accounts(), db.transactions(), db.syncMeta(), ChangeLogWriter(db), clock)
     val observeCards = ObserveCards(accounts, cards, clock)
     val cardDues = ObserveCardDues(observeCards, settings, clock)
+    val loans = LoanRepositoryImpl(db, db.loans(), db.cards(), db.accounts(), db.transactions(), ChangeLogWriter(db), clock)
+    val observeLoans = ObserveLoans(accounts, loans)
+    val loanDues = ObserveLoanDues(observeLoans, loans, settings, clock)
     private val past: Instant = Instant.parse("2026-01-01T00:00:00Z")
 
     suspend fun account(
