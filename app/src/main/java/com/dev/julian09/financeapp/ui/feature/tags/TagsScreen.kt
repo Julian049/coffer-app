@@ -120,7 +120,13 @@ fun TagsContent(
                     color = colors.textSecondary,
                 )
             }
-            AppButton("Nueva etiqueta", onClick = onNew, kind = ButtonKind.Secondary, icon = Icons.Outlined.Add, modifier = Modifier.fillMaxWidth())
+            AppButton(
+                "Nueva etiqueta",
+                onClick = onNew,
+                kind = ButtonKind.Secondary,
+                icon = Icons.Outlined.Add,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -169,7 +175,9 @@ internal fun TagSheetContent(
     val colors = CofferTheme.colors
     val editing = sheet.editing != null
     AppBottomSheet(onDismiss = onDismiss, title = if (editing) "Editar etiqueta" else "Nueva etiqueta") {
-        AppTextField(value = sheet.name, onValueChange = { name -> onEdit { it.copy(name = name) } }, label = "Nombre", error = sheet.error?.message())
+        AppTextField(value = sheet.name, onValueChange = { name ->
+            onEdit { it.copy(name = name) }
+        }, label = "Nombre", error = sheet.error?.message())
         if (!editing) PinCard(sheet.pinned) { pinned -> onEdit { it.copy(pinned = pinned) } }
         AppButton(if (editing) "Guardar cambios" else "Crear etiqueta", onClick = onSave, modifier = Modifier.fillMaxWidth())
         onDelete?.let {
@@ -193,7 +201,11 @@ private fun PinCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Fijar en inicio", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
-                Text("Ver su total del mes en la pantalla de inicio", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                Text(
+                    "Ver su total del mes en la pantalla de inicio",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
             }
             Switch(
                 checked = pinned,
@@ -248,7 +260,9 @@ fun TagDetailContent(
     val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
         AppHeader(title = state?.tag?.name.orEmpty(), onBack = actions.onBack, actions = {
-            IconButton(onClick = actions.onEdit) { Icon(Icons.Outlined.Edit, contentDescription = "Editar etiqueta", tint = colors.textPrimary) }
+            IconButton(
+                onClick = actions.onEdit,
+            ) { Icon(Icons.Outlined.Edit, contentDescription = "Editar etiqueta", tint = colors.textPrimary) }
         })
         if (state == null) return@Column
         Column(
@@ -279,10 +293,19 @@ fun TagDetailContent(
             if (state.byCategory.isNotEmpty()) {
                 AppCard {
                     Text("Por categoría", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
-                    val max = state.byCategory.first().second.scaled.coerceAtLeast(1)
+                    val max =
+                        state.byCategory
+                            .first()
+                            .second.scaled
+                            .coerceAtLeast(1)
                     state.byCategory.forEach { (category, total) ->
                         Row {
-                            Text(category.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                            Text(
+                                category.name,
+                                Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
                             Text(formatMoney(total), style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
                         }
                         Box(Modifier.fillMaxWidth().height(6.dp).background(colors.border, RoundedCornerShape(3.dp))) {

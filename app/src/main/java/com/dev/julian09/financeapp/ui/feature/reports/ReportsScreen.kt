@@ -132,7 +132,11 @@ fun ReportsContent(
             } else {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { actions.onMove(-1) }) {
-                        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "Periodo anterior", tint = colors.textPrimary)
+                        Icon(
+                            Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                            contentDescription = "Periodo anterior",
+                            tint = colors.textPrimary,
+                        )
                     }
                     Text(
                         periodTitle(state),
@@ -142,7 +146,11 @@ fun ReportsContent(
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
                     IconButton(onClick = { actions.onMove(1) }) {
-                        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "Periodo siguiente", tint = colors.textPrimary)
+                        Icon(
+                            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                            contentDescription = "Periodo siguiente",
+                            tint = colors.textPrimary,
+                        )
                     }
                 }
             }
@@ -150,11 +158,19 @@ fun ReportsContent(
                 Row(Modifier.fillMaxWidth()) {
                     Summary("Ingresos", report.income, MoneyKind.Income, Modifier.weight(1f))
                     Summary("Gastos", report.expense, MoneyKind.Expense, Modifier.weight(1f))
-                    Summary("Balance", report.balance, if (report.balance.isNegative) MoneyKind.Expense else MoneyKind.Neutral, Modifier.weight(1f))
+                    Summary(
+                        "Balance",
+                        report.balance,
+                        if (report.balance.isNegative) MoneyKind.Expense else MoneyKind.Neutral,
+                        Modifier.weight(1f),
+                    )
                 }
             }
             if (report.count == 0 && report.evolution.all { it.expense == Money.ZERO && it.income == Money.ZERO }) {
-                EmptyState(title = "Sin movimientos en este periodo", message = "Cuando registres movimientos verás en qué se va tu dinero.")
+                EmptyState(
+                    title = "Sin movimientos en este periodo",
+                    message = "Cuando registres movimientos verás en qué se va tu dinero.",
+                )
             } else {
                 Evolution(state)
                 if (report.expenseByCategory.isNotEmpty()) Categories("Gastos por categoría", report.expenseByCategory, report.expense)
@@ -296,7 +312,13 @@ private fun Bar(
     color: Color,
 ) {
     val fraction = (value.scaled.toFloat() / max.scaled.toFloat()).coerceIn(0f, 1f)
-    Box(Modifier.width(10.dp).fillMaxHeight(fraction.coerceAtLeast(0.02f)).background(color, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)))
+    Box(
+        Modifier
+            .width(
+                10.dp,
+            ).fillMaxHeight(fraction.coerceAtLeast(0.02f))
+            .background(color, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
+    )
 }
 
 private fun percent(
@@ -306,7 +328,11 @@ private fun percent(
     if (whole == Money.ZERO) {
         0
     } else {
-        part.toBigDecimal().multiply(BigDecimal(100)).divide(whole.toBigDecimal(), 0, RoundingMode.HALF_UP).toInt()
+        part
+            .toBigDecimal()
+            .multiply(BigDecimal(100))
+            .divide(whole.toBigDecimal(), 0, RoundingMode.HALF_UP)
+            .toInt()
     }
 
 @Composable
@@ -325,12 +351,20 @@ private fun Categories(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = sum.children.isNotEmpty(), onClickLabel = "Ver subcategorías") { open = if (open == id) null else id },
+                    .clickable(enabled = sum.children.isNotEmpty(), onClickLabel = "Ver subcategorías") {
+                        open =
+                            if (open == id) null else id
+                    },
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(Modifier.size(28.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(categoryIcon(sum.category.icon), contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(16.dp))
+                        Icon(
+                            categoryIcon(sum.category.icon),
+                            contentDescription = null,
+                            tint = colors.iconOnContainer,
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
                     Text(sum.category.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
                     Text("$pct %", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)

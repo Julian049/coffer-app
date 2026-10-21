@@ -59,7 +59,12 @@ data class TagSheet(
 internal fun monthBounds(
     month: YearMonth,
     zone: ZoneId,
-) = month.atDay(1).atStartOfDay(zone).toInstant() to month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
+) = month.atDay(1).atStartOfDay(zone).toInstant() to
+    month
+        .plusMonths(1)
+        .atDay(1)
+        .atStartOfDay(zone)
+        .toInstant()
 
 /** The tags with their totals of [month]; pinned first, like the list query (REQ-ETQ-04). */
 internal fun tagLines(
@@ -164,7 +169,11 @@ class TagDetailViewModel
                     val filter =
                         TransactionFilter(
                             from = w.from.atStartOfDay(zone).toInstant(),
-                            to = w.to.plusDays(1).atStartOfDay(zone).toInstant(),
+                            to =
+                                w.to
+                                    .plusDays(1)
+                                    .atStartOfDay(zone)
+                                    .toInstant(),
                             tagIds = setOf(id),
                         )
                     combine(

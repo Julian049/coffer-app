@@ -144,7 +144,11 @@ fun RecurringFormContent(
     Column(modifier.fillMaxSize()) {
         AppHeader(title = if (state.editingId == null) "Nuevo gasto recurrente" else "Editar gasto recurrente", onBack = actions.onBack)
         Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AppTextField(

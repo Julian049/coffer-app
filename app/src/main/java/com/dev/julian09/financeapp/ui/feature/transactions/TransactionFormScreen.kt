@@ -68,8 +68,8 @@ import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
-import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.accountIcon
@@ -201,7 +201,11 @@ fun TransactionFormContent(
             )
         }
         Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SegmentedSelector(

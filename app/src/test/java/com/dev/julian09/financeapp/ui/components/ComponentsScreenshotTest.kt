@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
+import com.dev.julian09.financeapp.domain.finance.ReportAggregator
+import com.dev.julian09.financeapp.domain.finance.ReportSpan
 import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
@@ -51,6 +53,7 @@ import com.dev.julian09.financeapp.domain.model.RowProblem
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.ImportStatus
@@ -83,6 +86,7 @@ import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
 import com.dev.julian09.financeapp.ui.feature.history.HistoryFilters
 import com.dev.julian09.financeapp.ui.feature.history.HistoryRow
 import com.dev.julian09.financeapp.ui.feature.history.HistoryUiState
+import com.dev.julian09.financeapp.ui.feature.history.buildDays
 import com.dev.julian09.financeapp.ui.feature.home.HomeContent
 import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
 import com.dev.julian09.financeapp.ui.feature.importexport.ExportChoice
@@ -98,10 +102,19 @@ import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormActions
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormContent
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormState
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringUiState
+import com.dev.julian09.financeapp.ui.feature.reports.ReportsActions
+import com.dev.julian09.financeapp.ui.feature.reports.ReportsContent
+import com.dev.julian09.financeapp.ui.feature.reports.ReportsState
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsUiState
 import com.dev.julian09.financeapp.ui.feature.sync.InitialDownloadContent
+import com.dev.julian09.financeapp.ui.feature.tags.TagDetailActions
+import com.dev.julian09.financeapp.ui.feature.tags.TagDetailContent
+import com.dev.julian09.financeapp.ui.feature.tags.TagDetailState
+import com.dev.julian09.financeapp.ui.feature.tags.TagLine
+import com.dev.julian09.financeapp.ui.feature.tags.TagRange
+import com.dev.julian09.financeapp.ui.feature.tags.TagsContent
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionChoices
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetail
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetailContent
@@ -111,19 +124,6 @@ import com.dev.julian09.financeapp.ui.feature.transactions.TransactionFormState
 import com.dev.julian09.financeapp.ui.navigation.BottomBar
 import com.dev.julian09.financeapp.ui.navigation.Tab
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
-import com.dev.julian09.financeapp.ui.feature.history.buildDays
-import com.dev.julian09.financeapp.ui.feature.tags.TagsContent
-import com.dev.julian09.financeapp.ui.feature.tags.TagRange
-import com.dev.julian09.financeapp.ui.feature.tags.TagLine
-import com.dev.julian09.financeapp.ui.feature.tags.TagDetailState
-import com.dev.julian09.financeapp.ui.feature.tags.TagDetailContent
-import com.dev.julian09.financeapp.ui.feature.tags.TagDetailActions
-import com.dev.julian09.financeapp.domain.model.TagTotal
-import com.dev.julian09.financeapp.ui.feature.reports.ReportsState
-import com.dev.julian09.financeapp.ui.feature.reports.ReportsContent
-import com.dev.julian09.financeapp.ui.feature.reports.ReportsActions
-import com.dev.julian09.financeapp.domain.finance.ReportSpan
-import com.dev.julian09.financeapp.domain.finance.ReportAggregator
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -505,10 +505,29 @@ class ComponentsScreenshotTest {
         val month = ReportAggregator.period(ReportSpan.MONTH, LocalDate.of(2026, 10, 20))
         val rows =
             (0L..5L).flatMap { back ->
-                val day = LocalDate.of(2026, 10, 10).minusMonths(back).atStartOfDay().toInstant(ZoneOffset.UTC)
+                val day =
+                    LocalDate
+                        .of(2026, 10, 10)
+                        .minusMonths(back)
+                        .atStartOfDay()
+                        .toInstant(ZoneOffset.UTC)
                 listOf(
-                    Transaction(UUID.randomUUID(), TransactionType.INCOME, Money.ofPesos(2_850_000 - back * 90_000), day, card, categoryId = salary.id),
-                    Transaction(UUID.randomUUID(), TransactionType.EXPENSE, Money.ofPesos(620_000 + back * 40_000), day, card, categoryId = home.id),
+                    Transaction(
+                        UUID.randomUUID(),
+                        TransactionType.INCOME,
+                        Money.ofPesos(2_850_000 - back * 90_000),
+                        day,
+                        card,
+                        categoryId = salary.id,
+                    ),
+                    Transaction(
+                        UUID.randomUUID(),
+                        TransactionType.EXPENSE,
+                        Money.ofPesos(620_000 + back * 40_000),
+                        day,
+                        card,
+                        categoryId = home.id,
+                    ),
                     Transaction(UUID.randomUUID(), TransactionType.EXPENSE, Money.ofPesos(412_400), day, card, categoryId = food.id),
                     Transaction(
                         UUID.randomUUID(),
@@ -533,7 +552,11 @@ class ComponentsScreenshotTest {
                 emptyList(),
                 emptyList(),
             )
-        ReportsContent(ReportsState(ReportSpan.MONTH, month, report, mapOf(card to "Tarjeta Visa Platinum")), ReportsActions(), avatarInitial = 'J')
+        ReportsContent(
+            ReportsState(ReportSpan.MONTH, month, report, mapOf(card to "Tarjeta Visa Platinum")),
+            ReportsActions(),
+            avatarInitial = 'J',
+        )
     }
 
     @Composable
@@ -560,6 +583,7 @@ class ComponentsScreenshotTest {
         val lodging = Category(UUID.randomUUID(), "Alojamiento", CategoryKind.EXPENSE, icon = "home")
         val transport = Category(UUID.randomUUID(), "Transporte", CategoryKind.EXPENSE, icon = "directions_bus")
         val food = Category(UUID.randomUUID(), "Comida", CategoryKind.EXPENSE, icon = "restaurant")
+
         fun tx(
             pesos: Long,
             day: Int,
@@ -575,7 +599,12 @@ class ComponentsScreenshotTest {
             tagId = tag.id,
             note = note,
         )
-        val rows = listOf(tx(680_000, 4, lodging, "Hotel Caribe"), tx(300_000, 2, transport, "Vuelo Bogotá – Cartagena"), tx(96_000, 5, food, "Restaurante La Cevichería"))
+        val rows =
+            listOf(
+                tx(680_000, 4, lodging, "Hotel Caribe"),
+                tx(300_000, 2, transport, "Vuelo Bogotá – Cartagena"),
+                tx(96_000, 5, food, "Restaurante La Cevichería"),
+            )
         TagDetailContent(
             TagDetailState(
                 tag = tag,

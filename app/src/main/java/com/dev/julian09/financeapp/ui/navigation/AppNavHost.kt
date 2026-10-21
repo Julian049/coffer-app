@@ -33,9 +33,9 @@ import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsScreen
+import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
 import com.dev.julian09.financeapp.ui.feature.tags.TagDetailScreen
 import com.dev.julian09.financeapp.ui.feature.tags.TagsScreen
-import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetailScreen
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionFormScreen
 import com.dev.julian09.financeapp.ui.theme.CofferShapes

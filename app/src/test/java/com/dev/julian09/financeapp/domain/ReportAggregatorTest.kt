@@ -31,7 +31,8 @@ class ReportAggregatorTest {
     private val salary = Category(UUID.randomUUID(), "Salario", CategoryKind.INCOME)
     private val savings = Category(UUID.randomUUID(), "Ahorros", CategoryKind.EXPENSE, excludeFromReports = true)
     private val pocket = Category(UUID.randomUUID(), "Bolsillo", CategoryKind.EXPENSE, parentId = savings.id)
-    private val charges = Category(UUID.randomUUID(), "Intereses y cargos financieros", CategoryKind.EXPENSE, systemKey = "FINANCIAL_CHARGES")
+    private val charges =
+        Category(UUID.randomUUID(), "Intereses y cargos financieros", CategoryKind.EXPENSE, systemKey = "FINANCIAL_CHARGES")
     private val categories = listOf(food, restaurants, salary, savings, pocket, charges)
     private val october = ReportAggregator.period(ReportSpan.MONTH, today)
 
@@ -101,7 +102,17 @@ class ReportAggregatorTest {
     fun aDeferredPurchaseCountsByInstallmentAndInterestByCard() {
         val purchase = tx(TransactionType.EXPENSE, 300_000, "2026-08-10", food, account = card, installments = 3)
         val deferred =
-            DeferredPurchase(UUID.randomUUID(), card, purchase.id, purchase.amount, 3, BigDecimal("0.02"), RateType.MV, false, LocalDate.of(2026, 9, 5))
+            DeferredPurchase(
+                UUID.randomUUID(),
+                card,
+                purchase.id,
+                purchase.amount,
+                3,
+                BigDecimal("0.02"),
+                RateType.MV,
+                false,
+                LocalDate.of(2026, 9, 5),
+            )
         val plan =
             listOf("2026-09-05", "2026-10-05", "2026-11-05").mapIndexed { i, due ->
                 Installment(UUID.randomUUID(), deferred.id, i + 1, LocalDate.parse(due), Money.ofPesos(100_000), Money.ofPesos(6_000))
@@ -123,7 +134,17 @@ class ReportAggregatorTest {
     fun aPayoffCountsTheCancelledInstallmentsOnTheDayOfThePayment() {
         val purchase = tx(TransactionType.EXPENSE, 200_000, "2026-09-10", food, account = card, installments = 2)
         val deferred =
-            DeferredPurchase(UUID.randomUUID(), card, purchase.id, purchase.amount, 2, BigDecimal("0.02"), RateType.MV, false, LocalDate.of(2026, 11, 5))
+            DeferredPurchase(
+                UUID.randomUUID(),
+                card,
+                purchase.id,
+                purchase.amount,
+                2,
+                BigDecimal("0.02"),
+                RateType.MV,
+                false,
+                LocalDate.of(2026, 11, 5),
+            )
         val paidAt = LocalDate.of(2026, 10, 15).atTime(9, 0).toInstant(zone)
         val plan =
             (1..2).map {

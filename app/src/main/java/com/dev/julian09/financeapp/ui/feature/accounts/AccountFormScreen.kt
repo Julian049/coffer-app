@@ -98,7 +98,11 @@ fun AccountFormContent(
     Column(modifier.fillMaxSize()) {
         AppHeader(title = if (editing) "Editar cuenta" else "Nueva cuenta", onBack = onBack)
         Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (!editing) {

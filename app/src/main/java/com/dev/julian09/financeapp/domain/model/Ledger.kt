@@ -48,8 +48,7 @@ data class Category(
 )
 
 /** REQ-CAT-04: a subcategory follows its parent; a parent (or an orphan) its own flag. */
-fun Category.excludedFromReports(byId: Map<UUID, Category>): Boolean =
-    parentId?.let { byId[it]?.excludeFromReports } ?: excludeFromReports
+fun Category.excludedFromReports(byId: Map<UUID, Category>): Boolean = parentId?.let { byId[it]?.excludeFromReports } ?: excludeFromReports
 
 data class Tag(
     val id: UUID,

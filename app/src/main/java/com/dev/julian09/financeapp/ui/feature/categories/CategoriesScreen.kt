@@ -295,7 +295,11 @@ private fun NewCategorySheet(
         }
         if (sheet.parentId == null) {
             Text("Ícono", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 CATEGORY_ICONS.forEach { (key, icon) ->
                     val selected = sheet.icon == key
                     Box(

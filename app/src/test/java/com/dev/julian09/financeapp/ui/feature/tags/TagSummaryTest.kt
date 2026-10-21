@@ -90,7 +90,13 @@ class TagSummaryTest {
             val vm = detail(trip)
             vm.state.filterNotNull().first()
             vm.selectRange(TagRange.LAST_MONTH)
-            assertEquals(Money.ofPesos(-70_000), vm.state.filterNotNull().first { it.range == TagRange.LAST_MONTH }.net)
+            assertEquals(
+                Money.ofPesos(-70_000),
+                vm.state
+                    .filterNotNull()
+                    .first { it.range == TagRange.LAST_MONTH }
+                    .net,
+            )
             assertEquals(LedgerError.NAME_TAKEN, CreateTag(f.tags, sync)(Tag(UUID.randomUUID(), "viaje cartagena")))
         }
 
@@ -105,7 +111,13 @@ class TagSummaryTest {
 
             val home =
                 HomeViewModel(
-                    ObserveHomeDashboard(f.accounts, f.transactions, ObservePendingPayments(f.recurring, f.settings, f.clock), f.cardDues, f.clock),
+                    ObserveHomeDashboard(
+                        f.accounts,
+                        f.transactions,
+                        ObservePendingPayments(f.recurring, f.settings, f.clock),
+                        f.cardDues,
+                        f.clock,
+                    ),
                     f.categories,
                     f.tags,
                     f.clock,
@@ -124,7 +136,12 @@ class TagSummaryTest {
             CreateTag(f.tags, sync)(Tag(work, "Trabajo"))
             val expense = f.tx("EXPENSE", 54_000, cash, day("2026-10-10"), f.category("Comida"), tag = work)
             DeleteTag(f.tags, sync)(work)
-            assertTrue(f.tags.observeAll().first().isEmpty())
+            assertTrue(
+                f.tags
+                    .observeAll()
+                    .first()
+                    .isEmpty(),
+            )
             val row = f.db.transactions().get(expense)!!
             assertNull(row.tagId)
             assertEquals("PENDING", row.syncState.name)

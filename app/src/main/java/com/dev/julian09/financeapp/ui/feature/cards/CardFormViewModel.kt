@@ -43,6 +43,7 @@ data class CardFormState(
     val saved: Boolean = false,
 ) {
     val limit: Money get() = pesos(limitDigits)
+
     /** REQ-TC-13: what is owed today (M2: asked directly, 0 by default). */
     val debt: Money get() = if (editingId != null) initialDebt else pesos(debtDigits)
 

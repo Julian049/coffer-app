@@ -181,7 +181,15 @@ object ReportAggregator {
             .mapNotNull { byId[it] }
             .groupBy { it.parentId?.let(byId::get) ?: it }
             .map { (main, members) ->
-                val children = members.filter { it.id != main.id }.map { it to sums.getValue(it.id) }.sortedByDescending { it.second.scaled }
+                val children =
+                    members
+                        .filter { it.id != main.id }
+                        .map {
+                            it to
+                                sums.getValue(
+                                    it.id,
+                                )
+                        }.sortedByDescending { it.second.scaled }
                 CategorySum(main, children.fold(sums[main.id] ?: Money.ZERO) { s, it -> s + it.second }, children)
             }.sortedByDescending { it.total.scaled }
     }

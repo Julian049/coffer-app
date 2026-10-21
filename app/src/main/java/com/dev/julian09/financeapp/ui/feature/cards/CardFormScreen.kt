@@ -91,7 +91,11 @@ fun CardFormContent(
     Column(modifier.fillMaxSize()) {
         AppHeader(title = if (editing) "Editar tarjeta" else "Nueva tarjeta de crédito", onBack = actions.onBack)
         Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (!editing) {
