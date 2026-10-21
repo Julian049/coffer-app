@@ -31,7 +31,7 @@ data class CardFormState(
     val editingId: UUID? = null,
     val name: String = "",
     val limitDigits: String = "",
-    val availableDigits: String = "",
+    val debtDigits: String = "",
     /** The debt the card was created with, shown when editing. */
     val initialDebt: Money = Money.ZERO,
     val cutOffDay: String = "",
@@ -43,10 +43,11 @@ data class CardFormState(
     val saved: Boolean = false,
 ) {
     val limit: Money get() = pesos(limitDigits)
-    val available: Money get() = pesos(availableDigits)
+    /** REQ-TC-13: what is owed today (M2: asked directly, 0 by default). */
+    val debt: Money get() = if (editingId != null) initialDebt else pesos(debtDigits)
 
-    /** REQ-TC-13: cupo total − cupo disponible, never below zero while typing. */
-    val debt: Money get() = if (editingId != null) initialDebt else (limit - available).let { if (it.isNegative) Money.ZERO else it }
+    /** Cupo total − deuda, never below zero while typing. */
+    val available: Money get() = (limit - debt).let { if (it.isNegative) Money.ZERO else it }
 
     val rate: BigDecimal? get() = parsePercent(rateText)
 }
@@ -101,7 +102,7 @@ class CardFormViewModel
 
         fun setLimit(value: String) = edit { it.copy(limitDigits = digitsOnly(value)) }
 
-        fun setAvailable(value: String) = edit { it.copy(availableDigits = digitsOnly(value)) }
+        fun setDebt(value: String) = edit { it.copy(debtDigits = digitsOnly(value)) }
 
         fun setCutOffDay(value: String) = edit { it.copy(cutOffDay = day(value)) }
 
@@ -124,7 +125,7 @@ class CardFormViewModel
                 CardDraft(
                     name = s.name,
                     creditLimit = s.limit,
-                    available = s.available,
+                    debt = s.debt,
                     cutOffDay = s.cutOffDay.toIntOrNull() ?: 0,
                     paymentDay = s.paymentDay.toIntOrNull() ?: 0,
                     rate = rate,

@@ -41,13 +41,13 @@ private val RATE_MAX = BigDecimal(1000)
 
 typealias CardErrors = Map<CardField, LedgerError>
 
-enum class CardField { NAME, LIMIT, AVAILABLE, CUT_OFF, PAYMENT, RATE }
+enum class CardField { NAME, LIMIT, DEBT, CUT_OFF, PAYMENT, RATE }
 
-/** Nueva tarjeta de crédito (REQ-TC-01 to 03, 13): [available] is the credit left today; the difference is the debt. */
+/** Nueva tarjeta de crédito (REQ-TC-01 to 03, 13): [debt] is what is owed today, 0 by default (M2, PO 2026-10-20). */
 data class CardDraft(
     val name: String,
     val creditLimit: Money,
-    val available: Money,
+    val debt: Money,
     val cutOffDay: Int,
     val paymentDay: Int,
     /** A fraction: 0.02 = 2 %. */
@@ -69,7 +69,7 @@ private fun CardDraft.errors(creating: Boolean): CardErrors {
         name.trim().length > CARD_NAME_MAX -> errors[CardField.NAME] = LedgerError.NAME_TOO_LONG
     }
     if (creditLimit <= Money.ZERO) errors[CardField.LIMIT] = LedgerError.AMOUNT_REQUIRED
-    if (creating && available > creditLimit) errors[CardField.AVAILABLE] = LedgerError.OVER_LIMIT
+    if (creating && debt > creditLimit) errors[CardField.DEBT] = LedgerError.OVER_LIMIT
     if (cutOffDay !in 1..31) errors[CardField.CUT_OFF] = LedgerError.DAY_INVALID
     if (paymentDay !in 1..31) errors[CardField.PAYMENT] = LedgerError.DAY_INVALID
     if (cleanRate(rate) == null) errors[CardField.RATE] = LedgerError.RATE_INVALID
@@ -95,7 +95,7 @@ class CreateCard
                     id = UUID.randomUUID(),
                     name = draft.name.trim(),
                     type = AccountType.CREDIT_CARD,
-                    initialBalance = draft.creditLimit - draft.available,
+                    initialBalance = draft.debt,
                     icon = draft.icon,
                     color = draft.color,
                     sortOrder = last + 1,

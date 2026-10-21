@@ -51,15 +51,15 @@ class CreditCardTest {
     fun close() = f.db.close()
 
     private fun draft(
-        available: Long = 5_000_000,
+        debt: Long = 0,
         firstFree: Boolean = false,
-    ) = CardDraft("Visa", Money.ofPesos(5_000_000), Money.ofPesos(available), 20, 5, BigDecimal("0.02"), RateType.MV, firstFree)
+    ) = CardDraft("Visa", Money.ofPesos(5_000_000), Money.ofPesos(debt), 20, 5, BigDecimal("0.02"), RateType.MV, firstFree)
 
     private suspend fun card(
-        available: Long = 5_000_000,
+        debt: Long = 0,
         firstFree: Boolean = false,
     ): UUID {
-        assertEquals(emptyMap<Any, Any>(), createCard(draft(available, firstFree)))
+        assertEquals(emptyMap<Any, Any>(), createCard(draft(debt, firstFree)))
         return f.accounts
             .observeBalances()
             .first()
@@ -78,7 +78,7 @@ class CreditCardTest {
     @Test
     fun aNewCardStartsWithItsCurrentDebt() =
         runBlocking {
-            val id = card(available = 4_200_000)
+            val id = card(debt = 800_000)
             val o = overview(id)
             assertEquals(Money.ofPesos(-800_000), o.account.balance)
             assertEquals(Money.ofPesos(4_200_000), o.available)
@@ -93,8 +93,8 @@ class CreditCardTest {
                     .syncState,
             )
             assertEquals(
-                mapOf(CardField.AVAILABLE to LedgerError.OVER_LIMIT),
-                createCard(draft().copy(name = "Otra", available = Money.ofPesos(6_000_000))),
+                mapOf(CardField.DEBT to LedgerError.OVER_LIMIT),
+                createCard(draft().copy(name = "Otra", debt = Money.ofPesos(6_000_000))),
             )
         }
 

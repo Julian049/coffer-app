@@ -642,7 +642,7 @@ class ComponentsScreenshotTest {
             CardFormState(
                 name = "Visa Platinum",
                 limitDigits = "5000000",
-                availableDigits = "4200000",
+                debtDigits = "800000",
                 cutOffDay = "20",
                 paymentDay = "5",
                 rateText = "2,0",

@@ -54,7 +54,7 @@ fun CardFormScreen(
             onBack = onBack,
             onName = viewModel::setName,
             onLimit = viewModel::setLimit,
-            onAvailable = viewModel::setAvailable,
+            onDebt = viewModel::setDebt,
             onCutOff = viewModel::setCutOffDay,
             onPayment = viewModel::setPaymentDay,
             onRate = viewModel::setRate,
@@ -69,7 +69,7 @@ class CardFormActions(
     val onBack: () -> Unit = {},
     val onName: (String) -> Unit = {},
     val onLimit: (String) -> Unit = {},
-    val onAvailable: (String) -> Unit = {},
+    val onDebt: (String) -> Unit = {},
     val onCutOff: (String) -> Unit = {},
     val onPayment: (String) -> Unit = {},
     val onRate: (String) -> Unit = {},
@@ -119,24 +119,28 @@ fun CardFormContent(
             )
             if (!editing) {
                 AppTextField(
-                    value = state.availableDigits,
+                    value = state.debtDigits,
                     visualTransformation = PesosTransformation(symbol = false),
-                    onValueChange = actions.onAvailable,
-                    label = "Cupo disponible actual",
+                    onValueChange = actions.onDebt,
+                    label = "Deuda actual",
                     placeholder = "0",
                     keyboardType = KeyboardType.Number,
-                    error = errors[CardField.AVAILABLE]?.message(),
+                    error = errors[CardField.DEBT]?.message(),
                 )
             }
             AppCard(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        if (editing) "Deuda inicial" else "Deuda actual calculada",
+                        if (editing) "Deuda inicial" else "Cupo disponible calculado",
                         Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textSecondary,
                     )
-                    MoneyText(state.debt, kind = if (state.debt == Money.ZERO) MoneyKind.Neutral else MoneyKind.Debt)
+                    if (editing) {
+                        MoneyText(state.debt, kind = if (state.debt == Money.ZERO) MoneyKind.Neutral else MoneyKind.Debt)
+                    } else {
+                        MoneyText(state.available)
+                    }
                 }
                 Text(
                     "Cuenta como una compra a 1 cuota del periodo en que creas la tarjeta.",
