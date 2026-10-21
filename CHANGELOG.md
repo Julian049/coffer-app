@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-10-21
+
+### Fixed
+
+- Associating an imported category with an existing one no longer closes the app (#114).
+
 ## [1.2.1] - 2026-10-20
 
 ### Added
