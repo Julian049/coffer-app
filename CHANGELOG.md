@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Screens change with a short fade and a slight slide; the system's "remove animations" setting turns it off (M10, #93)
 
+### Fixed
+
+- Bottom sheets scroll when their content is taller than the screen: with many categories, Nueva categoría hid its "Crear categoría" button (#110)
+
 ## [1.1.0] - 2026-10-20
 
 ### Added

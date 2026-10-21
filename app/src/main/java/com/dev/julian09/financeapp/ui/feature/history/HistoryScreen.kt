@@ -13,8 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.FilterList
@@ -275,7 +273,7 @@ private fun FiltersSheet(
     val colors = CofferTheme.colors
     var f by remember { mutableStateOf(initial) }
     AppBottomSheet(onDismiss = onDismiss, title = "Filtros", subtitle = "Se combinan entre sí y con la búsqueda.") {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Section("Tipo") {
                 TYPE_CHIPS.drop(1).forEach { (type, label) ->
                     AppChip(label, type in f.types, onClick = {

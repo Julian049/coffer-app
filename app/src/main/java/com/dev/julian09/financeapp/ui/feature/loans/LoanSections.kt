@@ -6,9 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -252,7 +250,7 @@ fun LoanPaymentContent(
     val overview = state.overview ?: return
     val name = overview.account.account.name
     val next = overview.next.takeIf { overview.loan.mode == LoanMode.DETAILED }
-    Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column {
             Text(
                 if (state.sheet == LoanSheet.EXTRA) "Abonar a capital" else "Pagar cuota",
