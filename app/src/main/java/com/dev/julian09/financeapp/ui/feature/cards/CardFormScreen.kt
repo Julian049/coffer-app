@@ -91,7 +91,7 @@ fun CardFormContent(
     Column(modifier.fillMaxSize()) {
         AppHeader(title = if (editing) "Editar tarjeta" else "Nueva tarjeta de crédito", onBack = actions.onBack)
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (!editing) {
@@ -209,6 +209,9 @@ fun CardFormContent(
                     )
                 }
             }
+        }
+        // M4 (#88): the save button stays visible while the form scrolls
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AppButton(
                 if (editing) "Guardar cambios" else "Guardar tarjeta de crédito",
                 onClick = actions.onSave,

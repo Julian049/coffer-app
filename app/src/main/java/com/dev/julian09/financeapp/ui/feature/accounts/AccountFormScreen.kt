@@ -98,7 +98,7 @@ fun AccountFormContent(
     Column(modifier.fillMaxSize()) {
         AppHeader(title = if (editing) "Editar cuenta" else "Nueva cuenta", onBack = onBack)
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (!editing) {
@@ -224,6 +224,9 @@ fun AccountFormContent(
             state.error?.takeIf { it == LedgerError.TYPE_NOT_AVAILABLE }?.let {
                 Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense)
             }
+        }
+        // M4 (#88): the save button stays visible while the form scrolls
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AppButton(
                 if (editing) "Guardar cambios" else "Crear cuenta",
                 onClick = onSave,

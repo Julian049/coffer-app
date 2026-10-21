@@ -201,7 +201,7 @@ fun TransactionFormContent(
             )
         }
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SegmentedSelector(
@@ -260,6 +260,9 @@ fun TransactionFormContent(
                     error = state.errors[TransactionField.NOTE]?.message(),
                 )
             }
+        }
+        // M4 (#88): the save button stays visible while the form scrolls
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AppButton(
                 when {
                     state.editingId != null -> "Guardar cambios"

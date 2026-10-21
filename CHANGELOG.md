@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - One tap on a movement opens its edit, with "Eliminar" on top; purchases in installments and card payments, which are not edited, still open their detail (M3, #87)
+- The save button of the movement, account, card and recurring forms stays at the bottom, visible while the form scrolls (M4, #88)
 - Nueva tarjeta asks for the current debt (0 by default) instead of the current available credit, and shows the available credit it gives (M2, #86)
 
 ## [1.0.2] - 2026-10-20
