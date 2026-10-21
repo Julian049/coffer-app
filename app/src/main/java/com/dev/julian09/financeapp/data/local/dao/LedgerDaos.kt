@@ -167,6 +167,13 @@ interface CategoryDao {
         now: Instant,
     )
 
+    @Query("UPDATE categories SET excludeFromReports = :excluded, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun setExcludedFromReports(
+        id: UUID,
+        excluded: Boolean,
+        now: Instant,
+    )
+
     /** The category and its subcategories (REQ-CAT-03). */
     @Query(
         "UPDATE categories SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' " +
@@ -266,8 +273,10 @@ interface TransactionDao {
         SELECT COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS income,
                COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount END), 0) AS expense
         FROM transactions t JOIN accounts a ON a.id = t.accountId
+          LEFT JOIN categories c ON c.id = t.categoryId LEFT JOIN categories p ON p.id = c.parentId
         WHERE t.deletedAt IS NULL AND a.deletedAt IS NULL AND a.active = 1 AND a.includeInTotal = 1
           AND t.occurredAt >= :from AND t.occurredAt < :to
+          AND COALESCE(p.excludeFromReports, c.excludeFromReports, 0) = 0
         """,
     )
     fun observeTotals(

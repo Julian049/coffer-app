@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Exclude a category from reports (S9-H03, REQ-CAT-04, #85): Categorías → a main category's options → "Excluir de reportes", with a warning before turning it on; its movements and its subcategories' stop counting in Home's monthly totals and the fox (and in Reportes), the balances do not change; Room 5 adds `categories.excludeFromReports`, synced as `excludeFromReports` (server V11)
+
 ## [1.0.2] - 2026-10-20
 
 ### Changed

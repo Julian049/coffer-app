@@ -65,6 +65,12 @@ interface CategoryRepository {
         name: String,
     )
 
+    /** REQ-CAT-04; the screen offers it on parents only. */
+    suspend fun setExcludedFromReports(
+        id: UUID,
+        excluded: Boolean,
+    )
+
     /** Movements of the category and its subcategories, which are deleted with it (REQ-CAT-03). */
     suspend fun transactionCount(id: UUID): Int
 
@@ -106,7 +112,7 @@ interface TransactionRepository {
     /** Newest first, where the account is the source or the destination. */
     fun observeByAccount(accountId: UUID): Flow<List<Transaction>>
 
-    /** Income and expenses (no transfers) in [from, to) of active accounts included in the total. */
+    /** Income and expenses (no transfers) in [from, to) of active accounts included in the total, without excluded categories (REQ-CAT-04). */
     fun observeTotals(
         from: Instant,
         to: Instant,

@@ -162,6 +162,7 @@ class CategoryRepositoryImpl
                         systemKey = category.systemKey,
                         icon = category.icon,
                         sortOrder = category.sortOrder,
+                        excludeFromReports = category.excludeFromReports,
                         createdAt = now,
                         updatedAt = now,
                     ),
@@ -173,6 +174,11 @@ class CategoryRepositoryImpl
             id: UUID,
             name: String,
         ) = dao.rename(id, name, clock.now())
+
+        override suspend fun setExcludedFromReports(
+            id: UUID,
+            excluded: Boolean,
+        ) = dao.setExcludedFromReports(id, excluded, clock.now())
 
         override suspend fun transactionCount(id: UUID): Int = transactions.countInCategory(id)
 
@@ -686,7 +692,8 @@ internal fun AccountEntity.toDomain() =
         createdAt,
     )
 
-internal fun CategoryEntity.toDomain() = Category(id, name, CategoryKind.valueOf(kind), parentId, isBase, systemKey, icon, sortOrder)
+internal fun CategoryEntity.toDomain() =
+    Category(id, name, CategoryKind.valueOf(kind), parentId, isBase, systemKey, icon, sortOrder, excludeFromReports)
 
 internal fun TransactionEntity.toDomain() =
     Transaction(
