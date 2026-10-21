@@ -3,13 +3,17 @@ package com.dev.julian09.financeapp.ui.feature.home
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,10 +43,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.R
@@ -433,31 +441,43 @@ fun FoxCard(
                 Triple(R.drawable.mascot_good, "¡Vas muy bien!", "Llevas ${percent(mood.change!!)} % más que en $month. Sigue así.")
             FoxState.NORMAL -> Triple(R.drawable.mascot_normal, "Todo en orden", "Tus gastos van como de costumbre este mes.")
         }
-    AppCard {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Mascot(image)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-            }
+    // M13 (#96): no card; the fox stands on the background and over the top edge of the card below it
+    Row(Modifier.fillMaxWidth().zIndex(1f), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary)
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         }
+        Image(painterResource(image), contentDescription = null, modifier = Modifier.size(104.dp).offset(y = FOX_OVERLAP))
     }
 }
 
-@Composable
-private fun Mascot(
-    @DrawableRes image: Int,
-) {
-    Image(painterResource(image), contentDescription = null, modifier = Modifier.size(72.dp))
-}
+private val FOX_OVERLAP = 24.dp
 
-/** One tap to each form; the transfer is one tap from Home (REQ-TRX-04). */
+/** The image of each state, also used by Historial's monthly summary (M14). */
+@DrawableRes
+fun FoxState.mascot(): Int =
+    when (this) {
+        FoxState.RESTING -> R.drawable.mascot_resting
+        FoxState.DEBT -> R.drawable.mascot_debt
+        FoxState.ATTENTIVE -> R.drawable.mascot_attentive
+        FoxState.WORRIED -> R.drawable.mascot_worried
+        FoxState.GOAL -> R.drawable.mascot_goal
+        FoxState.GOOD -> R.drawable.mascot_good
+        FoxState.NORMAL -> R.drawable.mascot_normal
+    }
+
+/** One tap to each form; the transfer is one tap from Home (REQ-TRX-04). M12 (#95): a thin bar of three segments. */
 @Composable
 private fun QuickActions(onNew: (TransactionType) -> Unit) {
     val colors = CofferTheme.colors
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(colors.iconContainer, CofferShapes.card),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         QuickAction("Gasto", Icons.Outlined.ArrowDownward, colors.expense, Modifier.weight(1f)) { onNew(TransactionType.EXPENSE) }
+        VerticalDivider(Modifier.padding(vertical = 10.dp), thickness = 1.dp, color = colors.border)
         QuickAction("Ingreso", Icons.Outlined.ArrowUpward, colors.income, Modifier.weight(1f)) { onNew(TransactionType.INCOME) }
+        VerticalDivider(Modifier.padding(vertical = 10.dp), thickness = 1.dp, color = colors.border)
         QuickAction("Transferencia", Icons.Outlined.SwapHoriz, colors.textSecondary, Modifier.weight(1f)) {
             onNew(TransactionType.TRANSFER)
         }
@@ -472,18 +492,19 @@ private fun QuickAction(
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
-    val colors = CofferTheme.colors
-    AppCard(modifier, onClick = onClick) {
-        Column(
-            Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Box(Modifier.size(32.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
-            }
-            Text(label, style = MaterialTheme.typography.labelMedium, color = colors.textPrimary, maxLines = 1, softWrap = false)
-        }
+    Row(
+        modifier.clip(CofferShapes.card).clickable(role = Role.Button, onClick = onClick).padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = CofferTheme.colors.textPrimary,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 
