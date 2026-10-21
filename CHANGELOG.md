@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Loans (S10-H01 and H02, REQ-PRE-01 to 10, AT-HU14-1 and 2, #107, #108): Nueva cuenta → Préstamo opens Nuevo préstamo, detailed or simple. A detailed loan asks for the amount, the destination account, installments, payment day, rate (M.V. or E.A.), **fixed payment or fixed principal** (PO, 2026-10-20), first due date, life insurance and other costs, and shows the first installment; the money arrives as a transfer from the loan, not as income. "Ya lo estoy pagando" registers a loan in progress with today's balance, the installments left and the next due date, without a disbursement. A simple loan asks for the balance, the monthly payment and the payment day, and can become detailed later. Detalle de préstamo shows the debt, the terms and the plan; Pagar cuota splits principal (lowers the debt) from interest, insurance and costs (to "Intereses y cargos financieros", also in Reportes), and Abonar a capital simulates reducing the term or the payment before recalculating the plan. Each next installment is a pending payment in Home with the reminders of recurring expenses. Room 6 adds `loan_details`, synced as `loanDetails` (server V12)
 
+### Changed
+
+- Screens change with a short fade and a slight slide; the system's "remove animations" setting turns it off (M10, #93)
+
 ## [1.1.0] - 2026-10-20
 
 ### Added

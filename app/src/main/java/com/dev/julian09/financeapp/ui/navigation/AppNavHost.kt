@@ -1,5 +1,10 @@
 package com.dev.julian09.financeapp.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -73,7 +78,15 @@ fun AppNavHost(
             if (currentTab == Tab.Home || currentTab == Tab.History) NewTransactionButton { newTransaction(TransactionType.EXPENSE) }
         },
     ) { padding ->
-        NavHost(navController = navController, startDestination = HomeRoute, modifier = Modifier.padding(padding)) { it / SLIDE_FRACTION } },
+        // M10 (#93): short fades with a slight slide; Compose follows the system animation scale ("Quitar animaciones")
+        NavHost(
+            navController = navController,
+            startDestination = HomeRoute,
+            modifier = Modifier.padding(padding),
+            enterTransition = { fadeIn(tween(ENTER_MS)) + slideInHorizontally(tween(ENTER_MS)) { it / SLIDE_FRACTION } },
+            exitTransition = { fadeOut(tween(EXIT_MS)) },
+            popEnterTransition = { fadeIn(tween(ENTER_MS)) },
+            popExitTransition = { fadeOut(tween(EXIT_MS)) + slideOutHorizontally(tween(ENTER_MS)) { it / SLIDE_FRACTION } },
         ) {
             composable<HomeRoute> {
                 val sync by hiltViewModel<SyncStatusViewModel>().status.collectAsStateWithLifecycle()
@@ -158,6 +171,10 @@ fun AppNavHost(
         }
     }
 }
+
+private const val ENTER_MS = 220
+private const val EXIT_MS = 150
+private const val SLIDE_FRACTION = 8
 
 // Standard tab behavior: one copy of each tab, state kept when switching, back goes to Home
 private fun NavHostController.navigateToTab(tab: Tab) {
