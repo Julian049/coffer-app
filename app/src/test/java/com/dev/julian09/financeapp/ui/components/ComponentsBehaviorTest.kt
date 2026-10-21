@@ -9,14 +9,21 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.dev.julian09.financeapp.domain.finance.FoxMood
+import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryRef
 import com.dev.julian09.financeapp.domain.model.CategoryResolution
 import com.dev.julian09.financeapp.domain.model.ImportPreview
+import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
 import com.dev.julian09.financeapp.ui.feature.auth.LoginContent
 import com.dev.julian09.financeapp.ui.feature.auth.LoginUiState
+import com.dev.julian09.financeapp.ui.feature.home.BalanceView
+import com.dev.julian09.financeapp.ui.feature.home.HomeContent
+import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportCatalog
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportActions
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportContent
@@ -35,6 +42,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.YearMonth
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -110,6 +118,32 @@ class ComponentsBehaviorTest {
         compose.onNodeWithText("Asociar a una existente").performScrollTo().performClick()
         compose.onNodeWithText("Comida").assertIsDisplayed().performClick()
         assertEquals(CategoryResolution.Use(food.id), chosen)
+    }
+
+    @Test
+    fun `tapping the balance shows both views and picks the one for Home`() {
+        // HU-04: $1.000.000 available and $800.000 of card due this period
+        var chosen: BalanceView? = null
+        val dashboard =
+            HomeDashboard(
+                available = Money.ofPesos(1_000_000),
+                monthlyChange = null,
+                previousMonth = YearMonth.of(2026, 9),
+                accounts = emptyList(),
+                recent = emptyList(),
+                fox = FoxMood(FoxState.NORMAL),
+                net = Money.ofPesos(200_000),
+            )
+        compose.setContent {
+            CofferTheme {
+                HomeContent(HomeUiState(dashboard, emptyList()), {}, {}, {}, onBalanceView = { chosen = it })
+            }
+        }
+        compose.onNodeWithText("Saldo total disponible").performClick()
+        compose.onNodeWithText("Saldo neto").assertIsDisplayed()
+        compose.onNodeWithText("$200.000").assertIsDisplayed()
+        compose.onNodeWithText("Neto").performClick()
+        assertEquals(BalanceView.NET, chosen)
     }
 
     @Test

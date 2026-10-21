@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Historial de cambios (Ajustes): the last 90 days of creations, edits, deletions and restores grouped by day; Restaurar brings back a deleted movement and Revertir undoes an edit, only on the latest change of a movement (S11-H01, #118). Entries older than 90 days leave the phone on every start
+- Net balance (REQ-CTA-08): the available total minus each card's current statement and each loan's next installment. A tap on Home's balance opens Hoja · Detalle del saldo with both views; Ajustes → Inicio and the sheet choose which one Home shows (S11-H02, #119)
 
 ## [1.2.2] - 2026-10-21
 

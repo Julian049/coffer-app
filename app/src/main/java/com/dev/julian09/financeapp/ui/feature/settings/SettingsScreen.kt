@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -57,6 +58,7 @@ import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
+import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.feature.recurring.days
 import com.dev.julian09.financeapp.ui.feature.recurring.rememberNotificationPermissionRequest
@@ -102,6 +104,7 @@ fun SettingsScreen(
             if (enabled) requestPermission()
         },
         onLeadDays = reminderViewModel::setLeadDays,
+        onBalanceView = reminderViewModel::setBalanceView,
     )
 }
 
@@ -125,6 +128,7 @@ fun SettingsContent(
     reminders: Settings? = null,
     onNotifications: (Boolean) -> Unit = {},
     onLeadDays: (Int) -> Unit = {},
+    onBalanceView: (String) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     LogoutDialogIfNeeded(state.confirmingLogout, onLogoutConfirm, onLogoutDismiss)
@@ -187,6 +191,7 @@ fun SettingsContent(
                     AppButton("Reintentar", onRetry, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
                 }
             }
+            reminders?.let { HomeCard(it, onBalanceView) }
             reminders?.let { RemindersCard(it, onNotifications, onLeadDays) }
             AppCard {
                 LinkRow(Icons.AutoMirrored.Outlined.Label, "Categorías", onOpenCategories)
@@ -216,6 +221,30 @@ fun SettingsContent(
                 color = colors.textSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** Ajustes → Inicio: which balance Home shows (REQ-CTA-09). */
+@Composable
+private fun HomeCard(
+    settings: Settings,
+    onBalanceView: (String) -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Text("Inicio", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
+    AppCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("Vista del saldo", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                Text("La otra se ve al tocar el saldo", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            }
+            SegmentedSelector(
+                listOf("Disponible", "Neto"),
+                selectedIndex = if (settings.homeBalanceView == "NET") 1 else 0,
+                onSelect = { onBalanceView(if (it == 1) "NET" else "AVAILABLE") },
+                modifier = Modifier.width(180.dp),
             )
         }
     }

@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Ajustes → Avisos (S6-UI03). */
+/** Ajustes → Inicio and Avisos (S6-UI03, S11-UI02). */
 @HiltViewModel
 class ReminderSettingsViewModel
     @Inject
@@ -28,5 +28,10 @@ class ReminderSettingsViewModel
 
         fun setLeadDays(days: Int) {
             viewModelScope.launch { update { it.copy(reminderLeadDays = days) } }
+        }
+
+        /** REQ-CTA-09: AVAILABLE or NET. */
+        fun setBalanceView(view: String) {
+            viewModelScope.launch { update { it.copy(homeBalanceView = view) } }
         }
     }

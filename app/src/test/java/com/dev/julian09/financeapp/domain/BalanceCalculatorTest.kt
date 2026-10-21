@@ -31,6 +31,15 @@ class BalanceCalculatorTest {
     }
 
     @Test
+    fun `the net balance takes off what cards and loans ask for this period`() {
+        // HU-04: $1.000.000 in accounts and $800.000 of card due this period → net $200.000, available $1.000.000
+        assertEquals(pesos(200_000), BalanceCalculator.net(pesos(1_000_000), listOf(pesos(800_000))))
+        // Figma, Hoja · Detalle del saldo: 2.750.000 − 250.000 (Visa) − 281.958 (loan installment) = 2.218.042
+        assertEquals(pesos(2_218_042), BalanceCalculator.net(pesos(2_750_000), listOf(pesos(250_000), pesos(281_958))))
+        assertEquals(pesos(1_000_000), BalanceCalculator.net(pesos(1_000_000), emptyList()))
+    }
+
+    @Test
     fun `a debt shows negative and only what comes in lowers it`() {
         val card = account(AccountType.CREDIT_CARD, initial = 1_000_000)
         val debt = AccountFlows(expense = pesos(200_000), transfersIn = pesos(300_000))

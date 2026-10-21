@@ -143,6 +143,7 @@ fun HomeScreen(
         onOpenRecurring = onOpenRecurring,
         onOpenTags = onOpenTags,
         onOpenTag = onOpenTag,
+        onBalanceView = viewModel::setBalanceView,
         onOpenPending = { p ->
             when (p) {
                 is CardDue -> paying = p.id.toString()
@@ -170,8 +171,10 @@ fun HomeContent(
     onOpenTags: () -> Unit = {},
     onOpenTag: (UUID) -> Unit = {},
     onOpenPending: (DuePayment) -> Unit = {},
+    onBalanceView: (BalanceView) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
+    var balanceSheet by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         AppHeader(
             title = "Inicio",
@@ -200,11 +203,18 @@ fun HomeContent(
                 }
                 StatusChip(dashboard.fox)
             }
-            AppCard(Modifier.fillMaxWidth(), highlight = true) {
-                Text("Saldo total disponible", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-                MoneyText(dashboard.available, style = MaterialTheme.typography.displaySmall)
+            // REQ-CTA-09: the chosen view; a tap shows both
+            AppCard(Modifier.fillMaxWidth(), highlight = true, onClick = { balanceSheet = true }) {
+                val net = state.balanceView == BalanceView.NET
+                Text(
+                    if (net) "Saldo neto" else "Saldo total disponible",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                MoneyText(if (net) dashboard.net else dashboard.available, style = MaterialTheme.typography.displaySmall)
                 dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
             }
+            if (balanceSheet) BalanceSheet(dashboard, state.balanceView, onBalanceView, onDismiss = { balanceSheet = false })
             FoxCard(dashboard.fox, dashboard.previousMonth)
             QuickActions(onNewTransaction)
             val active = dashboard.accounts.filter { it.account.active }
