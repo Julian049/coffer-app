@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-20
+
 ### Added
 
 - Tags (S9-H02, REQ-ETQ-01 to 04, AT-HU10-1 and 2, #103): Ajustes → Etiquetas (also from Reportes, M6 #90) lists every tag with its month total and a pin; create, rename and delete (its movements stay, without a tag); the detail shows this month, last month or a range, the total, the expenses by category and the movements; pinned tags show their month total on Home
