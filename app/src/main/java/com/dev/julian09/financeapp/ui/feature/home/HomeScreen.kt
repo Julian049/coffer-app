@@ -49,6 +49,7 @@ import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.DuePayment
+import com.dev.julian09.financeapp.domain.model.LoanDue
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.Urgency
@@ -65,6 +66,8 @@ import com.dev.julian09.financeapp.ui.components.accountTypeShortLabel
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.feature.cards.PayCardSheet
 import com.dev.julian09.financeapp.ui.feature.history.DayGroup
+import com.dev.julian09.financeapp.ui.feature.loans.LoanPaymentSheet
+import com.dev.julian09.financeapp.ui.feature.loans.LoanSheet
 import com.dev.julian09.financeapp.ui.feature.recurring.PendingSheets
 import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
 import com.dev.julian09.financeapp.ui.feature.recurring.dueSentence
@@ -104,6 +107,8 @@ fun HomeScreen(
     var paying by rememberSaveable { mutableStateOf<String?>(null) }
     val link by PendingLink.recurringId.collectAsStateWithLifecycle()
     val cardLink by PendingLink.cardId.collectAsStateWithLifecycle()
+    val loanLink by PendingLink.loanId.collectAsStateWithLifecycle()
+    var loanPaying by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(link) {
         link?.let {
             pending = it.toString()
@@ -118,6 +123,13 @@ fun HomeScreen(
     }
     PendingSheets(pending?.let(UUID::fromString), onDismiss = { pending = null })
     PayCardSheet(paying?.let(UUID::fromString), onDismiss = { paying = null })
+    LaunchedEffect(loanLink) {
+        loanLink?.let {
+            loanPaying = it.toString()
+            PendingLink.loanId.value = null
+        }
+    }
+    LoanPaymentSheet(loanPaying?.let(UUID::fromString), LoanSheet.PAY, onDismiss = { loanPaying = null })
     HomeContent(
         state,
         onOpenSettings,
@@ -131,7 +143,13 @@ fun HomeScreen(
         onOpenRecurring = onOpenRecurring,
         onOpenTags = onOpenTags,
         onOpenTag = onOpenTag,
-        onOpenPending = { p -> if (p is CardDue) paying = p.id.toString() else pending = p.id.toString() },
+        onOpenPending = { p ->
+            when (p) {
+                is CardDue -> paying = p.id.toString()
+                is LoanDue -> loanPaying = p.id.toString()
+                else -> pending = p.id.toString()
+            }
+        },
     )
 }
 

@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.data.local.FinanceDatabase
 import com.dev.julian09.financeapp.data.local.dao.AccountDao
 import com.dev.julian09.financeapp.data.local.dao.CardDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
+import com.dev.julian09.financeapp.data.local.dao.LoanDao
 import com.dev.julian09.financeapp.data.local.dao.RecurringDao
 import com.dev.julian09.financeapp.data.local.dao.SettingsDao
 import com.dev.julian09.financeapp.data.local.dao.SyncMetaDao
@@ -16,6 +17,7 @@ import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
 import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
 import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
+import com.dev.julian09.financeapp.data.local.entity.LoanDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
@@ -27,6 +29,7 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
 import com.dev.julian09.financeapp.domain.model.AccountImpact
 import com.dev.julian09.financeapp.domain.model.AccountType
+import com.dev.julian09.financeapp.domain.model.Amortization
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
@@ -36,6 +39,9 @@ import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.Installment
 import com.dev.julian09.financeapp.domain.model.InstallmentStatus
 import com.dev.julian09.financeapp.domain.model.IntervalUnit
+import com.dev.julian09.financeapp.domain.model.Loan
+import com.dev.julian09.financeapp.domain.model.LoanInstallment
+import com.dev.julian09.financeapp.domain.model.LoanMode
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.RateType
@@ -51,6 +57,7 @@ import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.LoanRepository
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
@@ -598,6 +605,135 @@ internal fun InstallmentEntity.toDomain() =
         dueDate = dueDate,
         principal = Money(principal),
         interest = Money(interest),
+        otherCosts = Money(otherCosts),
+        status = InstallmentStatus.valueOf(status),
+        paidAt = paidAt,
+    )
+
+class LoanRepositoryImpl
+    @Inject
+    constructor(
+        private val db: FinanceDatabase,
+        private val dao: LoanDao,
+        private val cards: CardDao,
+        private val accounts: AccountDao,
+        private val transactions: TransactionDao,
+        private val history: ChangeLogWriter,
+        private val clock: Clock,
+    ) : LoanRepository {
+        override fun observeLoans(): Flow<List<Loan>> = dao.observeLoans().map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeInstallments(): Flow<List<LoanInstallment>> =
+            dao.observeInstallments().map { rows -> rows.map { it.toLoanInstallment() } }
+
+        override fun observePaymentsSince(from: Instant): Flow<List<Transaction>> =
+            dao.observePaymentsSince(from).map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun create(
+            account: Account,
+            loan: Loan,
+            installments: List<LoanInstallment>,
+            disbursement: Transaction?,
+        ) = db.withTransaction {
+            val now = clock.now()
+            accounts.upsert(listOf(account.toEntity(createdAt = now, updatedAt = now)))
+            dao.upsertLoans(listOf(loan.toEntity(createdAt = now, updatedAt = now)))
+            cards.upsertInstallments(installments.map { it.toEntity(createdAt = now, updatedAt = now) })
+            if (disbursement != null) {
+                val row = disbursement.toEntity(createdAt = now, updatedAt = now)
+                transactions.upsert(listOf(row))
+                history.log("CREATE", null, row, now)
+            }
+        }
+
+        override suspend fun update(
+            loan: Loan,
+            installments: List<LoanInstallment>,
+        ) = db.withTransaction {
+            val now = clock.now()
+            dao.upsertLoans(listOf(loan.toEntity(createdAt = dao.getLoan(loan.accountId)?.createdAt ?: now, updatedAt = now)))
+            cards.upsertInstallments(installments.map { it.toEntity(createdAt = now, updatedAt = now) })
+        }
+
+        override suspend fun pay(
+            payment: Transaction,
+            installments: List<LoanInstallment>,
+        ) = db.withTransaction {
+            val now = clock.now()
+            val row = payment.toEntity(createdAt = now, updatedAt = now)
+            transactions.upsert(listOf(row))
+            history.log("CREATE", null, row, now)
+            cards.upsertInstallments(
+                installments.map { i -> i.toEntity(createdAt = cards.getInstallment(i.id)?.createdAt ?: now, updatedAt = now) },
+            )
+        }
+    }
+
+internal fun Loan.toEntity(
+    createdAt: Instant,
+    updatedAt: Instant,
+) = LoanDetailsEntity(
+    id = accountId,
+    mode = mode.name,
+    disbursementAccountId = disbursementAccountId,
+    principal = principal?.scaled,
+    installmentsCount = installmentsCount,
+    rate = rate?.toPlainString(),
+    rateType = rateType?.name,
+    firstDueDate = firstDueDate,
+    paymentDay = paymentDay,
+    monthlyPayment = monthlyPayment?.scaled,
+    lifeInsuranceMonthly = lifeInsurance.scaled,
+    otherCostsMonthly = otherCosts.scaled,
+    amortization = amortization.name,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+internal fun LoanDetailsEntity.toDomain() =
+    Loan(
+        accountId = id,
+        mode = LoanMode.valueOf(mode),
+        paymentDay = paymentDay,
+        disbursementAccountId = disbursementAccountId,
+        principal = principal?.let(::Money),
+        installmentsCount = installmentsCount,
+        rate = rate?.let(::BigDecimal),
+        rateType = rateType?.let(RateType::valueOf),
+        firstDueDate = firstDueDate,
+        monthlyPayment = monthlyPayment?.let(::Money),
+        lifeInsurance = Money(lifeInsuranceMonthly),
+        otherCosts = Money(otherCostsMonthly),
+        amortization = Amortization.valueOf(amortization),
+    )
+
+internal fun LoanInstallment.toEntity(
+    createdAt: Instant,
+    updatedAt: Instant,
+) = InstallmentEntity(
+    id = id,
+    loanAccountId = loanId,
+    number = number,
+    dueDate = dueDate,
+    principal = principal.scaled,
+    interest = interest.scaled,
+    insurance = insurance.scaled,
+    otherCosts = otherCosts.scaled,
+    status = status.name,
+    paidAt = paidAt,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+)
+
+internal fun InstallmentEntity.toLoanInstallment() =
+    LoanInstallment(
+        id = id,
+        loanId = loanAccountId!!,
+        number = number,
+        dueDate = dueDate,
+        principal = Money(principal),
+        interest = Money(interest),
+        insurance = Money(insurance),
         otherCosts = Money(otherCosts),
         status = InstallmentStatus.valueOf(status),
         paidAt = paidAt,

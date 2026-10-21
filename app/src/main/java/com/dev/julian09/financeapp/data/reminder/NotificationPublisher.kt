@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import com.dev.julian09.financeapp.MainActivity
 import com.dev.julian09.financeapp.R
 import com.dev.julian09.financeapp.domain.model.CardDue
+import com.dev.julian09.financeapp.domain.model.LoanDue
 import com.dev.julian09.financeapp.domain.model.Reminder
 import com.dev.julian09.financeapp.domain.model.ReminderKind
 import com.dev.julian09.financeapp.domain.port.ReminderNotifier
@@ -55,15 +56,28 @@ class NotificationPublisher
                 }
             val open =
                 Intent(context, MainActivity::class.java)
-                    .putExtra(if (p is CardDue) MainActivity.EXTRA_CARD_ID else MainActivity.EXTRA_RECURRING_ID, p.id.toString())
-                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    .putExtra(
+                        when (p) {
+                            is CardDue -> MainActivity.EXTRA_CARD_ID
+                            is LoanDue -> MainActivity.EXTRA_LOAN_ID
+                            else -> MainActivity.EXTRA_RECURRING_ID
+                        },
+                        p.id.toString(),
+                    ).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             val notification =
                 NotificationCompat
                     .Builder(context, CHANNEL)
                     .setSmallIcon(R.drawable.ic_launcher_monochrome)
                     .setContentTitle(title)
-                    .setContentText(if (p is CardDue) "$amount · Toca para pagarla" else "$amount · Toca para pagarlo u omitirlo")
-                    .setAutoCancel(true)
+                    .setContentText(
+                        if (p is CardDue ||
+                            p is LoanDue
+                        ) {
+                            "$amount · Toca para pagarla"
+                        } else {
+                            "$amount · Toca para pagarlo u omitirlo"
+                        },
+                    ).setAutoCancel(true)
                     .setContentIntent(
                         PendingIntent.getActivity(
                             context,

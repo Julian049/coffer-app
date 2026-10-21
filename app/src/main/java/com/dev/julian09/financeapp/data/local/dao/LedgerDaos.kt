@@ -10,6 +10,7 @@ import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
 import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
 import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
+import com.dev.julian09.financeapp.data.local.entity.LoanDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
@@ -711,6 +712,48 @@ interface CardDao {
 
     @Query("UPDATE installments SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
     suspend fun markFailedInstallment(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
+}
+
+/** Loan terms (V8, V12) and the plan of each loan in installments (loanAccountId); sync queries once per table. */
+@Dao
+interface LoanDao {
+    @Upsert
+    suspend fun upsertLoans(rows: List<LoanDetailsEntity>)
+
+    @Query("SELECT * FROM loan_details WHERE deletedAt IS NULL")
+    fun observeLoans(): Flow<List<LoanDetailsEntity>>
+
+    @Query("SELECT * FROM loan_details WHERE id = :id")
+    suspend fun getLoan(id: UUID): LoanDetailsEntity?
+
+    @Query("SELECT * FROM installments WHERE deletedAt IS NULL AND loanAccountId IS NOT NULL ORDER BY dueDate, number")
+    fun observeInstallments(): Flow<List<InstallmentEntity>>
+
+    /** Payments to loans from [from] on, for the pending payment of simple loans. */
+    @Query(
+        "SELECT * FROM transactions WHERE deletedAt IS NULL AND type = 'TRANSFER' AND occurredAt >= :from " +
+            "AND destinationAccountId IN (SELECT id FROM accounts WHERE type = 'LOAN')",
+    )
+    fun observePaymentsSince(from: Instant): Flow<List<TransactionEntity>>
+
+    @Query("SELECT * FROM loan_details WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pending(limit: Int): List<LoanDetailsEntity>
+
+    @Query("SELECT syncState, updatedAt FROM loan_details WHERE id = :id")
+    suspend fun syncInfo(id: UUID): SyncInfo?
+
+    @Query("UPDATE loan_details SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSynced(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE loan_details SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailed(
         id: UUID,
         sentUpdatedAt: Instant,
         error: String,
