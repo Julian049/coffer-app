@@ -13,7 +13,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.model.HomeSection
-import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.ReorderableColumn
@@ -34,14 +32,12 @@ fun CustomizeHomeScreen(
     viewModel: CustomizeHomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(state.saved) { if (state.saved) onBack() }
     CustomizeHomeContent(
         state,
         onBack,
         viewModel::moveCard,
         viewModel::setVisible,
         viewModel::moveAccount,
-        viewModel::save,
     )
 }
 
@@ -65,7 +61,6 @@ fun CustomizeHomeContent(
     onMoveCard: (Int, Int) -> Unit,
     onVisible: (String, Boolean) -> Unit,
     onMoveAccount: (Int, Int) -> Unit,
-    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = CofferTheme.colors
@@ -77,7 +72,7 @@ fun CustomizeHomeContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "Muestra u oculta las tarjetas de inicio. Mantén pulsado el asa para cambiar el orden.",
+                "Muestra u oculta las tarjetas de inicio. Mantén pulsado el asa para cambiar el orden. Los cambios se guardan solos.",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textSecondary,
             )
@@ -124,7 +119,6 @@ fun CustomizeHomeContent(
                     }
                 }
             }
-            AppButton("Guardar", onClick = onSave, modifier = Modifier.fillMaxWidth())
         }
     }
 }
