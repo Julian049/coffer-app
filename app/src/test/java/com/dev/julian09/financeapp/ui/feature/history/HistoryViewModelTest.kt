@@ -3,6 +3,9 @@ package com.dev.julian09.financeapp.ui.feature.history
 import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
+import com.dev.julian09.financeapp.domain.usecase.ObserveMonthFox
+import com.dev.julian09.financeapp.domain.usecase.ObservePendingPayments
 import com.dev.julian09.financeapp.domain.usecase.SearchTransactions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,7 +44,27 @@ class HistoryViewModelTest {
     }
 
     private fun viewModel() =
-        HistoryViewModel(SearchTransactions(f.transactions, f.categories), f.transactions, f.accounts, f.categories, f.tags, f.clock)
+        HistoryViewModel(
+            SearchTransactions(f.transactions, f.categories),
+            f.transactions,
+            f.accounts,
+            f.categories,
+            f.tags,
+            f.clock,
+            ObserveMonthFox(
+                f.accounts,
+                f.transactions,
+                ObserveHomeDashboard(
+                    f.accounts,
+                    f.transactions,
+                    ObservePendingPayments(f.recurring, f.settings, f.clock),
+                    f.cardDues,
+                    f.loanDues,
+                    f.clock,
+                ),
+                f.clock,
+            ),
+        )
 
     // Room emits on its own thread: wait for the state built from what was just asked
     private suspend fun HistoryViewModel.current(ready: (HistoryUiState) -> Boolean = { true }) =

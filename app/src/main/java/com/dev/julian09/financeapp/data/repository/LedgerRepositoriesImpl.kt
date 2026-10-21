@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.data.local.FinanceDatabase
 import com.dev.julian09.financeapp.data.local.dao.AccountDao
 import com.dev.julian09.financeapp.data.local.dao.CardDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
+import com.dev.julian09.financeapp.data.local.dao.ChangeLogDao
 import com.dev.julian09.financeapp.data.local.dao.LoanDao
 import com.dev.julian09.financeapp.data.local.dao.RecurringDao
 import com.dev.julian09.financeapp.data.local.dao.SettingsDao
@@ -24,6 +25,7 @@ import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
 import com.dev.julian09.financeapp.data.sync.transactionData
+import com.dev.julian09.financeapp.data.sync.transactionFromData
 import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
@@ -33,9 +35,12 @@ import com.dev.julian09.financeapp.domain.model.Amortization
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
+import com.dev.julian09.financeapp.domain.model.ChangeAction
+import com.dev.julian09.financeapp.domain.model.ChangeEntry
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Frequency
+import com.dev.julian09.financeapp.domain.model.HomeCard
 import com.dev.julian09.financeapp.domain.model.Installment
 import com.dev.julian09.financeapp.domain.model.InstallmentStatus
 import com.dev.julian09.financeapp.domain.model.IntervalUnit
@@ -43,6 +48,7 @@ import com.dev.julian09.financeapp.domain.model.Loan
 import com.dev.julian09.financeapp.domain.model.LoanInstallment
 import com.dev.julian09.financeapp.domain.model.LoanMode
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Recurring
@@ -56,6 +62,7 @@ import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
+import com.dev.julian09.financeapp.domain.port.ChangeLogRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.LoanRepository
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
@@ -65,6 +72,9 @@ import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -99,8 +109,15 @@ class AccountRepositoryImpl
 
         override suspend fun update(account: Account) {
             val stored = dao.get(account.id) ?: return
-            dao.upsert(listOf(account.toEntity(createdAt = stored.createdAt, updatedAt = clock.now())))
+            // The carousel order is not part of the form (M9)
+            dao.upsert(listOf(account.toEntity(createdAt = stored.createdAt, updatedAt = clock.now()).copy(sortOrder = stored.sortOrder)))
         }
+
+        override suspend fun reorder(ids: List<UUID>) =
+            db.withTransaction {
+                val now = clock.now()
+                ids.forEachIndexed { index, id -> dao.setSortOrder(id, index, now) }
+            }
 
         override suspend fun setActive(
             id: UUID,
@@ -247,6 +264,33 @@ class ChangeLogWriter
         }
     }
 
+class ChangeLogRepositoryImpl
+    @Inject
+    constructor(
+        private val dao: ChangeLogDao,
+    ) : ChangeLogRepository {
+        override fun observeSince(from: Instant): Flow<List<ChangeEntry>> =
+            dao.observeSince(from).map { rows ->
+                rows.map {
+                    ChangeEntry(
+                        id = it.id,
+                        transactionId = it.transactionId,
+                        action = ChangeAction.valueOf(it.action),
+                        before = it.beforeValue?.let { json -> movement(it.transactionId, json) },
+                        after = it.afterValue?.let { json -> movement(it.transactionId, json) },
+                        changedAt = it.changedAt,
+                    )
+                }
+            }
+
+        override suspend fun purgeBefore(cutoff: Instant) = dao.deleteBefore(cutoff)
+
+        private fun movement(
+            id: UUID,
+            json: String,
+        ) = transactionFromData(id, Json.parseToJsonElement(json).jsonObject).toDomain()
+    }
+
 class TagRepositoryImpl
     @Inject
     constructor(
@@ -335,8 +379,27 @@ class TransactionRepositoryImpl
                 cards.deleteDeferredOf(id, now)
             }
 
+        override suspend fun restore(id: UUID): Boolean =
+            db.withTransaction {
+                val before = dao.get(id)?.takeIf { it.deletedAt != null } ?: return@withTransaction false
+                val now = clock.now()
+                val after = before.copy(deletedAt = null, updatedAt = now, syncState = SyncState.PENDING, syncError = null)
+                dao.upsert(listOf(after))
+                history.log("RESTORE", null, after, now)
+                true
+            }
+
         override fun observeRecent(limit: Int): Flow<List<Transaction>> =
             dao.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun suggestNotes(
+            type: TransactionType,
+            text: String,
+            limit: Int,
+        ): List<NoteSuggestion> {
+            val pattern = like(text).ifEmpty { return emptyList() }
+            return dao.notes(type.name, pattern, limit).map { NoteSuggestion(it.note, it.categoryId) }
+        }
 
         override fun observeSince(from: Instant): Flow<List<Transaction>> =
             dao.observeSince(from).map { rows -> rows.map { it.toDomain() } }
@@ -739,7 +802,7 @@ internal fun InstallmentEntity.toLoanInstallment() =
         paidAt = paidAt,
     )
 
-/** Only the reminder fields change from here; homeCards stays as stored until Personalizar inicio (S11). */
+/** user_settings; homeCards is stored as the contract's JSON array. */
 class SettingsRepositoryImpl
     @Inject
     constructor(
@@ -748,7 +811,9 @@ class SettingsRepositoryImpl
     ) : SettingsRepository {
         override fun observe(): Flow<Settings> =
             dao.observe().map { row ->
-                row?.let { Settings(it.reminderLeadDays, it.notificationsEnabled, it.homeBalanceView, it.amountDecimals) } ?: Settings()
+                row?.let {
+                    Settings(it.reminderLeadDays, it.notificationsEnabled, it.homeBalanceView, it.amountDecimals, homeCards(it.homeCards))
+                } ?: Settings()
             }
 
         override suspend fun update(settings: Settings) {
@@ -757,6 +822,9 @@ class SettingsRepositoryImpl
                 stored.copy(
                     reminderLeadDays = settings.reminderLeadDays,
                     notificationsEnabled = settings.notificationsEnabled,
+                    homeBalanceView = settings.homeBalanceView,
+                    amountDecimals = settings.amountDecimals,
+                    homeCards = homeCardsJson(settings.homeCards),
                     updatedAt = clock.now(),
                     syncState = SyncState.PENDING,
                     syncError = null,
@@ -886,3 +954,19 @@ internal fun TransactionEntity.toDomain() =
         createdAt = createdAt,
         pendingSync = syncState != SyncState.SYNCED,
     )
+
+@Serializable
+private data class HomeCardJson(
+    val key: String,
+    val visible: Boolean,
+)
+
+private val cardsJson = Json { ignoreUnknownKeys = true }
+
+/** An unreadable value falls back to the default order rather than breaking Home. */
+internal fun homeCards(text: String): List<HomeCard> =
+    runCatching { cardsJson.decodeFromString<List<HomeCardJson>>(text) }
+        .getOrDefault(emptyList())
+        .map { HomeCard(it.key, it.visible) }
+
+internal fun homeCardsJson(cards: List<HomeCard>): String = cardsJson.encodeToString(cards.map { HomeCardJson(it.key, it.visible) })

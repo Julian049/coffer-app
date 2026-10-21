@@ -1,5 +1,6 @@
 package com.dev.julian09.financeapp.ui.feature.history
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -36,10 +38,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
@@ -54,6 +59,7 @@ import com.dev.julian09.financeapp.ui.components.EmptyState
 import com.dev.julian09.financeapp.ui.components.FabClearance
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
+import com.dev.julian09.financeapp.ui.feature.home.mascot
 import com.dev.julian09.financeapp.ui.feature.transactions.categoryLabel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.Instant
@@ -237,7 +243,18 @@ private fun Summary(state: HistoryUiState) {
             "Resumen de ${monthLabel(state.month)}"
         }
     AppCard {
-        Text(title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                state.fox?.takeUnless { f.customRange }?.let {
+                    Text(monthMood(it.state), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                }
+            }
+            // M14 (#97): how the month closed, or how it goes when it is the current one
+            state.fox?.takeUnless { f.customRange }?.let {
+                Image(painterResource(it.state.mascot()), contentDescription = null, modifier = Modifier.size(48.dp))
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SummaryItem("Ingresos", state.totals.income, MoneyKind.Income, Modifier.weight(1f))
             SummaryItem("Gastos", state.totals.expense, MoneyKind.Expense, Modifier.weight(1f))
@@ -245,6 +262,17 @@ private fun Summary(state: HistoryUiState) {
         }
     }
 }
+
+private fun monthMood(state: FoxState) =
+    when (state) {
+        FoxState.RESTING -> "Sin movimientos"
+        FoxState.DEBT -> "Saldo en rojo"
+        FoxState.ATTENTIVE -> "Con un pago cerca"
+        FoxState.WORRIED -> "Gastos por encima de los ingresos"
+        FoxState.GOAL -> "Mes anterior cerrado en positivo"
+        FoxState.GOOD -> "Por encima del mes anterior"
+        FoxState.NORMAL -> "Todo en orden"
+    }
 
 @Composable
 private fun SummaryItem(

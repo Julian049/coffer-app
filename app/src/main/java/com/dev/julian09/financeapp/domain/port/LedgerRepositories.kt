@@ -5,11 +5,13 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountImpact
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
+import com.dev.julian09.financeapp.domain.model.ChangeEntry
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Installment
 import com.dev.julian09.financeapp.domain.model.Loan
 import com.dev.julian09.financeapp.domain.model.LoanInstallment
+import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
@@ -18,6 +20,7 @@ import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
+import com.dev.julian09.financeapp.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.LocalDate
@@ -34,6 +37,9 @@ interface AccountRepository {
     suspend fun create(account: Account)
 
     suspend fun update(account: Account)
+
+    /** M9: the carousel and the lists follow [ids], first to last. */
+    suspend fun reorder(ids: List<UUID>)
 
     suspend fun setActive(
         id: UUID,
@@ -125,6 +131,16 @@ interface TransactionRepository {
 
     suspend fun delete(id: UUID)
 
+    /** Undeletes a movement and logs RESTORE in the same database transaction (REQ-HIS-03); false when it is not deleted. */
+    suspend fun restore(id: UUID): Boolean
+
+    /** M5: notes of earlier movements of [type] that contain [text], latest use first, each with its latest category. */
+    suspend fun suggestNotes(
+        type: TransactionType,
+        text: String,
+        limit: Int = 5,
+    ): List<NoteSuggestion>
+
     /** Newest first, not deleted. */
     fun observeRecent(limit: Int): Flow<List<Transaction>>
 
@@ -188,6 +204,15 @@ interface RecurringRepository {
         id: UUID,
         on: LocalDate,
     )
+}
+
+/** Historial de cambios (REQ-HIS-02 to 04). */
+interface ChangeLogRepository {
+    /** Entries changed at or after [from], newest first. */
+    fun observeSince(from: Instant): Flow<List<ChangeEntry>>
+
+    /** Deletes, on this phone only, the entries changed before [cutoff]; the server purges its own copy (REQ-HIS-04). */
+    suspend fun purgeBefore(cutoff: Instant)
 }
 
 interface SettingsRepository {

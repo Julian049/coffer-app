@@ -56,4 +56,7 @@ object DatabaseModule {
 
     @Provides
     fun provideLoanDao(db: FinanceDatabase) = db.loans()
+
+    @Provides
+    fun provideChangeLogDao(db: FinanceDatabase) = db.changeLog()
 }

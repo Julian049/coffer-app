@@ -49,6 +49,12 @@ data class TotalsRow(
     val expense: Long,
 )
 
+/** A note used before and the category of its latest movement (M5). */
+data class NoteRow(
+    val note: String,
+    val categoryId: UUID?,
+)
+
 data class SearchTotalsRow(
     val income: Long,
     val expense: Long,
@@ -120,6 +126,13 @@ interface AccountDao {
         id: UUID,
         active: Boolean,
         deactivatedAt: Instant?,
+        now: Instant,
+    )
+
+    @Query("UPDATE accounts SET sortOrder = :order, updatedAt = :now, syncState = 'PENDING', syncError = NULL WHERE id = :id")
+    suspend fun setSortOrder(
+        id: UUID,
+        order: Int,
         now: Instant,
     )
 
@@ -293,6 +306,17 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun get(id: UUID): TransactionEntity?
+
+    // SQLite takes the bare categoryId from the row that holds MAX(occurredAt): the latest use of each note
+    @Query(
+        "SELECT note, categoryId FROM transactions WHERE deletedAt IS NULL AND type = :type AND note LIKE :like ESCAPE '\\' " +
+            "GROUP BY note ORDER BY MAX(occurredAt) DESC LIMIT :limit",
+    )
+    suspend fun notes(
+        type: String,
+        like: String,
+        limit: Int,
+    ): List<NoteRow>
 
     @Query("SELECT * FROM transactions WHERE id = :id AND deletedAt IS NULL")
     fun observe(id: UUID): Flow<TransactionEntity?>
@@ -544,6 +568,13 @@ interface ChangeLogDao {
 
     @Query("SELECT * FROM change_log WHERE transactionId = :transactionId ORDER BY changedAt")
     suspend fun forTransaction(transactionId: UUID): List<ChangeLogEntity>
+
+    @Query("SELECT * FROM change_log WHERE deletedAt IS NULL AND changedAt >= :from ORDER BY changedAt DESC")
+    fun observeSince(from: Instant): Flow<List<ChangeLogEntity>>
+
+    /** Local purge (REQ-HIS-04): the server deletes its rows on its own, so nothing is sent. */
+    @Query("DELETE FROM change_log WHERE changedAt < :cutoff")
+    suspend fun deleteBefore(cutoff: Instant)
 
     @Query("SELECT * FROM change_log WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
     suspend fun pending(limit: Int): List<ChangeLogEntity>

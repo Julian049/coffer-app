@@ -6,6 +6,8 @@ import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
 import com.dev.julian09.financeapp.domain.usecase.ObservePendingPayments
+import com.dev.julian09.financeapp.domain.usecase.UpdateSettings
+import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterNotNull
@@ -56,6 +58,8 @@ class HomeViewModelTest {
             f.categories,
             f.tags,
             f.clock,
+            f.settings,
+            UpdateSettings(f.settings, FakeSyncScheduler()),
         ).state.filterNotNull().first()
 
     private fun day(date: String) = Instant.parse("${date}T15:00:00Z")

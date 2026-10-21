@@ -12,6 +12,7 @@ import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
 import com.dev.julian09.financeapp.domain.usecase.ObservePendingPayments
 import com.dev.julian09.financeapp.domain.usecase.PinTag
 import com.dev.julian09.financeapp.domain.usecase.RenameTag
+import com.dev.julian09.financeapp.domain.usecase.UpdateSettings
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.feature.home.HomeViewModel
 import kotlinx.coroutines.Dispatchers
@@ -122,6 +123,8 @@ class TagSummaryTest {
                     f.categories,
                     f.tags,
                     f.clock,
+                    f.settings,
+                    UpdateSettings(f.settings, FakeSyncScheduler()),
                 ).state.filterNotNull().first()
             val line = home.pinned.single()
             assertEquals("Salidas", line.tag.name)

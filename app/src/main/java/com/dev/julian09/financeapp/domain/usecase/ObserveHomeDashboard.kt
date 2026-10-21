@@ -4,7 +4,9 @@ import com.dev.julian09.financeapp.domain.finance.BalanceCalculator
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxRules
 import com.dev.julian09.financeapp.domain.model.AccountBalance
+import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.DuePayment
+import com.dev.julian09.financeapp.domain.model.LoanDue
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.port.AccountRepository
@@ -28,6 +30,10 @@ data class HomeDashboard(
     val fox: FoxMood,
     /** REQ-INI-03: recurring expenses, card statements and loan installments inside the reminder window, by due date. */
     val pending: List<DuePayment> = emptyList(),
+    /** REQ-CTA-08: [available] minus [dues]. */
+    val net: Money = available,
+    /** What the cards and loans ask for this period: each card's statement and each loan's next installment. */
+    val dues: List<DuePayment> = emptyList(),
 )
 
 /** S4-DOM03: total available, accounts, last 5 days and the mascot state. */
@@ -82,6 +88,7 @@ class ObserveHomeDashboard
                         atClose.filter { it.account.id in activeNow && (it.account.createdAt ?: monthStart) < monthStart },
                     )
                 val change = BalanceCalculator.monthlyChange(available, previousClose)
+                val dues = pending.filter { (it is CardDue || it is LoanDue) && it.amount > Money.ZERO }
                 HomeDashboard(
                     available = available,
                     monthlyChange = change,
@@ -90,6 +97,8 @@ class ObserveHomeDashboard
                     recent = recent,
                     fox = FoxRules.evaluate(count > 0, available, change, thisMonth, lastMonth, today, pending),
                     pending = pending.filter { it.inWindow },
+                    net = BalanceCalculator.net(available, dues.map { it.amount }),
+                    dues = dues,
                 )
             }
         }

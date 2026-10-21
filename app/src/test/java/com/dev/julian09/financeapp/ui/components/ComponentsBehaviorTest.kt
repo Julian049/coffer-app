@@ -9,14 +9,23 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.dev.julian09.financeapp.domain.finance.FoxMood
+import com.dev.julian09.financeapp.domain.finance.FoxState
+import com.dev.julian09.financeapp.domain.model.Account
+import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryRef
 import com.dev.julian09.financeapp.domain.model.CategoryResolution
 import com.dev.julian09.financeapp.domain.model.ImportPreview
+import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
 import com.dev.julian09.financeapp.ui.feature.auth.LoginContent
 import com.dev.julian09.financeapp.ui.feature.auth.LoginUiState
+import com.dev.julian09.financeapp.ui.feature.home.BalanceView
+import com.dev.julian09.financeapp.ui.feature.home.HomeContent
+import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportCatalog
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportActions
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportContent
@@ -35,6 +44,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.YearMonth
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -110,6 +120,66 @@ class ComponentsBehaviorTest {
         compose.onNodeWithText("Asociar a una existente").performScrollTo().performClick()
         compose.onNodeWithText("Comida").assertIsDisplayed().performClick()
         assertEquals(CategoryResolution.Use(food.id), chosen)
+    }
+
+    @Test
+    fun `tapping the balance shows both views and picks the one for Home`() {
+        // HU-04: $1.000.000 available and $800.000 of card due this period
+        var chosen: BalanceView? = null
+        val dashboard =
+            HomeDashboard(
+                available = Money.ofPesos(1_000_000),
+                monthlyChange = null,
+                previousMonth = YearMonth.of(2026, 9),
+                accounts = emptyList(),
+                recent = emptyList(),
+                fox = FoxMood(FoxState.NORMAL),
+                net = Money.ofPesos(200_000),
+            )
+        compose.setContent {
+            CofferTheme {
+                HomeContent(HomeUiState(dashboard, emptyList()), {}, {}, {}, onBalanceView = { chosen = it })
+            }
+        }
+        compose.onNodeWithText("Saldo total disponible").performClick()
+        compose.onNodeWithText("Saldo neto").assertIsDisplayed()
+        compose.onNodeWithText("$200.000").assertIsDisplayed()
+        compose.onNodeWithText("Neto").performClick()
+        assertEquals(BalanceView.NET, chosen)
+    }
+
+    @Test
+    fun `the import warns about opening balances that the history would add again`() {
+        // #67: a card created with its debt gets it twice once the purchases behind it are imported
+        val visa = Account(UUID(1, 1), "Visa", AccountType.CREDIT_CARD, Money.ofPesos(800_000), includeInTotal = false, active = true)
+        val cash = Account(UUID(1, 2), "Efectivo", AccountType.CASH, Money.ZERO, includeInTotal = true, active = true)
+        compose.setContent {
+            CofferTheme {
+                ImportExportContent(
+                    ImportExportState(
+                        step = ImportStep.REVIEW,
+                        fileName = "cashew.csv",
+                        preview =
+                            ImportPreview(
+                                headers = listOf("amount"),
+                                mapping = emptyMap(),
+                                sample = emptyList(),
+                                valid = 1,
+                                errors = emptyList(),
+                                errorCount = 0,
+                                duplicates = 0,
+                                unknownAccounts = emptyList(),
+                                unknownCategories = emptyList(),
+                            ),
+                    ),
+                    ImportCatalog(accounts = listOf(visa, cash)),
+                    ImportExportActions(),
+                    zone = ZoneOffset.UTC,
+                )
+            }
+        }
+        compose.onNodeWithText("Revisa los saldos iniciales").assertIsDisplayed()
+        compose.onNodeWithText("Visa", substring = true).assertIsDisplayed()
     }
 
     @Test

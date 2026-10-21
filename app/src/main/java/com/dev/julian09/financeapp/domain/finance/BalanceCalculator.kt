@@ -27,6 +27,15 @@ object BalanceCalculator {
             .filter { it.account.active && it.account.includeInTotal && !it.account.type.isDebt }
             .fold(Money.ZERO) { sum, it -> sum + it.balance }
 
+    /**
+     * REQ-CTA-08: the available total minus what the cards and loans ask for in this period, so what is left to spend.
+     * [dues] are the current statement of each card and the next installment of each loan.
+     */
+    fun net(
+        available: Money,
+        dues: List<Money>,
+    ): Money = dues.fold(available) { left, due -> left - due }
+
     /** Percent change against the close of the previous month, one decimal; null when there is nothing to compare. */
     fun monthlyChange(
         now: Money,

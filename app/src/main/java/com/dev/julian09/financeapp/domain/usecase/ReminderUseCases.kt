@@ -74,8 +74,8 @@ class SendReminders
         }
     }
 
-/** Ajustes → Avisos (REQ-REC-03, 10): the switch and the lead days, 0 to 30. */
-class UpdateReminderSettings
+/** Ajustes: notices (REQ-REC-03, 10; lead days 0 to 30), balance view (REQ-CTA-09), decimals (RNF-13) and Home cards (REQ-INI-04). */
+class UpdateSettings
     @Inject
     constructor(
         private val settings: SettingsRepository,
