@@ -10,8 +10,18 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.dev.julian09.financeapp.domain.model.AuthField
+import com.dev.julian09.financeapp.domain.model.Category
+import com.dev.julian09.financeapp.domain.model.CategoryKind
+import com.dev.julian09.financeapp.domain.model.CategoryRef
+import com.dev.julian09.financeapp.domain.model.CategoryResolution
+import com.dev.julian09.financeapp.domain.model.ImportPreview
 import com.dev.julian09.financeapp.ui.feature.auth.LoginContent
 import com.dev.julian09.financeapp.ui.feature.auth.LoginUiState
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportCatalog
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportActions
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportContent
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportState
+import com.dev.julian09.financeapp.ui.feature.importexport.ImportStep
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsUiState
@@ -25,6 +35,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.ZoneOffset
+import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -61,6 +73,43 @@ class ComponentsBehaviorTest {
             .assertIsDisplayed()
             .performClick()
         assertTrue(saved)
+    }
+
+    @Test
+    fun `associating an imported category with an existing one opens the picker`() {
+        // #114: the picker nested a second vertical scroll inside the sheet and the app closed
+        val dining = CategoryRef(CategoryKind.EXPENSE, "Dining")
+        val food = Category(UUID(2, 1), "Comida", CategoryKind.EXPENSE)
+        var chosen: CategoryResolution? = null
+        compose.setContent {
+            CofferTheme {
+                ImportExportContent(
+                    ImportExportState(
+                        step = ImportStep.REVIEW,
+                        fileName = "cashew.csv",
+                        preview =
+                            ImportPreview(
+                                headers = listOf("amount"),
+                                mapping = emptyMap(),
+                                sample = emptyList(),
+                                valid = 1,
+                                errors = emptyList(),
+                                errorCount = 0,
+                                duplicates = 0,
+                                unknownAccounts = emptyList(),
+                                unknownCategories = listOf(dining),
+                            ),
+                        categories = mapOf(dining to CategoryResolution.Create),
+                    ),
+                    ImportCatalog(categories = listOf(food)),
+                    ImportExportActions(onCategory = { _, resolution -> chosen = resolution }),
+                    zone = ZoneOffset.UTC,
+                )
+            }
+        }
+        compose.onNodeWithText("Asociar a una existente").performScrollTo().performClick()
+        compose.onNodeWithText("Comida").assertIsDisplayed().performClick()
+        assertEquals(CategoryResolution.Use(food.id), chosen)
     }
 
     @Test

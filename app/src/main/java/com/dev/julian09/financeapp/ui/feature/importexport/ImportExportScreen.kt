@@ -537,7 +537,8 @@ private fun ReviewStep(
     associating?.let { index ->
         val ref = state.categories.keys.elementAtOrNull(index) ?: return@let
         AppBottomSheet(onDismiss = { associating = null }, title = "Asociar «${ref.name}»") {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // The sheet already scrolls; a second verticalScroll inside it crashes the app
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val ofKind = catalog.categories.filter { it.kind == ref.kind }
                 ofKind.filter { it.parentId == null }.forEach { main ->
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
