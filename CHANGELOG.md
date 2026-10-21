@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Historial de cambios (Ajustes): the last 90 days of creations, edits, deletions and restores grouped by day; Restaurar brings back a deleted movement and Revertir undoes an edit, only on the latest change of a movement (S11-H01, #118). Entries older than 90 days leave the phone on every start
+
 ## [1.2.2] - 2026-10-21
 
 ### Fixed

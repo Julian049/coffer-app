@@ -31,6 +31,7 @@ import com.dev.julian09.financeapp.ui.feature.accounts.AccountFormScreen
 import com.dev.julian09.financeapp.ui.feature.accounts.AccountsScreen
 import com.dev.julian09.financeapp.ui.feature.accounts.DeactivatedAccountsScreen
 import com.dev.julian09.financeapp.ui.feature.categories.CategoriesScreen
+import com.dev.julian09.financeapp.ui.feature.changes.ChangeHistoryScreen
 import com.dev.julian09.financeapp.ui.feature.history.HistoryScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportScreen
@@ -129,8 +130,10 @@ fun AppNavHost(
                     onOpenRecurring = { navController.navigate(RecurringRoute) },
                     onOpenImportExport = { navController.navigate(ImportExportRoute) },
                     onOpenTags = openTags,
+                    onOpenChangeHistory = { navController.navigate(ChangeHistoryRoute) },
                 )
             }
+            composable<ChangeHistoryRoute> { ChangeHistoryScreen(onBack = navController::popBackStack) }
             composable<TagsRoute> { TagsScreen(onBack = navController::popBackStack, onOpenTag = openTag) }
             composable<TagDetailRoute> { TagDetailScreen(onBack = navController::popBackStack, onOpenTransaction = openTransaction) }
             composable<ImportExportRoute> { ImportExportScreen(onBack = navController::popBackStack) }

@@ -545,6 +545,13 @@ interface ChangeLogDao {
     @Query("SELECT * FROM change_log WHERE transactionId = :transactionId ORDER BY changedAt")
     suspend fun forTransaction(transactionId: UUID): List<ChangeLogEntity>
 
+    @Query("SELECT * FROM change_log WHERE deletedAt IS NULL AND changedAt >= :from ORDER BY changedAt DESC")
+    fun observeSince(from: Instant): Flow<List<ChangeLogEntity>>
+
+    /** Local purge (REQ-HIS-04): the server deletes its rows on its own, so nothing is sent. */
+    @Query("DELETE FROM change_log WHERE changedAt < :cutoff")
+    suspend fun deleteBefore(cutoff: Instant)
+
     @Query("SELECT * FROM change_log WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
     suspend fun pending(limit: Int): List<ChangeLogEntity>
 

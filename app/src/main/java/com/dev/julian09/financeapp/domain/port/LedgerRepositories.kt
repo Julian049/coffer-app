@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountImpact
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
+import com.dev.julian09.financeapp.domain.model.ChangeEntry
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Installment
@@ -125,6 +126,9 @@ interface TransactionRepository {
 
     suspend fun delete(id: UUID)
 
+    /** Undeletes a movement and logs RESTORE in the same database transaction (REQ-HIS-03); false when it is not deleted. */
+    suspend fun restore(id: UUID): Boolean
+
     /** Newest first, not deleted. */
     fun observeRecent(limit: Int): Flow<List<Transaction>>
 
@@ -188,6 +192,15 @@ interface RecurringRepository {
         id: UUID,
         on: LocalDate,
     )
+}
+
+/** Historial de cambios (REQ-HIS-02 to 04). */
+interface ChangeLogRepository {
+    /** Entries changed at or after [from], newest first. */
+    fun observeSince(from: Instant): Flow<List<ChangeEntry>>
+
+    /** Deletes, on this phone only, the entries changed before [cutoff]; the server purges its own copy (REQ-HIS-04). */
+    suspend fun purgeBefore(cutoff: Instant)
 }
 
 interface SettingsRepository {

@@ -91,6 +91,22 @@ data class Transaction(
     val pendingSync: Boolean = false,
 )
 
+/** A card purchase in installments or a payment is not edited: it is deleted and registered again (S7). */
+fun Transaction.isEditable() = installments <= 1 && paymentKind == null
+
+/** change_log.action (REQ-HIS-01). */
+enum class ChangeAction { CREATE, UPDATE, DELETE, RESTORE }
+
+/** One entry of Historial de cambios: the movement before and after, null when it did not exist. */
+data class ChangeEntry(
+    val id: UUID,
+    val transactionId: UUID,
+    val action: ChangeAction,
+    val before: Transaction?,
+    val after: Transaction?,
+    val changedAt: Instant,
+)
+
 data class HomeCard(
     val key: String,
     val visible: Boolean,

@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.model.isEditable
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
@@ -66,9 +67,6 @@ fun TransactionDetailScreen(
     if (editable == true) return
     TransactionDetailContent(detail, onBack, onEdit, viewModel::confirmDelete)
 }
-
-/** A plan or a payment split cannot follow an edit: they are deleted and registered again. */
-fun Transaction.isEditable() = installments <= 1 && paymentKind == null
 
 private val CREATED = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-CO"))
 

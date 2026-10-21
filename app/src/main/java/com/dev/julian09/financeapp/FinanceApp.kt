@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.dev.julian09.financeapp.data.local.LegacyDatabaseMigrator
 import com.dev.julian09.financeapp.di.ApplicationScope
+import com.dev.julian09.financeapp.domain.usecase.PurgeChangeHistory
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -21,6 +22,9 @@ class FinanceApp :
     lateinit var legacyMigrator: LegacyDatabaseMigrator
 
     @Inject
+    lateinit var purgeChangeHistory: PurgeChangeHistory
+
+    @Inject
     @ApplicationScope
     lateinit var appScope: CoroutineScope
 
@@ -31,6 +35,9 @@ class FinanceApp :
     override fun onCreate() {
         super.onCreate()
         // Off the main thread; screens observe the database and update as soon as the MVP rows land
-        appScope.launch { legacyMigrator.migrateIfNeeded() }
+        appScope.launch {
+            legacyMigrator.migrateIfNeeded()
+            purgeChangeHistory()
+        }
     }
 }

@@ -80,3 +80,9 @@ data object TagsRoute
 data class TagDetailRoute(
     val id: String,
 )
+
+@Serializable
+data object ChangeHistoryRoute
+
+@Serializable
+data object CustomizeHomeRoute

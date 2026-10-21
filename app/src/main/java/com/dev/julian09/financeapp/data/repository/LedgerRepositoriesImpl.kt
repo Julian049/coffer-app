@@ -5,6 +5,7 @@ import com.dev.julian09.financeapp.data.local.FinanceDatabase
 import com.dev.julian09.financeapp.data.local.dao.AccountDao
 import com.dev.julian09.financeapp.data.local.dao.CardDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
+import com.dev.julian09.financeapp.data.local.dao.ChangeLogDao
 import com.dev.julian09.financeapp.data.local.dao.LoanDao
 import com.dev.julian09.financeapp.data.local.dao.RecurringDao
 import com.dev.julian09.financeapp.data.local.dao.SettingsDao
@@ -24,6 +25,7 @@ import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
 import com.dev.julian09.financeapp.data.sync.transactionData
+import com.dev.julian09.financeapp.data.sync.transactionFromData
 import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
@@ -33,6 +35,8 @@ import com.dev.julian09.financeapp.domain.model.Amortization
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
+import com.dev.julian09.financeapp.domain.model.ChangeAction
+import com.dev.julian09.financeapp.domain.model.ChangeEntry
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Frequency
@@ -56,6 +60,7 @@ import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
+import com.dev.julian09.financeapp.domain.port.ChangeLogRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.LoanRepository
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
@@ -65,6 +70,8 @@ import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -247,6 +254,33 @@ class ChangeLogWriter
         }
     }
 
+class ChangeLogRepositoryImpl
+    @Inject
+    constructor(
+        private val dao: ChangeLogDao,
+    ) : ChangeLogRepository {
+        override fun observeSince(from: Instant): Flow<List<ChangeEntry>> =
+            dao.observeSince(from).map { rows ->
+                rows.map {
+                    ChangeEntry(
+                        id = it.id,
+                        transactionId = it.transactionId,
+                        action = ChangeAction.valueOf(it.action),
+                        before = it.beforeValue?.let { json -> movement(it.transactionId, json) },
+                        after = it.afterValue?.let { json -> movement(it.transactionId, json) },
+                        changedAt = it.changedAt,
+                    )
+                }
+            }
+
+        override suspend fun purgeBefore(cutoff: Instant) = dao.deleteBefore(cutoff)
+
+        private fun movement(
+            id: UUID,
+            json: String,
+        ) = transactionFromData(id, Json.parseToJsonElement(json).jsonObject).toDomain()
+    }
+
 class TagRepositoryImpl
     @Inject
     constructor(
@@ -333,6 +367,16 @@ class TransactionRepositoryImpl
                 // A deferred card purchase takes its plan with it
                 cards.deletePlanOf(id, now)
                 cards.deleteDeferredOf(id, now)
+            }
+
+        override suspend fun restore(id: UUID): Boolean =
+            db.withTransaction {
+                val before = dao.get(id)?.takeIf { it.deletedAt != null } ?: return@withTransaction false
+                val now = clock.now()
+                val after = before.copy(deletedAt = null, updatedAt = now, syncState = SyncState.PENDING, syncError = null)
+                dao.upsert(listOf(after))
+                history.log("RESTORE", null, after, now)
+                true
             }
 
         override fun observeRecent(limit: Int): Flow<List<Transaction>> =
