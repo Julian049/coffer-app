@@ -5,7 +5,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.math.RoundingMode
@@ -55,4 +59,34 @@ fun formatMoney(
             MoneyKind.Neutral -> if (money.isNegative) MINUS else ""
         }
     return sign + amount
+}
+
+/**
+ * Shows the whole-peso digits of an amount field as `$1.250.000` (or `1.250.000` without [symbol]) while the field
+ * keeps only the digits, so the cursor stays where the user types when a dot or the `$` appears (E1, #75).
+ */
+class PesosTransformation(
+    private val symbol: Boolean = true,
+) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val pesos = text.text.toLongOrNull() ?: return TransformedText(text, OffsetMapping.Identity)
+        val formatted = formatMoney(Money.ofPesos(pesos))
+        val shown = if (symbol) formatted else formatted.removePrefix("$")
+        val mapping =
+            object : OffsetMapping {
+                // Just before the digit after [offset] digits: past the dot that precedes it
+                override fun originalToTransformed(offset: Int): Int {
+                    var seen = 0
+                    shown.forEachIndexed { i, c -> if (c.isDigit() && seen++ == offset) return i }
+                    return shown.length
+                }
+
+                override fun transformedToOriginal(offset: Int): Int = shown.take(offset).count(Char::isDigit)
+            }
+        return TransformedText(AnnotatedString(shown), mapping)
+    }
+
+    override fun equals(other: Any?) = other is PesosTransformation && other.symbol == symbol
+
+    override fun hashCode() = symbol.hashCode()
 }

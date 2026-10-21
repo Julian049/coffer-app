@@ -139,7 +139,7 @@ fun AccountsContent(
                 AppButton("Nueva cuenta", onClick = onNewAccount, icon = Icons.Outlined.Add, modifier = Modifier.fillMaxWidth())
             }
             if (active.isEmpty()) {
-                EmptyState(title = "Aún no tienes cuentas", message = "Crea tu primera cuenta de efectivo, débito o ahorros.")
+                EmptyState(title = "Aún no tienes cuentas", message = "Crea tu primera cuenta de efectivo o de ahorros.")
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(

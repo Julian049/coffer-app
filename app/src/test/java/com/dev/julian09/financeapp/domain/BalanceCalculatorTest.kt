@@ -16,7 +16,7 @@ class BalanceCalculatorTest {
     private fun pesos(value: Long) = Money.ofPesos(value)
 
     private fun account(
-        type: AccountType = AccountType.DEBIT,
+        type: AccountType = AccountType.SAVINGS,
         initial: Long = 500_000,
         active: Boolean = true,
         include: Boolean = true,

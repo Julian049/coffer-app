@@ -69,6 +69,9 @@ private data class Inputs(
     val limit: Int,
 )
 
+private val ALL_TIME_FROM = LocalDate.of(1900, 1, 1)
+private val ALL_TIME_TO = LocalDate.of(2999, 12, 31)
+
 /** Historial (S5-H02): month selector, live search, type chips and combinable filters. */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -117,7 +120,13 @@ class HistoryViewModel
         private fun filter(i: Inputs): TransactionFilter {
             val zone: ZoneId = clock.zone()
             val f = i.filters
-            val (from, to) = if (f.customRange) f.from!! to f.to!! else i.month.atDay(1) to i.month.atEndOfMonth()
+            // A search looks in the whole history unless Filtros set a range (E5, #79)
+            val (from, to) =
+                when {
+                    f.customRange -> f.from!! to f.to!!
+                    i.query.isNotBlank() -> ALL_TIME_FROM to ALL_TIME_TO
+                    else -> i.month.atDay(1) to i.month.atEndOfMonth()
+                }
             return TransactionFilter(
                 from = from.atStartOfDay(zone).toInstant(),
                 to = to.plusDays(1).atStartOfDay(zone).toInstant(),

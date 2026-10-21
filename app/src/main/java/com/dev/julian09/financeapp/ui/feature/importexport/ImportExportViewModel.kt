@@ -220,6 +220,6 @@ class ImportExportViewModel
         fun clearMessage() = _state.update { it.copy(message = null) }
     }
 
-/** A first guess the user can change: "Cash" or "Efectivo" is cash, the rest a debit account. */
+/** A first guess the user can change: "Cash" or "Efectivo" is cash, the rest a savings account (M8, #84). */
 internal fun guessType(name: String): AccountType =
-    if (listOf("cash", "efectivo").any { name.contains(it, ignoreCase = true) }) AccountType.CASH else AccountType.DEBIT
+    if (listOf("cash", "efectivo").any { name.contains(it, ignoreCase = true) }) AccountType.CASH else AccountType.SAVINGS

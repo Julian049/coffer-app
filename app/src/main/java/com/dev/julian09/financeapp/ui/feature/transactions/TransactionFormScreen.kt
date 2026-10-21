@@ -61,7 +61,6 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.CardOverview
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
-import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.usecase.TransactionField
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
@@ -70,6 +69,7 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.accountIcon
 import com.dev.julian09.financeapp.ui.components.categoryIcon
@@ -267,7 +267,8 @@ private fun AmountCard(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("$", style = MaterialTheme.typography.headlineMedium, color = colors.textSecondary)
             BasicTextField(
-                value = if (state.amountDigits.isEmpty()) "" else formatMoney(Money.ofPesos(state.amountDigits.toLong())).removePrefix("$"),
+                value = state.amountDigits,
+                visualTransformation = PesosTransformation(symbol = false),
                 onValueChange = onAmount,
                 modifier = Modifier.weight(1f),
                 singleLine = true,

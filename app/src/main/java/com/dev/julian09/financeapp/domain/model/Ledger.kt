@@ -6,7 +6,6 @@ import java.util.UUID
 
 enum class AccountType {
     CASH,
-    DEBIT,
     SAVINGS,
     CREDIT_CARD,
     LOAN,

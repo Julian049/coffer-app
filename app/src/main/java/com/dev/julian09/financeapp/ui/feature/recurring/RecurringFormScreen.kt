@@ -40,7 +40,6 @@ import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.IntervalUnit
 import com.dev.julian09.financeapp.domain.model.LedgerError
-import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.usecase.RecurringField
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
@@ -48,7 +47,7 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
-import com.dev.julian09.financeapp.ui.components.formatMoney
+import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.transactions.categoryLabel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -156,7 +155,8 @@ fun RecurringFormContent(
                 error = state.errors[RecurringField.NAME]?.message(),
             )
             AppTextField(
-                value = if (state.amountDigits.isEmpty()) "" else formatMoney(Money.ofPesos(state.amountDigits.toLong())),
+                value = state.amountDigits,
+                visualTransformation = PesosTransformation(),
                 onValueChange = actions.onAmount,
                 label = "Monto",
                 placeholder = "$ 0",

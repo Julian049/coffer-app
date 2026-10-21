@@ -63,6 +63,7 @@ fun AppTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     autofill: ContentType? = null,
     enabled: Boolean = true,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
     val colors = CofferTheme.colors
     val interaction = remember { MutableInteractionSource() }
@@ -86,7 +87,7 @@ fun AppTextField(
             cursorBrush = SolidColor(colors.primary),
             keyboardOptions = if (password) keyboardOptions.copy(keyboardType = KeyboardType.Password) else keyboardOptions,
             keyboardActions = keyboardActions,
-            visualTransformation = if (password && !visible) PasswordVisualTransformation() else VisualTransformation.None,
+            visualTransformation = if (password && !visible) PasswordVisualTransformation() else visualTransformation,
             interactionSource = interaction,
             modifier =
                 Modifier
