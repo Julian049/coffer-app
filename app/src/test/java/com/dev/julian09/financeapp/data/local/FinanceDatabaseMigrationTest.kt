@@ -95,4 +95,23 @@ class FinanceDatabaseMigrationTest {
             close()
         }
     }
+
+    @Test
+    fun version4To5KeepsTheCategoriesIncludedInReports() {
+        helper.createDatabase(4).apply {
+            execSQL(
+                "INSERT INTO categories (id, name, kind, isBase, sortOrder, createdAt, updatedAt, syncState) " +
+                    "VALUES ('c1', 'Comida', 'EXPENSE', 1, 0, 0, 0, 'SYNCED')",
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(5).apply {
+            prepare("SELECT name, excludeFromReports FROM categories").use {
+                it.step()
+                assertEquals("Comida", it.getText(0))
+                assertEquals(0L, it.getLong(1))
+            }
+            close()
+        }
+    }
 }

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Tags (S9-H02, REQ-ETQ-01 to 04, AT-HU10-1 and 2, #103): Ajustes → Etiquetas (also from Reportes, M6 #90) lists every tag with its month total and a pin; create, rename and delete (its movements stay, without a tag); the detail shows this month, last month or a range, the total, the expenses by category and the movements; pinned tags show their month total on Home
+- Reportes (S9-H01, REQ-REP-01 to 05, #102): week (Monday to Sunday), month or range; income, expenses and balance; the evolution of the last 6 periods with the change against the previous one; expenses and income by category (tap to see the subcategories); interest and fees paid per card; activity (movements and average per day); transfers and excluded categories do not count, a deferred purchase counts installment by installment on each due date and a refund on a card is income (PO, 2026-10-20). `ReportAggregator` is pure domain code
+- Exclude a category from reports (S9-H03, REQ-CAT-04, #85): Categorías → a main category's options → "Excluir de reportes", with a warning before turning it on; its movements and its subcategories' stop counting in Home's monthly totals and the fox (and in Reportes), the balances do not change; Room 5 adds `categories.excludeFromReports`, synced as `excludeFromReports` (server V11)
+
+### Changed
+
+- One tap on a movement opens its edit, with "Eliminar" on top; purchases in installments and card payments, which are not edited, still open their detail (M3, #87)
+- The save button of the movement, account, card and recurring forms stays at the bottom, visible while the form scrolls (M4, #88)
+- More icons to choose from: 27 for categories (transport, fuel, flights, coffee, games, gym, clothes, beauty, kids, phone, internet, power, water, repairs, savings…) and 11 for accounts; the pickers wrap into rows (M11, #94)
+- Nueva tarjeta asks for the current debt (0 by default) instead of the current available credit, and shows the available credit it gives (M2, #86)
+
 ## [1.0.2] - 2026-10-20
 
 ### Changed

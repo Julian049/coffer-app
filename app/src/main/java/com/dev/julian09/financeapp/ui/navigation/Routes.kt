@@ -66,3 +66,11 @@ data class RecurringFormRoute(
 
 @Serializable
 data object ImportExportRoute
+
+@Serializable
+data object TagsRoute
+
+@Serializable
+data class TagDetailRoute(
+    val id: String,
+)

@@ -43,6 +43,7 @@ import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import com.dev.julian09.financeapp.domain.model.TransactionType
@@ -162,6 +163,7 @@ class CategoryRepositoryImpl
                         systemKey = category.systemKey,
                         icon = category.icon,
                         sortOrder = category.sortOrder,
+                        excludeFromReports = category.excludeFromReports,
                         createdAt = now,
                         updatedAt = now,
                     ),
@@ -173,6 +175,11 @@ class CategoryRepositoryImpl
             id: UUID,
             name: String,
         ) = dao.rename(id, name, clock.now())
+
+        override suspend fun setExcludedFromReports(
+            id: UUID,
+            excluded: Boolean,
+        ) = dao.setExcludedFromReports(id, excluded, clock.now())
 
         override suspend fun transactionCount(id: UUID): Int = transactions.countInCategory(id)
 
@@ -236,6 +243,7 @@ class ChangeLogWriter
 class TagRepositoryImpl
     @Inject
     constructor(
+        private val db: FinanceDatabase,
         private val dao: TagDao,
         private val clock: Clock,
     ) : TagRepository {
@@ -245,6 +253,30 @@ class TagRepositoryImpl
             val now = clock.now()
             dao.upsert(listOf(TagEntity(id = tag.id, name = tag.name, pinned = tag.pinned, createdAt = now, updatedAt = now)))
         }
+
+        override suspend fun rename(
+            id: UUID,
+            name: String,
+        ) = dao.rename(id, name, clock.now())
+
+        override suspend fun setPinned(
+            id: UUID,
+            pinned: Boolean,
+        ) = dao.setPinned(id, pinned, clock.now())
+
+        override suspend fun delete(id: UUID) {
+            val now = clock.now()
+            db.withTransaction {
+                dao.untag(id, now)
+                dao.delete(id, now)
+            }
+        }
+
+        override fun observeTotals(
+            from: Instant,
+            to: Instant,
+        ): Flow<List<TagTotal>> =
+            dao.observeTotals(from, to).map { rows -> rows.map { TagTotal(it.tagId, Money(it.income), Money(it.expense), it.count) } }
     }
 
 class TransactionRepositoryImpl
@@ -304,6 +336,14 @@ class TransactionRepositoryImpl
 
         override fun observeByAccount(accountId: UUID): Flow<List<Transaction>> =
             dao.observeByAccount(accountId).map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeBetween(
+            from: Instant,
+            to: Instant,
+        ): Flow<List<Transaction>> = dao.observeBetween(from, to).map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeDeferredPurchases(): Flow<List<Transaction>> =
+            dao.observeDeferredPurchases().map { rows -> rows.map { it.toDomain() } }
 
         override fun observeTotals(
             from: Instant,
@@ -686,7 +726,8 @@ internal fun AccountEntity.toDomain() =
         createdAt,
     )
 
-internal fun CategoryEntity.toDomain() = Category(id, name, CategoryKind.valueOf(kind), parentId, isBase, systemKey, icon, sortOrder)
+internal fun CategoryEntity.toDomain() =
+    Category(id, name, CategoryKind.valueOf(kind), parentId, isBase, systemKey, icon, sortOrder, excludeFromReports)
 
 internal fun TransactionEntity.toDomain() =
     Transaction(

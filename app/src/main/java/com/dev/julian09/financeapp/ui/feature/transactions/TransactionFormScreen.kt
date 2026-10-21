@@ -69,6 +69,7 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.accountIcon
@@ -117,6 +118,7 @@ fun TransactionFormScreen(
                 onClearTagError = viewModel::clearTagError,
                 onNote = viewModel::setNote,
                 onSave = viewModel::save,
+                onDelete = viewModel::delete,
                 onInstallments = viewModel::setInstallments,
                 onRate = viewModel::setRate,
             ),
@@ -137,6 +139,7 @@ class TransactionFormActions(
     val onClearTagError: () -> Unit = {},
     val onNote: (String) -> Unit = {},
     val onSave: () -> Unit = {},
+    val onDelete: () -> Unit = {},
     val onInstallments: (Int) -> Unit = {},
     val onRate: (String) -> Unit = {},
 )
@@ -174,9 +177,35 @@ fun TransactionFormContent(
 ) {
     val transfer = state.type == TransactionType.TRANSFER
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = if (state.editingId == null) "Nueva transacción" else "Editar transacción", onBack = actions.onBack)
+        var confirming by rememberSaveable { mutableStateOf(false) }
+        AppHeader(
+            title = if (state.editingId == null) "Nueva transacción" else "Editar transacción",
+            onBack = actions.onBack,
+            actions = {
+                if (state.editingId != null) {
+                    TextButton(onClick = { confirming = true }) { Text("Eliminar", color = CofferTheme.colors.expense) }
+                }
+            },
+        )
+        if (confirming) {
+            ConfirmDialog(
+                title = "¿Eliminar esta transacción?",
+                message = "Se quita del historial y de los saldos.",
+                confirmText = "Eliminar",
+                onConfirm = {
+                    confirming = false
+                    actions.onDelete()
+                },
+                onDismiss = { confirming = false },
+                destructive = true,
+            )
+        }
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SegmentedSelector(
@@ -235,6 +264,9 @@ fun TransactionFormContent(
                     error = state.errors[TransactionField.NOTE]?.message(),
                 )
             }
+        }
+        // M4 (#88): the save button stays visible while the form scrolls
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AppButton(
                 when {
                     state.editingId != null -> "Guardar cambios"

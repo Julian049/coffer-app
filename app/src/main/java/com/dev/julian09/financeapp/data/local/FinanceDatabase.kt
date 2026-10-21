@@ -26,7 +26,7 @@ import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
 
 /**
- * finance.db, encrypted with SQLCipher (ADR-0008). Version 4 with exported schemas (app/schemas); every later change
+ * finance.db, encrypted with SQLCipher (ADR-0008). Version 5 with exported schemas (app/schemas); every later change
  * is a tested Migration, never a destructive fallback (data-model §5.2).
  */
 @Database(
@@ -43,10 +43,16 @@ import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
         DeferredPurchaseEntity::class,
         InstallmentEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
-    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7); FinanceDatabaseMigrationTest checks them
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4)],
+    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7), 4 → 5 categories.excludeFromReports (S9);
+    // FinanceDatabaseMigrationTest checks them
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3),
+        AutoMigration(from = 3, to = 4),
+        AutoMigration(from = 4, to = 5),
+    ],
 )
 @TypeConverters(Converters::class)
 abstract class FinanceDatabase : RoomDatabase() {
