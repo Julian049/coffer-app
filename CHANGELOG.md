@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Personalizar inicio has no Guardar button: each change to Home's cards or the order of the accounts is saved as it happens, and leaving the screen keeps the last one
+
 ## [1.3.0] - 2026-10-21
 
 ### Added
