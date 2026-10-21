@@ -17,7 +17,7 @@ fun inMemoryDatabase(): FinanceDatabase =
         .build()
 
 class FixedClock(
-    private val instant: Instant = Instant.parse("2026-10-16T12:00:00Z"),
+    var instant: Instant = Instant.parse("2026-10-16T12:00:00Z"),
 ) : Clock {
     override fun now() = instant
 

@@ -36,9 +36,11 @@ import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryRef
 import com.dev.julian09.financeapp.domain.model.CategoryResolution
+import com.dev.julian09.financeapp.domain.model.ChangeAction
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Frequency
+import com.dev.julian09.financeapp.domain.model.HomeCard
 import com.dev.julian09.financeapp.domain.model.ImportPreview
 import com.dev.julian09.financeapp.domain.model.ImportSummary
 import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
@@ -62,6 +64,7 @@ import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.model.homeLayout
 import com.dev.julian09.financeapp.domain.port.ImportStatus
 import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
 import com.dev.julian09.financeapp.ui.PROFILE
@@ -85,6 +88,9 @@ import com.dev.julian09.financeapp.ui.feature.categories.CategoriesContent
 import com.dev.julian09.financeapp.ui.feature.categories.CategoriesState
 import com.dev.julian09.financeapp.ui.feature.categories.CategoryLine
 import com.dev.julian09.financeapp.ui.feature.categories.CategoryNode
+import com.dev.julian09.financeapp.ui.feature.changes.ChangeDay
+import com.dev.julian09.financeapp.ui.feature.changes.ChangeHistoryContent
+import com.dev.julian09.financeapp.ui.feature.changes.ChangeRow
 import com.dev.julian09.financeapp.ui.feature.history.HistoryActions
 import com.dev.julian09.financeapp.ui.feature.history.HistoryChoices
 import com.dev.julian09.financeapp.ui.feature.history.HistoryContent
@@ -93,6 +99,8 @@ import com.dev.julian09.financeapp.ui.feature.history.HistoryFilters
 import com.dev.julian09.financeapp.ui.feature.history.HistoryRow
 import com.dev.julian09.financeapp.ui.feature.history.HistoryUiState
 import com.dev.julian09.financeapp.ui.feature.history.buildDays
+import com.dev.julian09.financeapp.ui.feature.home.CustomizeHomeContent
+import com.dev.julian09.financeapp.ui.feature.home.CustomizeHomeState
 import com.dev.julian09.financeapp.ui.feature.home.HomeContent
 import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
 import com.dev.julian09.financeapp.ui.feature.importexport.ExportChoice
@@ -258,6 +266,12 @@ class ComponentsScreenshotTest {
     fun tagDetailLight() = capture("tag_detail_light", dark = false) { TagDetail() }
 
     @Test
+    fun changeHistoryLight() = capture("change_history_light", dark = false) { ChangeHistory() }
+
+    @Test
+    fun customizeHomeLight() = capture("customize_home_light", dark = false) { CustomizeHome() }
+
+    @Test
     fun loanFormLight() = capture("loan_form_light", dark = false) { LoanForm() }
 
     @Test
@@ -417,6 +431,7 @@ class ComponentsScreenshotTest {
                 totals = SearchTotals(Money.ofPesos(450_000), Money.ofPesos(38_500), 4),
                 hasMore = false,
                 choices = HistoryChoices(),
+                fox = FoxMood(FoxState.GOOD),
             ),
             HistoryActions(),
             avatarInitial = 'J',
@@ -578,6 +593,63 @@ class ComponentsScreenshotTest {
             ReportsState(ReportSpan.MONTH, month, report, mapOf(card to "Tarjeta Visa Platinum")),
             ReportsActions(),
             avatarInitial = 'J',
+        )
+    }
+
+    @Composable
+    private fun ChangeHistory() {
+        ChangeHistoryContent(
+            listOf(
+                ChangeDay(
+                    LocalDate.of(2026, 10, 7),
+                    listOf(
+                        ChangeRow(
+                            UUID(5, 1),
+                            ChangeAction.DELETE,
+                            "Eliminaste «Almuerzo»",
+                            "−$28.000 · Efectivo · 10:42\u00A0a.\u00A0m.",
+                            canRestore = true,
+                        ),
+                        ChangeRow(
+                            UUID(5, 2),
+                            ChangeAction.UPDATE,
+                            "Editaste «Taxi»",
+                            "Monto: $12.000 → $14.000 · 9:15\u00A0a.\u00A0m.",
+                            canRevert = true,
+                        ),
+                    ),
+                ),
+                ChangeDay(
+                    LocalDate.of(2026, 10, 6),
+                    listOf(
+                        ChangeRow(
+                            UUID(5, 3),
+                            ChangeAction.CREATE,
+                            "Creaste «Honorarios asesoría»",
+                            "+$450.000 · Nu Ahorros · 6:30\u00A0p.\u00A0m.",
+                        ),
+                    ),
+                ),
+            ),
+            onBack = {},
+            onUndo = {},
+            today = LocalDate.of(2026, 10, 7),
+        )
+    }
+
+    @Composable
+    private fun CustomizeHome() {
+        CustomizeHomeContent(
+            CustomizeHomeState(
+                cards = homeLayout(listOf(HomeCard("MONTHLY_TREND", false))).let { it.drop(1) + it.first() },
+                accounts = BALANCES.map { it.account },
+                loaded = true,
+            ),
+            onBack = {},
+            onMoveCard = { _, _ -> },
+            onVisible = { _, _ -> },
+            onMoveAccount = { _, _ -> },
+            onSave = {},
         )
     }
 

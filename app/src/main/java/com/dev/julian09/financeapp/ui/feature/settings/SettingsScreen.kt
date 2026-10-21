@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -21,7 +22,9 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.EventRepeat
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ImportExport
 import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material3.AlertDialog
@@ -56,6 +59,7 @@ import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
+import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.feature.recurring.days
 import com.dev.julian09.financeapp.ui.feature.recurring.rememberNotificationPermissionRequest
@@ -71,6 +75,8 @@ fun SettingsScreen(
     onOpenRecurring: () -> Unit,
     onOpenImportExport: () -> Unit = {},
     onOpenTags: () -> Unit = {},
+    onOpenChangeHistory: () -> Unit = {},
+    onOpenCustomizeHome: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
     reminderViewModel: ReminderSettingsViewModel = hiltViewModel(),
@@ -93,12 +99,16 @@ fun SettingsScreen(
         onOpenRecurring = onOpenRecurring,
         onOpenImportExport = onOpenImportExport,
         onOpenTags = onOpenTags,
+        onOpenChangeHistory = onOpenChangeHistory,
         reminders = reminders,
         onNotifications = { enabled ->
             reminderViewModel.setNotifications(enabled)
             if (enabled) requestPermission()
         },
         onLeadDays = reminderViewModel::setLeadDays,
+        onBalanceView = reminderViewModel::setBalanceView,
+        onDecimals = reminderViewModel::setDecimals,
+        onOpenCustomizeHome = onOpenCustomizeHome,
     )
 }
 
@@ -118,9 +128,13 @@ fun SettingsContent(
     onOpenRecurring: () -> Unit = {},
     onOpenImportExport: () -> Unit = {},
     onOpenTags: () -> Unit = {},
+    onOpenChangeHistory: () -> Unit = {},
     reminders: Settings? = null,
     onNotifications: (Boolean) -> Unit = {},
     onLeadDays: (Int) -> Unit = {},
+    onBalanceView: (String) -> Unit = {},
+    onDecimals: (Int) -> Unit = {},
+    onOpenCustomizeHome: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     LogoutDialogIfNeeded(state.confirmingLogout, onLogoutConfirm, onLogoutDismiss)
@@ -183,7 +197,9 @@ fun SettingsContent(
                     AppButton("Reintentar", onRetry, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
                 }
             }
+            reminders?.let { HomeCard(it, onBalanceView, onOpenCustomizeHome) }
             reminders?.let { RemindersCard(it, onNotifications, onLeadDays) }
+            reminders?.let { AmountsCard(it, onDecimals) }
             AppCard {
                 LinkRow(Icons.AutoMirrored.Outlined.Label, "Categorías", onOpenCategories)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
@@ -194,6 +210,8 @@ fun SettingsContent(
                 LinkRow(Icons.Outlined.AccountBalance, "Cuentas desactivadas", onOpenDeactivated)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.ImportExport, "Importar y exportar", onOpenImportExport)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.History, "Historial de cambios", onOpenChangeHistory)
             }
             if (state.user != null) {
                 AppButton(
@@ -211,6 +229,62 @@ fun SettingsContent(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+/** Ajustes → Inicio: which balance Home shows (REQ-CTA-09). */
+@Composable
+private fun HomeCard(
+    settings: Settings,
+    onBalanceView: (String) -> Unit,
+    onOpenCustomizeHome: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Text("Inicio", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
+    AppCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("Vista del saldo", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                Text("La otra se ve al tocar el saldo", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            }
+            SegmentedSelector(
+                listOf("Disponible", "Neto"),
+                selectedIndex = if (settings.homeBalanceView == "NET") 1 else 0,
+                onSelect = { onBalanceView(if (it == 1) "NET" else "AVAILABLE") },
+                modifier = Modifier.width(180.dp),
+            )
+        }
+        HorizontalDivider(thickness = 1.dp, color = colors.border)
+        LinkRow(Icons.Outlined.Dashboard, "Personalizar inicio", onOpenCustomizeHome)
+    }
+}
+
+/** Ajustes → Montos (RNF-13): 0 or 2 decimals in every amount; the currency is fixed. */
+@Composable
+private fun AmountsCard(
+    settings: Settings,
+    onDecimals: (Int) -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Text("Montos", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
+    AppCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("Decimales", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                Text("Cómo se muestran los montos", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            }
+            SegmentedSelector(
+                listOf("0", "2"),
+                selectedIndex = if (settings.amountDecimals == 2) 1 else 0,
+                onSelect = { onDecimals(if (it == 1) 2 else 0) },
+                modifier = Modifier.width(120.dp),
+            )
+        }
+        HorizontalDivider(thickness = 1.dp, color = colors.border)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Moneda", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+            Text("COP · peso colombiano", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         }
     }
 }

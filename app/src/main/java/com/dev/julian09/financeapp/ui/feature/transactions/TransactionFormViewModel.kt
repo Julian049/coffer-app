@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.CardOverview
 import com.dev.julian09.financeapp.domain.model.Category
+import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.LedgerError
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.Transaction
@@ -28,6 +30,7 @@ import com.dev.julian09.financeapp.ui.feature.accounts.digitsOnly
 import com.dev.julian09.financeapp.ui.feature.accounts.wholePesos
 import com.dev.julian09.financeapp.ui.feature.cards.parsePercent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -66,6 +69,8 @@ data class TransactionFormState(
     /** Bumps on each tag created inline, so the dialog knows to close. */
     val createdTags: Int = 0,
     val saved: Boolean = false,
+    /** M5: earlier notes that match what is typed. */
+    val suggestions: List<NoteSuggestion> = emptyList(),
 )
 
 /** What the form chooses from: active accounts with their balance, categories and tags. */
@@ -176,7 +181,36 @@ class TransactionFormViewModel
         /** At most one tag (REQ-ETQ-02): tapping the chosen one clears it. */
         fun toggleTag(id: UUID) = edit { it.copy(tagId = if (it.tagId == id) null else id) }
 
-        fun setNote(value: String) = edit { it.copy(note = value) }
+        private var suggesting: Job? = null
+
+        /** M5: from 2 letters on, earlier notes of the same type that contain the text. */
+        fun setNote(value: String) {
+            edit { it.copy(note = value) }
+            suggesting?.cancel()
+            val text = value.trim()
+            if (text.length < 2) {
+                _state.update { it.copy(suggestions = emptyList()) }
+                return
+            }
+            suggesting =
+                viewModelScope.launch {
+                    val found = transactions.suggestNotes(_state.value.type, text).filterNot { it.note.equals(text, ignoreCase = true) }
+                    _state.update { it.copy(suggestions = found) }
+                }
+        }
+
+        /** M5: the note and, when it still fits the type, the category it had last time. */
+        fun pickSuggestion(suggestion: NoteSuggestion) {
+            suggesting?.cancel()
+            val category = choices.value.categories.firstOrNull { it.id == suggestion.categoryId }
+            edit { s ->
+                val fits =
+                    s.type != TransactionType.TRANSFER &&
+                        category != null &&
+                        (category.kind == CategoryKind.EXPENSE) == (s.type == TransactionType.EXPENSE)
+                s.copy(note = suggestion.note, categoryId = if (fits) category.id else s.categoryId, suggestions = emptyList())
+            }
+        }
 
         fun newTag(name: String) {
             viewModelScope.launch {

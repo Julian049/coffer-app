@@ -84,7 +84,7 @@ fun buildDays(
                     val where = tx.destinationAccountId?.let { "$from → ${accountNames[it] ?: "Cuenta"}" } ?: from
                     val categoryLabel = category?.let { c -> parent?.let { "${it.name} > ${c.name}" } ?: c.name }
                     HistoryRow(
-                        title = tx.note ?: category?.name ?: label(tx.type),
+                        title = tx.note ?: category?.name ?: typeLabel(tx.type),
                         subtitle = listOfNotNull(categoryLabel?.takeIf { tx.note != null }, where).joinToString(" · "),
                         amount = tx.amount,
                         type = tx.type,
@@ -97,7 +97,7 @@ fun buildDays(
         }
 }
 
-private fun label(type: TransactionType) =
+internal fun typeLabel(type: TransactionType) =
     when (type) {
         TransactionType.EXPENSE -> "Gasto"
         TransactionType.INCOME -> "Ingreso"

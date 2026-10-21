@@ -318,24 +318,7 @@ class SyncTables
                     )
                 },
                 decode = { c ->
-                    val d = c.data
-                    TransactionEntity(
-                        id = UUID.fromString(c.id),
-                        type = d.text("type")!!,
-                        amount = scaled(d.text("amount")!!),
-                        occurredAt = Instant.parse(d.text("occurredAt")!!),
-                        accountId = UUID.fromString(d.text("accountId")!!),
-                        destinationAccountId = d.text("destinationAccountId")?.let(UUID::fromString),
-                        categoryId = d.text("categoryId")?.let(UUID::fromString),
-                        tagId = d.text("tagId")?.let(UUID::fromString),
-                        note = d.text("note"),
-                        installments = d.int("installments"),
-                        principal = d.text("principal")?.let(::scaled),
-                        interest = d.text("interest")?.let(::scaled),
-                        fees = d.text("fees")?.let(::scaled),
-                        installmentId = d.text("installmentId")?.let(UUID::fromString),
-                        recurringId = d.text("recurringId")?.let(UUID::fromString),
-                        paymentKind = d.text("paymentKind"),
+                    transactionFromData(UUID.fromString(c.id), c.data).copy(
                         createdAt = Instant.parse(c.createdAt),
                         updatedAt = Instant.parse(c.updatedAt),
                         deletedAt = c.deletedAt?.let(Instant::parse),
@@ -629,6 +612,31 @@ internal fun transactionData(t: TransactionEntity): JsonObject =
         put("recurringId", t.recurringId?.toString())
         put("paymentKind", t.paymentKind)
     }
+
+/** The inverse of [transactionData]; the timestamps are the caller's to set. */
+internal fun transactionFromData(
+    id: UUID,
+    d: JsonObject,
+) = TransactionEntity(
+    id = id,
+    type = d.text("type")!!,
+    amount = scaled(d.text("amount")!!),
+    occurredAt = Instant.parse(d.text("occurredAt")!!),
+    accountId = UUID.fromString(d.text("accountId")!!),
+    destinationAccountId = d.text("destinationAccountId")?.let(UUID::fromString),
+    categoryId = d.text("categoryId")?.let(UUID::fromString),
+    tagId = d.text("tagId")?.let(UUID::fromString),
+    note = d.text("note"),
+    installments = d.int("installments"),
+    principal = d.text("principal")?.let(::scaled),
+    interest = d.text("interest")?.let(::scaled),
+    fees = d.text("fees")?.let(::scaled),
+    installmentId = d.text("installmentId")?.let(UUID::fromString),
+    recurringId = d.text("recurringId")?.let(UUID::fromString),
+    paymentKind = d.text("paymentKind"),
+    createdAt = Instant.EPOCH,
+    updatedAt = Instant.EPOCH,
+)
 
 /** Long ×10⁴ ↔ the contract's Amount string ("28000.0000"), never through a Double (ADR-0004). */
 internal fun amount(scaled: Long): String = Money(scaled).toBigDecimal().toPlainString()

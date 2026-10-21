@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.ui.feature.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.SearchTotals
@@ -13,6 +14,7 @@ import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
+import com.dev.julian09.financeapp.domain.usecase.ObserveMonthFox
 import com.dev.julian09.financeapp.domain.usecase.SearchTransactions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -60,6 +63,8 @@ data class HistoryUiState(
     val totals: SearchTotals,
     val hasMore: Boolean,
     val choices: HistoryChoices,
+    /** M14: the mascot of [month]; Summary shows it unless a custom range is set. */
+    val fox: FoxMood? = null,
 )
 
 private data class Inputs(
@@ -84,6 +89,7 @@ class HistoryViewModel
         categories: CategoryRepository,
         tags: TagRepository,
         private val clock: Clock,
+        private val monthFox: ObserveMonthFox,
     ) : ViewModel() {
         private val inputs = MutableStateFlow(Inputs(YearMonth.from(clock.today()), "", HistoryFilters(), PAGE))
 
@@ -98,7 +104,12 @@ class HistoryViewModel
             }
 
         val state: StateFlow<HistoryUiState?> =
-            combine(inputs.flatMapLatest { i -> search(filter(i), i.limit).map { i to it } }, choices, months) { (i, result), ch, ms ->
+            combine(
+                inputs.flatMapLatest { i -> search(filter(i), i.limit).map { i to it } },
+                choices,
+                months,
+                inputs.map { it.month }.distinctUntilChanged().flatMapLatest { monthFox(it) },
+            ) { (i, result), ch, ms, fox ->
                 HistoryUiState(
                     month = i.month,
                     months = ms,
@@ -114,6 +125,7 @@ class HistoryViewModel
                     totals = result.totals,
                     hasMore = result.hasMore,
                     choices = ch,
+                    fox = fox,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

@@ -3,13 +3,17 @@ package com.dev.julian09.financeapp.ui.feature.home
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,12 +27,14 @@ import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,10 +43,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.R
@@ -49,10 +58,12 @@ import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.DuePayment
+import com.dev.julian09.financeapp.domain.model.HomeSection
 import com.dev.julian09.financeapp.domain.model.LoanDue
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.Urgency
+import com.dev.julian09.financeapp.domain.model.homeLayout
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
@@ -98,6 +109,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onOpenTags: () -> Unit = {},
     onOpenTag: (UUID) -> Unit = {},
+    onCustomize: () -> Unit = {},
     userName: String? = null,
     syncStatus: SyncStatus? = null,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -143,6 +155,8 @@ fun HomeScreen(
         onOpenRecurring = onOpenRecurring,
         onOpenTags = onOpenTags,
         onOpenTag = onOpenTag,
+        onBalanceView = viewModel::setBalanceView,
+        onCustomize = onCustomize,
         onOpenPending = { p ->
             when (p) {
                 is CardDue -> paying = p.id.toString()
@@ -153,7 +167,7 @@ fun HomeScreen(
     )
 }
 
-/** Inicio (S4-UI04, S6-UI02, S9-UI02): customization arrives in S11. */
+/** Inicio (S4-UI04, S6-UI02, S9-UI02, S11-UI04): the cards follow Personalizar inicio. */
 @Composable
 fun HomeContent(
     state: HomeUiState?,
@@ -170,8 +184,11 @@ fun HomeContent(
     onOpenTags: () -> Unit = {},
     onOpenTag: (UUID) -> Unit = {},
     onOpenPending: (DuePayment) -> Unit = {},
+    onBalanceView: (BalanceView) -> Unit = {},
+    onCustomize: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
+    var balanceSheet by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         AppHeader(
             title = "Inicio",
@@ -200,38 +217,68 @@ fun HomeContent(
                 }
                 StatusChip(dashboard.fox)
             }
-            AppCard(Modifier.fillMaxWidth(), highlight = true) {
-                Text("Saldo total disponible", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-                MoneyText(dashboard.available, style = MaterialTheme.typography.displaySmall)
-                dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
-            }
             FoxCard(dashboard.fox, dashboard.previousMonth)
-            QuickActions(onNewTransaction)
-            val active = dashboard.accounts.filter { it.account.active }
-            SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
-            LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(active, key = { it.account.id }) { AccountChipCard(it, onClick = { onOpenAccount(it.account.id) }) }
-            }
-            if (dashboard.pending.isNotEmpty()) UpcomingPayments(dashboard.pending, onOpenRecurring, onOpenPending)
-            if (state.pinned.isNotEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Etiquetas fijadas", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                    TextButton(onClick = onOpenTags) { Text("Ver todas", color = colors.textSecondary) }
+            // REQ-INI-04: the cards in the order and with the visibility of Personalizar inicio
+            val layout = homeLayout(state.settings.homeCards)
+            val trend = layout.any { it.key == HomeSection.MONTHLY_TREND.name && it.visible }
+            layout.filter { it.visible }.forEach { card ->
+                when (runCatching { HomeSection.valueOf(card.key) }.getOrNull()) {
+                    HomeSection.BALANCE ->
+                        // REQ-CTA-09: the chosen view; a tap shows both
+                        AppCard(Modifier.fillMaxWidth(), highlight = true, onClick = { balanceSheet = true }) {
+                            val net = state.balanceView == BalanceView.NET
+                            Text(
+                                if (net) "Saldo neto" else "Saldo total disponible",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                            MoneyText(if (net) dashboard.net else dashboard.available, style = MaterialTheme.typography.displaySmall)
+                            if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
+                        }
+                    HomeSection.QUICK_ACTIONS -> QuickActions(onNewTransaction)
+                    HomeSection.ACCOUNTS -> {
+                        val active = dashboard.accounts.filter { it.account.active }
+                        SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
+                        LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(active, key = { it.account.id }) { AccountChipCard(it, onClick = { onOpenAccount(it.account.id) }) }
+                        }
+                    }
+                    HomeSection.PENDING ->
+                        if (dashboard.pending.isNotEmpty()) UpcomingPayments(dashboard.pending, onOpenRecurring, onOpenPending)
+                    HomeSection.PINNED_TAGS ->
+                        if (state.pinned.isNotEmpty()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "Etiquetas fijadas",
+                                    Modifier.weight(1f),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colors.textPrimary,
+                                )
+                                TextButton(onClick = onOpenTags) { Text("Ver todas", color = colors.textSecondary) }
+                            }
+                            AppCard {
+                                state.pinned.forEach { line -> TagRow(line, onOpen = { onOpenTag(line.tag.id) }) }
+                            }
+                        }
+                    HomeSection.RECENT ->
+                        if (state.days.isNotEmpty()) {
+                            SectionTitle("Últimos 5 días", null)
+                            state.days.forEach { DayGroup(it, today, onOpen = onOpenTransaction) }
+                        }
+                    HomeSection.MONTHLY_TREND, null -> Unit
                 }
-                AppCard {
-                    state.pinned.forEach { line -> TagRow(line, onOpen = { onOpenTag(line.tag.id) }) }
-                }
             }
-            if (state.days.isNotEmpty()) {
-                SectionTitle("Últimos 5 días", null)
-                state.days.forEach { DayGroup(it, today, onOpen = onOpenTransaction) }
-            }
+            if (balanceSheet) BalanceSheet(dashboard, state.balanceView, onBalanceView, onDismiss = { balanceSheet = false })
             AppButton(
                 "Ver todas las transacciones",
                 onClick = onOpenHistory,
                 kind = ButtonKind.Secondary,
                 modifier = Modifier.fillMaxWidth(),
             )
+            TextButton(onClick = onCustomize, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Icon(Icons.Outlined.Edit, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(16.dp))
+                Text(" Personalizar inicio", color = colors.textSecondary)
+            }
         }
     }
 }
@@ -394,31 +441,43 @@ fun FoxCard(
                 Triple(R.drawable.mascot_good, "¡Vas muy bien!", "Llevas ${percent(mood.change!!)} % más que en $month. Sigue así.")
             FoxState.NORMAL -> Triple(R.drawable.mascot_normal, "Todo en orden", "Tus gastos van como de costumbre este mes.")
         }
-    AppCard {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Mascot(image)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-            }
+    // M13 (#96): no card; the fox stands on the background and over the top edge of the card below it
+    Row(Modifier.fillMaxWidth().zIndex(1f), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary)
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         }
+        Image(painterResource(image), contentDescription = null, modifier = Modifier.size(104.dp).offset(y = FOX_OVERLAP))
     }
 }
 
-@Composable
-private fun Mascot(
-    @DrawableRes image: Int,
-) {
-    Image(painterResource(image), contentDescription = null, modifier = Modifier.size(72.dp))
-}
+private val FOX_OVERLAP = 24.dp
 
-/** One tap to each form; the transfer is one tap from Home (REQ-TRX-04). */
+/** The image of each state, also used by Historial's monthly summary (M14). */
+@DrawableRes
+fun FoxState.mascot(): Int =
+    when (this) {
+        FoxState.RESTING -> R.drawable.mascot_resting
+        FoxState.DEBT -> R.drawable.mascot_debt
+        FoxState.ATTENTIVE -> R.drawable.mascot_attentive
+        FoxState.WORRIED -> R.drawable.mascot_worried
+        FoxState.GOAL -> R.drawable.mascot_goal
+        FoxState.GOOD -> R.drawable.mascot_good
+        FoxState.NORMAL -> R.drawable.mascot_normal
+    }
+
+/** One tap to each form; the transfer is one tap from Home (REQ-TRX-04). M12 (#95): a thin bar of three segments. */
 @Composable
 private fun QuickActions(onNew: (TransactionType) -> Unit) {
     val colors = CofferTheme.colors
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(colors.iconContainer, CofferShapes.card),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         QuickAction("Gasto", Icons.Outlined.ArrowDownward, colors.expense, Modifier.weight(1f)) { onNew(TransactionType.EXPENSE) }
+        VerticalDivider(Modifier.padding(vertical = 10.dp), thickness = 1.dp, color = colors.border)
         QuickAction("Ingreso", Icons.Outlined.ArrowUpward, colors.income, Modifier.weight(1f)) { onNew(TransactionType.INCOME) }
+        VerticalDivider(Modifier.padding(vertical = 10.dp), thickness = 1.dp, color = colors.border)
         QuickAction("Transferencia", Icons.Outlined.SwapHoriz, colors.textSecondary, Modifier.weight(1f)) {
             onNew(TransactionType.TRANSFER)
         }
@@ -433,18 +492,19 @@ private fun QuickAction(
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
-    val colors = CofferTheme.colors
-    AppCard(modifier, onClick = onClick) {
-        Column(
-            Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Box(Modifier.size(32.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
-            }
-            Text(label, style = MaterialTheme.typography.labelMedium, color = colors.textPrimary, maxLines = 1, softWrap = false)
-        }
+    Row(
+        modifier.clip(CofferShapes.card).clickable(role = Role.Button, onClick = onClick).padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = CofferTheme.colors.textPrimary,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 
