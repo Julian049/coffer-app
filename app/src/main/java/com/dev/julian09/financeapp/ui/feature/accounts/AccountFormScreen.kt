@@ -159,7 +159,11 @@ fun AccountFormContent(
                 }
                 Label("Ícono representativo")
                 AppCard {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    FlowRow(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         ACCOUNT_ICONS.forEach { (key, icon) ->
                             val selected = state.icon == key
                             Box(
