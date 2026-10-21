@@ -20,6 +20,8 @@ import com.dev.julian09.financeapp.domain.usecase.CardDraft
 import com.dev.julian09.financeapp.domain.usecase.CreateCard
 import com.dev.julian09.financeapp.domain.usecase.ObserveCardDues
 import com.dev.julian09.financeapp.domain.usecase.ObserveCards
+import com.dev.julian09.financeapp.domain.usecase.ObserveLoanDues
+import com.dev.julian09.financeapp.domain.usecase.ObserveLoans
 import com.dev.julian09.financeapp.domain.usecase.SendReminders
 import com.dev.julian09.financeapp.ui.FakeReminderNotifier
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
@@ -50,7 +52,8 @@ class ReminderWorkerTest {
     private fun on(day: String): SendReminders {
         val clock = FixedClock(Instant.parse("${day}T13:00:00Z"))
         val dues = ObserveCardDues(ObserveCards(f.accounts, f.cards, clock), f.settings, clock)
-        return SendReminders(f.recurring, f.cards, dues, f.settings, notifier, scheduler, clock)
+        val loanDues = ObserveLoanDues(ObserveLoans(f.accounts, f.loans), f.loans, f.settings, clock)
+        return SendReminders(f.recurring, f.cards, dues, loanDues, f.settings, notifier, scheduler, clock)
     }
 
     private suspend fun recurring(due: String): Recurring {

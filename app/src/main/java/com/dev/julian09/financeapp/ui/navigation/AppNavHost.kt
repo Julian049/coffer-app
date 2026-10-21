@@ -1,5 +1,10 @@
 package com.dev.julian09.financeapp.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -29,6 +34,7 @@ import com.dev.julian09.financeapp.ui.feature.categories.CategoriesScreen
 import com.dev.julian09.financeapp.ui.feature.history.HistoryScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportScreen
+import com.dev.julian09.financeapp.ui.feature.loans.LoanFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
@@ -61,7 +67,10 @@ fun AppNavHost(
     // A tapped notice opens its sheet in Home, from wherever the app was
     val pendingLink by PendingLink.recurringId.collectAsStateWithLifecycle()
     val cardLink by PendingLink.cardId.collectAsStateWithLifecycle()
-    LaunchedEffect(pendingLink, cardLink) { if (pendingLink != null || cardLink != null) navController.navigateToTab(Tab.Home) }
+    val loanLink by PendingLink.loanId.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingLink, cardLink, loanLink) {
+        if (pendingLink != null || cardLink != null || loanLink != null) navController.navigateToTab(Tab.Home)
+    }
     Scaffold(
         containerColor = CofferTheme.colors.background,
         bottomBar = { if (currentTab != null) BottomBar(selected = currentTab, onSelect = navController::navigateToTab) },
@@ -69,7 +78,16 @@ fun AppNavHost(
             if (currentTab == Tab.Home || currentTab == Tab.History) NewTransactionButton { newTransaction(TransactionType.EXPENSE) }
         },
     ) { padding ->
-        NavHost(navController = navController, startDestination = HomeRoute, modifier = Modifier.padding(padding)) {
+        // M10 (#93): short fades with a slight slide; Compose follows the system animation scale ("Quitar animaciones")
+        NavHost(
+            navController = navController,
+            startDestination = HomeRoute,
+            modifier = Modifier.padding(padding),
+            enterTransition = { fadeIn(tween(ENTER_MS)) + slideInHorizontally(tween(ENTER_MS)) { it / SLIDE_FRACTION } },
+            exitTransition = { fadeOut(tween(EXIT_MS)) },
+            popEnterTransition = { fadeIn(tween(ENTER_MS)) },
+            popExitTransition = { fadeOut(tween(EXIT_MS)) + slideOutHorizontally(tween(ENTER_MS)) { it / SLIDE_FRACTION } },
+        ) {
             composable<HomeRoute> {
                 val sync by hiltViewModel<SyncStatusViewModel>().status.collectAsStateWithLifecycle()
                 HomeScreen(
@@ -133,8 +151,10 @@ fun AppNavHost(
                     onEdit = editAccount,
                     onOpenHistory = { navController.navigateToTab(Tab.History) },
                     onOpenTransaction = openTransaction,
+                    onConvertLoan = { id -> navController.navigate(ConvertLoanRoute(id.toString())) },
                 )
             }
+            composable<ConvertLoanRoute> { LoanFormScreen(onBack = navController::popBackStack) }
             composable<DeactivatedAccountsRoute> { DeactivatedAccountsScreen(onBack = navController::popBackStack) }
             composable<CategoriesRoute> { CategoriesScreen(onBack = navController::popBackStack) }
             composable<TransactionFormRoute> { TransactionFormScreen(onBack = navController::popBackStack) }
@@ -151,6 +171,10 @@ fun AppNavHost(
         }
     }
 }
+
+private const val ENTER_MS = 220
+private const val EXIT_MS = 150
+private const val SLIDE_FRACTION = 8
 
 // Standard tab behavior: one copy of each tab, state kept when switching, back goes to Home
 private fun NavHostController.navigateToTab(tab: Tab) {

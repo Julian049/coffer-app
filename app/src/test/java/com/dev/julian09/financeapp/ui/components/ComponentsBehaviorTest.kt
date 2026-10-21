@@ -1,11 +1,14 @@
 package com.dev.julian09.financeapp.ui.components
 
+import androidx.compose.material3.Text
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.ui.feature.auth.LoginContent
 import com.dev.julian09.financeapp.ui.feature.auth.LoginUiState
@@ -38,6 +41,26 @@ class ComponentsBehaviorTest {
         compose.onNodeWithText("Inicio").assertIsNotSelected()
         compose.onNodeWithText("Cuentas").performClick()
         assertEquals(Tab.Accounts, tapped)
+    }
+
+    @Test
+    fun `a long bottom sheet scrolls to its button`() {
+        // #110: with many categories Nueva categoría pushed "Crear categoría" off the screen
+        var saved = false
+        compose.setContent {
+            CofferTheme {
+                AppBottomSheet(onDismiss = {}, title = "Nueva categoría") {
+                    repeat(40) { Text("Subcategoría de Categoría $it") }
+                    AppButton("Crear categoría", onClick = { saved = true })
+                }
+            }
+        }
+        compose
+            .onNodeWithText("Crear categoría")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+        assertTrue(saved)
     }
 
     @Test

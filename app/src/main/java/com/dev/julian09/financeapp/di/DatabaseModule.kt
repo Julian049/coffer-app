@@ -53,4 +53,7 @@ object DatabaseModule {
 
     @Provides
     fun provideCardDao(db: FinanceDatabase) = db.cards()
+
+    @Provides
+    fun provideLoanDao(db: FinanceDatabase) = db.loans()
 }

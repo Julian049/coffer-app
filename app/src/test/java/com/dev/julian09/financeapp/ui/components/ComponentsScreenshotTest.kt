@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxState
+import com.dev.julian09.financeapp.domain.finance.LoanScheduler
 import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
 import com.dev.julian09.financeapp.domain.finance.ReportAggregator
 import com.dev.julian09.financeapp.domain.finance.ReportSpan
@@ -26,6 +27,7 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
 import com.dev.julian09.financeapp.domain.model.AccountResolution
 import com.dev.julian09.financeapp.domain.model.AccountType
+import com.dev.julian09.financeapp.domain.model.Amortization
 import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.domain.model.CardOverview
 import com.dev.julian09.financeapp.domain.model.CardPeriod
@@ -42,6 +44,10 @@ import com.dev.julian09.financeapp.domain.model.ImportSummary
 import com.dev.julian09.financeapp.domain.model.InitialSyncProgress
 import com.dev.julian09.financeapp.domain.model.Installment
 import com.dev.julian09.financeapp.domain.model.InstallmentStatus
+import com.dev.julian09.financeapp.domain.model.Loan
+import com.dev.julian09.financeapp.domain.model.LoanInstallment
+import com.dev.julian09.financeapp.domain.model.LoanMode
+import com.dev.julian09.financeapp.domain.model.LoanOverview
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Recurring
@@ -95,6 +101,13 @@ import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportActions
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportContent
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportState
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportStep
+import com.dev.julian09.financeapp.ui.feature.loans.LoanFormActions
+import com.dev.julian09.financeapp.ui.feature.loans.LoanFormContent
+import com.dev.julian09.financeapp.ui.feature.loans.LoanFormState
+import com.dev.julian09.financeapp.ui.feature.loans.LoanPaymentActions
+import com.dev.julian09.financeapp.ui.feature.loans.LoanPaymentContent
+import com.dev.julian09.financeapp.ui.feature.loans.LoanPaymentState
+import com.dev.julian09.financeapp.ui.feature.loans.LoanSheet
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringActions
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringChoices
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringContent
@@ -243,6 +256,15 @@ class ComponentsScreenshotTest {
 
     @Test
     fun tagDetailLight() = capture("tag_detail_light", dark = false) { TagDetail() }
+
+    @Test
+    fun loanFormLight() = capture("loan_form_light", dark = false) { LoanForm() }
+
+    @Test
+    fun loanDetailLight() = capture("loan_detail_light", dark = false) { LoanDetail() }
+
+    @Test
+    fun loanExtraPaymentLight() = capture("loan_extra_payment_light", dark = false) { LoanExtra() }
 
     @Test
     fun importExportLight() = capture("import_export_light", dark = false) { ImportExport() }
@@ -620,6 +642,94 @@ class ComponentsScreenshotTest {
             TagDetailActions(),
             today = LocalDate.of(2026, 10, 16),
         )
+    }
+
+    private fun loanOverview(): LoanOverview {
+        val id = UUID(9, 9)
+        val loan =
+            Loan(
+                accountId = id,
+                mode = LoanMode.DETAILED,
+                paymentDay = 5,
+                disbursementAccountId = UUID(9, 1),
+                principal = Money.ofPesos(5_000_000),
+                installmentsCount = 24,
+                rate = java.math.BigDecimal("0.015"),
+                rateType = RateType.MV,
+                firstDueDate = LocalDate.of(2026, 8, 5),
+                lifeInsurance = Money.ofPesos(8_000),
+                amortization = Amortization.FIXED_PRINCIPAL,
+            )
+        val plan =
+            LoanScheduler
+                .plan(
+                    Money.ofPesos(5_000_000),
+                    24,
+                    java.math.BigDecimal("0.015"),
+                    LocalDate.of(2026, 8, 5),
+                    5,
+                    Amortization.FIXED_PRINCIPAL,
+                    Money.ofPesos(8_000),
+                ).mapIndexed { i, p ->
+                    LoanInstallment(
+                        UUID(9, 100L + i),
+                        id,
+                        p.number,
+                        p.dueDate,
+                        p.principal,
+                        p.interest,
+                        p.insurance,
+                        p.otherCosts,
+                        if (i <
+                            3
+                        ) {
+                            InstallmentStatus.PAID
+                        } else {
+                            InstallmentStatus.SCHEDULED
+                        },
+                    )
+                }
+        val account = Account(id, "Préstamo libre inversión", AccountType.LOAN, Money.ZERO)
+        val debt = plan.drop(3).fold(Money.ZERO) { s, it -> s + it.principal }
+        return LoanOverview(loan, AccountBalance(account, AccountFlows(transfersOut = debt)), plan)
+    }
+
+    @Composable
+    private fun LoanForm() {
+        LoanFormContent(
+            LoanFormState(
+                name = "Préstamo libre inversión",
+                amountDigits = "5000000",
+                destinationId = BALANCES[1].account.id,
+                countText = "24",
+                paymentDay = "5",
+                rateText = "1,5",
+                amortization = Amortization.FIXED_PAYMENT,
+                firstDueDate = LocalDate.of(2026, 11, 5),
+                insurance = true,
+                insuranceDigits = "8000",
+            ),
+            BALANCES.map { it.account }.filter { !it.type.isDebt },
+            LoanFormActions(),
+        )
+    }
+
+    @Composable
+    private fun LoanDetail() {
+        val overview = loanOverview()
+        AccountDetailContent(AccountDetailState(overview.account, emptyList(), loan = overview), onBack = {
+        }, onEdit = {}, onOpenHistory = {}, today = TODAY)
+    }
+
+    @Composable
+    private fun LoanExtra() {
+        Column(Modifier.padding(16.dp)) {
+            LoanPaymentContent(
+                LoanPaymentState(loanOverview(), LoanSheet.EXTRA, amountDigits = "1000000", sourceId = BALANCES[1].account.id),
+                BALANCES.filter { !it.account.type.isDebt },
+                LoanPaymentActions(),
+            )
+        }
     }
 
     @Composable

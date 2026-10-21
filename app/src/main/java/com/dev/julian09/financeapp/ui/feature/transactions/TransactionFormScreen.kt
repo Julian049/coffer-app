@@ -367,7 +367,7 @@ private fun CategoryCard(
     }
     if (picking) {
         AppBottomSheet(onDismiss = { picking = false }, title = "Categoría") {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ofKind.filter { it.parentId == null }.forEach { main ->
                     Text(main.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

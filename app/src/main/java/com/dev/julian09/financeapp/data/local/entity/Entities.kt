@@ -160,6 +160,31 @@ data class CreditCardDetailsEntity(
     val syncError: String? = null,
 )
 
+/** Terms of a LOAN account (V8, V12); [id] is the account's id. Detailed loans fill the plan fields, simple ones [monthlyPayment]. */
+@Entity(tableName = "loan_details", indices = [Index("syncState")])
+data class LoanDetailsEntity(
+    @PrimaryKey val id: UUID,
+    /** DETAILED or SIMPLE. */
+    val mode: String,
+    val disbursementAccountId: UUID? = null,
+    val principal: Long? = null,
+    val installmentsCount: Int? = null,
+    val rate: String? = null,
+    val rateType: String? = null,
+    val firstDueDate: LocalDate? = null,
+    val paymentDay: Int,
+    val monthlyPayment: Long? = null,
+    val lifeInsuranceMonthly: Long = 0,
+    val otherCostsMonthly: Long = 0,
+    /** FIXED_PAYMENT or FIXED_PRINCIPAL (V12). */
+    @ColumnInfo(defaultValue = "FIXED_PRINCIPAL") val amortization: String = "FIXED_PRINCIPAL",
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.PENDING,
+    val syncError: String? = null,
+)
+
 /** A card purchase in 2 or more installments (V8); the plan is in installments. */
 @Entity(tableName = "deferred_purchases", indices = [Index("syncState"), Index("cardAccountId"), Index("purchaseTransactionId")])
 data class DeferredPurchaseEntity(

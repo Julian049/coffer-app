@@ -23,6 +23,7 @@ fun LedgerError.message(): String =
         LedgerError.INTERVAL_INVALID -> "Elige cada cuántos días, semanas o meses (de 1 a 365)"
         LedgerError.DAY_INVALID -> "Elige un día del 1 al 31"
         LedgerError.RATE_INVALID -> "Escribe una tasa válida, por ejemplo 2,0"
+        LedgerError.OVER_DEBT -> "El abono no puede ser mayor que la deuda"
         LedgerError.OVER_LIMIT -> "La deuda no puede ser mayor que el cupo total"
         LedgerError.INSTALLMENTS_INVALID -> "Elige de 1 a 72 cuotas"
     }

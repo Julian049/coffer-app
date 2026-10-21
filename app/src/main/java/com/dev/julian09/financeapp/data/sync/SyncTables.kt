@@ -8,6 +8,7 @@ import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
 import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
 import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
+import com.dev.julian09.financeapp.data.local.entity.LoanDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
@@ -388,6 +389,63 @@ class SyncTables
                 },
             )
 
+        val loans =
+            SyncTable(
+                entity = "loanDetails",
+                pending = { db.loans().pending(it) },
+                syncInfo = { db.loans().syncInfo(it) },
+                upsert = { db.loans().upsertLoans(listOf(it)) },
+                markSynced = { id, at -> db.loans().markSynced(id, at) },
+                markFailed = { id, at, e -> db.loans().markFailed(id, at, e) },
+                idOf = LoanDetailsEntity::id,
+                updatedAtOf = LoanDetailsEntity::updatedAt,
+                encode = { l ->
+                    envelope(
+                        "loanDetails",
+                        l.id,
+                        l.createdAt,
+                        l.updatedAt,
+                        l.deletedAt,
+                        buildJsonObject {
+                            put("mode", l.mode)
+                            put("disbursementAccountId", l.disbursementAccountId?.toString())
+                            put("principal", l.principal?.let(::amount))
+                            put("installmentsCount", l.installmentsCount)
+                            put("rate", l.rate)
+                            put("rateType", l.rateType)
+                            put("firstDueDate", l.firstDueDate?.toString())
+                            put("paymentDay", l.paymentDay)
+                            put("monthlyPayment", l.monthlyPayment?.let(::amount))
+                            put("lifeInsuranceMonthly", amount(l.lifeInsuranceMonthly))
+                            put("otherCostsMonthly", amount(l.otherCostsMonthly))
+                            put("amortization", l.amortization)
+                        },
+                    )
+                },
+                decode = { c ->
+                    val d = c.data
+                    LoanDetailsEntity(
+                        id = UUID.fromString(c.id),
+                        mode = d.text("mode")!!,
+                        disbursementAccountId = d.text("disbursementAccountId")?.let(UUID::fromString),
+                        principal = d.text("principal")?.let(::scaled),
+                        installmentsCount = d.text("installmentsCount")?.toInt(),
+                        rate = d.text("rate"),
+                        rateType = d.text("rateType"),
+                        firstDueDate = d.text("firstDueDate")?.let(LocalDate::parse),
+                        paymentDay = d.int("paymentDay"),
+                        monthlyPayment = d.text("monthlyPayment")?.let(::scaled),
+                        lifeInsuranceMonthly = scaled(d.text("lifeInsuranceMonthly") ?: "0"),
+                        otherCostsMonthly = scaled(d.text("otherCostsMonthly") ?: "0"),
+                        amortization = d.text("amortization") ?: "FIXED_PRINCIPAL",
+                        createdAt = Instant.parse(c.createdAt),
+                        updatedAt = Instant.parse(c.updatedAt),
+                        deletedAt = c.deletedAt?.let(Instant::parse),
+                        syncState = SyncState.SYNCED,
+                    )
+                },
+            )
+
         val deferred =
             SyncTable(
                 entity = "deferredPurchase",
@@ -534,11 +592,11 @@ class SyncTables
             )
 
         /**
-         * Dependency order: settings, accounts and their card terms, categories, tags, recurring expenses, transactions,
+         * Dependency order: settings, accounts and their card and loan terms, categories, tags, recurring expenses, transactions,
          * deferred purchases and their installments, then the history.
          */
         val all: List<SyncTable<*>> =
-            listOf(settings, accounts, cards, categories, tags, recurring, transactions, deferred, installments, changeLog)
+            listOf(settings, accounts, cards, loans, categories, tags, recurring, transactions, deferred, installments, changeLog)
 
         val byEntity: Map<String, SyncTable<*>> = all.associateBy { it.entity }
     }

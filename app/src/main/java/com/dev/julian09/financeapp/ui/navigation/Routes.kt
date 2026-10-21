@@ -67,6 +67,12 @@ data class RecurringFormRoute(
 @Serializable
 data object ImportExportRoute
 
+/** REQ-PRE-09: "Pasar a detallado" of a simple loan. */
+@Serializable
+data class ConvertLoanRoute(
+    val loanId: String,
+)
+
 @Serializable
 data object TagsRoute
 

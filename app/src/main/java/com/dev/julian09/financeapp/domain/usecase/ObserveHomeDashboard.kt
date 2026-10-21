@@ -26,7 +26,7 @@ data class HomeDashboard(
     /** REQ-TRX-11: today and the 4 days before. */
     val recent: List<Transaction>,
     val fox: FoxMood,
-    /** REQ-INI-03: recurring expenses and card statements inside the reminder window, by due date (REQ-REC-04). */
+    /** REQ-INI-03: recurring expenses, card statements and loan installments inside the reminder window, by due date. */
     val pending: List<DuePayment> = emptyList(),
 )
 
@@ -38,6 +38,7 @@ class ObserveHomeDashboard
         private val transactions: TransactionRepository,
         private val pendingPayments: ObservePendingPayments,
         private val cardDues: ObserveCardDues,
+        private val loanDues: ObserveLoanDues,
         private val clock: Clock,
     ) {
         operator fun invoke(): Flow<HomeDashboard> {
@@ -69,7 +70,9 @@ class ObserveHomeDashboard
                 balances,
                 totals,
                 transactions.observeSince(today.minusDays(4).atStartOfDay(zone).toInstant()),
-                combine(pendingPayments(), cardDues()) { recurring, cards -> (recurring + cards).sortedBy { it.dueDate } },
+                combine(pendingPayments(), cardDues(), loanDues()) { recurring, cards, loans ->
+                    (recurring + cards + loans).sortedBy { it.dueDate }
+                },
             ) { (now, atClose), (thisMonth, lastMonth, count), recent, pending ->
                 val available = BalanceCalculator.available(now)
                 // Same accounts as today that already existed then: a new account has no previous close (PO, 2026-10-17)

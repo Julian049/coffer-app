@@ -26,6 +26,7 @@ class SendReminders
         private val recurring: RecurringRepository,
         private val cards: CardRepository,
         private val cardDues: ObserveCardDues,
+        private val loanDues: ObserveLoanDues,
         private val settings: SettingsRepository,
         private val notifier: ReminderNotifier,
         private val scheduler: SyncScheduler,
@@ -55,9 +56,11 @@ class SendReminders
                 recurring.observeAll().first().filter { it.active }.mapNotNull { r ->
                     kind(r.nextDueDate, r.lastNotifiedOn)?.let { Reminder(RecurrenceCalculator.pending(r, today, lead), it) }
                 }
-            // Card statements (PO, 2026-10-19): the same notices, remembered on the phone
+            // Card statements (PO, 2026-10-19) and loan installments (REQ-PRE-04): the same notices, remembered on the phone
             val cardDue =
-                cardDues().first().mapNotNull { c -> kind(c.dueDate, cards.lastNotifiedOn(c.id))?.let { Reminder(c, it) } }
+                (cardDues().first() + loanDues().first()).mapNotNull { c ->
+                    kind(c.dueDate, cards.lastNotifiedOn(c.id))?.let { Reminder(c, it) }
+                }
             due.forEach {
                 notifier.notify(it)
                 recurring.markNotified(it.payment.id, today)
