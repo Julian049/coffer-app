@@ -111,6 +111,11 @@ import com.dev.julian09.financeapp.ui.feature.transactions.TransactionFormState
 import com.dev.julian09.financeapp.ui.navigation.BottomBar
 import com.dev.julian09.financeapp.ui.navigation.Tab
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import com.dev.julian09.financeapp.ui.feature.reports.ReportsState
+import com.dev.julian09.financeapp.ui.feature.reports.ReportsContent
+import com.dev.julian09.financeapp.ui.feature.reports.ReportsActions
+import com.dev.julian09.financeapp.domain.finance.ReportSpan
+import com.dev.julian09.financeapp.domain.finance.ReportAggregator
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -218,6 +223,12 @@ class ComponentsScreenshotTest {
 
     @Test
     fun transactionDetailLight() = capture("transaction_detail_light", dark = false) { TransactionDetailPreview() }
+
+    @Test
+    fun reportsLight() = capture("reports_light", dark = false) { Reports() }
+
+    @Test
+    fun reportsDark() = capture("reports_dark", dark = true) { Reports() }
 
     @Test
     fun importExportLight() = capture("import_export_light", dark = false) { ImportExport() }
@@ -469,6 +480,46 @@ class ComponentsScreenshotTest {
             today = TODAY,
             zone = ZoneOffset.UTC,
         )
+    }
+
+    @Composable
+    private fun Reports() {
+        val home = Category(UUID.randomUUID(), "Hogar", CategoryKind.EXPENSE, icon = "home")
+        val food = Category(UUID.randomUUID(), "Comida", CategoryKind.EXPENSE, icon = "restaurant")
+        val salary = Category(UUID.randomUUID(), "Salario", CategoryKind.INCOME, icon = "work")
+        val card = UUID.randomUUID()
+        val month = ReportAggregator.period(ReportSpan.MONTH, LocalDate.of(2026, 10, 20))
+        val rows =
+            (0L..5L).flatMap { back ->
+                val day = LocalDate.of(2026, 10, 10).minusMonths(back).atStartOfDay().toInstant(ZoneOffset.UTC)
+                listOf(
+                    Transaction(UUID.randomUUID(), TransactionType.INCOME, Money.ofPesos(2_850_000 - back * 90_000), day, card, categoryId = salary.id),
+                    Transaction(UUID.randomUUID(), TransactionType.EXPENSE, Money.ofPesos(620_000 + back * 40_000), day, card, categoryId = home.id),
+                    Transaction(UUID.randomUUID(), TransactionType.EXPENSE, Money.ofPesos(412_400), day, card, categoryId = food.id),
+                    Transaction(
+                        UUID.randomUUID(),
+                        TransactionType.TRANSFER,
+                        Money.ofPesos(250_000),
+                        day,
+                        UUID.randomUUID(),
+                        destinationAccountId = card,
+                        interest = Money.ofPesos(42_000),
+                    ),
+                )
+            }
+        val report =
+            ReportAggregator.aggregate(
+                ReportSpan.MONTH,
+                month,
+                LocalDate.of(2026, 10, 20),
+                ZoneOffset.UTC,
+                rows,
+                listOf(home, food, salary),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+            )
+        ReportsContent(ReportsState(ReportSpan.MONTH, month, report, mapOf(card to "Tarjeta Visa Platinum")), ReportsActions(), avatarInitial = 'J')
     }
 
     @Composable

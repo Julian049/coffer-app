@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Reportes (S9-H01, REQ-REP-01 to 05, #102): week (Monday to Sunday), month or range; income, expenses and balance; the evolution of the last 6 periods with the change against the previous one; expenses and income by category (tap to see the subcategories); interest and fees paid per card; activity (movements and average per day); transfers and excluded categories do not count, a deferred purchase counts installment by installment on each due date and a refund on a card is income (PO, 2026-10-20). `ReportAggregator` is pure domain code
 - Exclude a category from reports (S9-H03, REQ-CAT-04, #85): Categorías → a main category's options → "Excluir de reportes", with a warning before turning it on; its movements and its subcategories' stop counting in Home's monthly totals and the fox (and in Reportes), the balances do not change; Room 5 adds `categories.excludeFromReports`, synced as `excludeFromReports` (server V11)
 
 ## [1.0.2] - 2026-10-20

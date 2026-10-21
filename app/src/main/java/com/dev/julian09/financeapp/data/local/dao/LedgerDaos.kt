@@ -261,6 +261,15 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE deletedAt IS NULL AND occurredAt >= :from ORDER BY occurredAt DESC")
     fun observeSince(from: Instant): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions WHERE deletedAt IS NULL AND occurredAt >= :from AND occurredAt < :to")
+    fun observeBetween(
+        from: Instant,
+        to: Instant,
+    ): Flow<List<TransactionEntity>>
+
+    @Query("SELECT * FROM transactions WHERE deletedAt IS NULL AND installments > 1")
+    fun observeDeferredPurchases(): Flow<List<TransactionEntity>>
+
     @Query(
         "SELECT * FROM transactions WHERE deletedAt IS NULL AND (accountId = :accountId OR destinationAccountId = :accountId) " +
             "ORDER BY occurredAt DESC",

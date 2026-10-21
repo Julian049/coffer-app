@@ -112,6 +112,15 @@ interface TransactionRepository {
     /** Newest first, where the account is the source or the destination. */
     fun observeByAccount(accountId: UUID): Flow<List<Transaction>>
 
+    /** Not deleted, in [from, to), any order. */
+    fun observeBetween(
+        from: Instant,
+        to: Instant,
+    ): Flow<List<Transaction>>
+
+    /** Card purchases in 2 or more installments, whenever they happened (reports count them by installment). */
+    fun observeDeferredPurchases(): Flow<List<Transaction>>
+
     /** Income and expenses (no transfers) in [from, to) of active accounts included in the total, without excluded categories (REQ-CAT-04). */
     fun observeTotals(
         from: Instant,

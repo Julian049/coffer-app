@@ -311,6 +311,14 @@ class TransactionRepositoryImpl
         override fun observeByAccount(accountId: UUID): Flow<List<Transaction>> =
             dao.observeByAccount(accountId).map { rows -> rows.map { it.toDomain() } }
 
+        override fun observeBetween(
+            from: Instant,
+            to: Instant,
+        ): Flow<List<Transaction>> = dao.observeBetween(from, to).map { rows -> rows.map { it.toDomain() } }
+
+        override fun observeDeferredPurchases(): Flow<List<Transaction>> =
+            dao.observeDeferredPurchases().map { rows -> rows.map { it.toDomain() } }
+
         override fun observeTotals(
             from: Instant,
             to: Instant,
