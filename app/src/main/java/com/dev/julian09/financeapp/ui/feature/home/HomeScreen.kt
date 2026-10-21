@@ -69,6 +69,7 @@ import com.dev.julian09.financeapp.ui.feature.recurring.PendingSheets
 import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
 import com.dev.julian09.financeapp.ui.feature.recurring.dueSentence
 import com.dev.julian09.financeapp.ui.feature.recurring.urgencyTint
+import com.dev.julian09.financeapp.ui.feature.tags.TagRow
 import com.dev.julian09.financeapp.ui.navigation.PendingLink
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -92,6 +93,8 @@ fun HomeScreen(
     onOpenTransaction: (UUID) -> Unit,
     onOpenRecurring: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenTags: () -> Unit = {},
+    onOpenTag: (UUID) -> Unit = {},
     userName: String? = null,
     syncStatus: SyncStatus? = null,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -126,11 +129,13 @@ fun HomeScreen(
         onNewTransaction = onNewTransaction,
         onOpenTransaction = onOpenTransaction,
         onOpenRecurring = onOpenRecurring,
+        onOpenTags = onOpenTags,
+        onOpenTag = onOpenTag,
         onOpenPending = { p -> if (p is CardDue) paying = p.id.toString() else pending = p.id.toString() },
     )
 }
 
-/** Inicio (S4-UI04, S6-UI02): pinned tags and customization arrive in S9 and S11. */
+/** Inicio (S4-UI04, S6-UI02, S9-UI02): customization arrives in S11. */
 @Composable
 fun HomeContent(
     state: HomeUiState?,
@@ -144,6 +149,8 @@ fun HomeContent(
     onNewTransaction: (TransactionType) -> Unit = {},
     onOpenTransaction: (UUID) -> Unit = {},
     onOpenRecurring: () -> Unit = {},
+    onOpenTags: () -> Unit = {},
+    onOpenTag: (UUID) -> Unit = {},
     onOpenPending: (DuePayment) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
@@ -188,6 +195,15 @@ fun HomeContent(
                 items(active, key = { it.account.id }) { AccountChipCard(it, onClick = { onOpenAccount(it.account.id) }) }
             }
             if (dashboard.pending.isNotEmpty()) UpcomingPayments(dashboard.pending, onOpenRecurring, onOpenPending)
+            if (state.pinned.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Etiquetas fijadas", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                    TextButton(onClick = onOpenTags) { Text("Ver todas", color = colors.textSecondary) }
+                }
+                AppCard {
+                    state.pinned.forEach { line -> TagRow(line, onOpen = { onOpenTag(line.tag.id) }) }
+                }
+            }
             if (state.days.isNotEmpty()) {
                 SectionTitle("Últimos 5 días", null)
                 state.days.forEach { DayGroup(it, today, onOpen = onOpenTransaction) }

@@ -33,6 +33,8 @@ import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsScreen
+import com.dev.julian09.financeapp.ui.feature.tags.TagDetailScreen
+import com.dev.julian09.financeapp.ui.feature.tags.TagsScreen
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetailScreen
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionFormScreen
@@ -52,6 +54,8 @@ fun AppNavHost(
     val openAccount = { id: UUID -> navController.navigate(AccountDetailRoute(id.toString())) }
     val editAccount = { id: UUID -> navController.navigate(EditAccountRoute(id.toString())) }
     val openTransaction = { id: UUID -> navController.navigate(TransactionDetailRoute(id.toString())) }
+    val openTags = { navController.navigate(TagsRoute) { launchSingleTop = true } }
+    val openTag = { id: UUID -> navController.navigate(TagDetailRoute(id.toString())) }
 
     val newTransaction = { type: TransactionType -> navController.navigate(TransactionFormRoute(type.name)) }
     // A tapped notice opens its sheet in Home, from wherever the app was
@@ -75,6 +79,8 @@ fun AppNavHost(
                     onNewTransaction = newTransaction,
                     onOpenTransaction = openTransaction,
                     onOpenRecurring = { navController.navigate(RecurringRoute) },
+                    onOpenTags = openTags,
+                    onOpenTag = openTag,
                     userName = user.displayName,
                     syncStatus = sync,
                 )
@@ -86,7 +92,7 @@ fun AppNavHost(
                     avatarInitial = initial,
                 )
             }
-            composable<ReportsRoute> { ReportsScreen(onOpenSettings = openSettings, onOpenTags = {}, avatarInitial = initial) }
+            composable<ReportsRoute> { ReportsScreen(onOpenSettings = openSettings, onOpenTags = openTags, avatarInitial = initial) }
             composable<AccountsRoute> {
                 AccountsScreen(
                     onOpenSettings = openSettings,
@@ -104,8 +110,11 @@ fun AppNavHost(
                     onOpenDeactivated = { navController.navigate(DeactivatedAccountsRoute) },
                     onOpenRecurring = { navController.navigate(RecurringRoute) },
                     onOpenImportExport = { navController.navigate(ImportExportRoute) },
+                    onOpenTags = openTags,
                 )
             }
+            composable<TagsRoute> { TagsScreen(onBack = navController::popBackStack, onOpenTag = openTag) }
+            composable<TagDetailRoute> { TagDetailScreen(onBack = navController::popBackStack, onOpenTransaction = openTransaction) }
             composable<ImportExportRoute> { ImportExportScreen(onBack = navController::popBackStack) }
             composable<RecurringRoute> {
                 RecurringScreen(

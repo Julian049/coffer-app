@@ -205,6 +205,13 @@ interface CategoryDao {
     ): Int
 }
 
+data class TagTotalRow(
+    val tagId: UUID,
+    val income: Long,
+    val expense: Long,
+    val count: Int,
+)
+
 @Dao
 interface TagDao {
     @Upsert
@@ -212,6 +219,44 @@ interface TagDao {
 
     @Query("SELECT * FROM tags WHERE deletedAt IS NULL ORDER BY pinned DESC, name")
     fun observeAll(): Flow<List<TagEntity>>
+
+    @Query("UPDATE tags SET name = :name, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun rename(
+        id: UUID,
+        name: String,
+        now: Instant,
+    )
+
+    @Query("UPDATE tags SET pinned = :pinned, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun setPinned(
+        id: UUID,
+        pinned: Boolean,
+        now: Instant,
+    )
+
+    @Query("UPDATE tags SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun delete(
+        id: UUID,
+        now: Instant,
+    )
+
+    /** S9-DOM02: a deleted tag leaves its movements without a tag. */
+    @Query("UPDATE transactions SET tagId = NULL, updatedAt = :now, syncState = 'PENDING' WHERE tagId = :id AND deletedAt IS NULL")
+    suspend fun untag(
+        id: UUID,
+        now: Instant,
+    )
+
+    @Query(
+        "SELECT tagId, COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount END), 0) AS income, " +
+            "COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount END), 0) AS expense, COUNT(*) AS count FROM transactions " +
+            "WHERE deletedAt IS NULL AND tagId IS NOT NULL AND type != 'TRANSFER' AND occurredAt >= :from AND occurredAt < :to " +
+            "GROUP BY tagId",
+    )
+    fun observeTotals(
+        from: Instant,
+        to: Instant,
+    ): Flow<List<TagTotalRow>>
 
     @Query("SELECT * FROM tags WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
     suspend fun pending(limit: Int): List<TagEntity>

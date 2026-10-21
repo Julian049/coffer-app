@@ -106,8 +106,6 @@ class DeleteTransaction
         }
     }
 
-private const val TAG_NAME_MAX = 50
-
 /** Inline "Nueva etiqueta" of the form (REQ-ETQ-01): unique name ignoring case, like the server's uq_tag_name. */
 class CreateTag
     @Inject
@@ -116,16 +114,8 @@ class CreateTag
         private val scheduler: SyncScheduler,
     ) {
         suspend operator fun invoke(tag: Tag): LedgerError? {
-            val name =
-                tag.name
-                    .trim()
-                    .removePrefix("#")
-                    .trim()
-            when {
-                name.isEmpty() -> return LedgerError.NAME_REQUIRED
-                name.length > TAG_NAME_MAX -> return LedgerError.NAME_TOO_LONG
-                repository.observeAll().first().any { it.name.equals(name, ignoreCase = true) } -> return LedgerError.NAME_TAKEN
-            }
+            val name = cleanTagName(tag.name)
+            tagNameError(name, repository)?.let { return it }
             repository.create(tag.copy(name = name))
             scheduler.requestSync()
             return null

@@ -57,6 +57,15 @@ data class Tag(
     val pinned: Boolean = false,
 )
 
+data class TagTotal(
+    val tagId: UUID,
+    val income: Money,
+    val expense: Money,
+    val count: Int,
+) {
+    val net: Money get() = income - expense
+}
+
 enum class TransactionType { EXPENSE, INCOME, TRANSFER }
 
 /** Amounts are always positive; [type] gives the direction (V6, ADR-0004). */

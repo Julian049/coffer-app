@@ -53,6 +53,8 @@ class HomeViewModelTest {
                 f.clock,
             ),
             f.categories,
+            f.tags,
+            f.clock,
         ).state.filterNotNull().first()
 
     private fun day(date: String) = Instant.parse("${date}T15:00:00Z")

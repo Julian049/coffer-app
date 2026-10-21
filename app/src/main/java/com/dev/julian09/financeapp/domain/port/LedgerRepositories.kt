@@ -13,6 +13,7 @@ import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import kotlinx.coroutines.flow.Flow
@@ -85,6 +86,25 @@ interface TagRepository {
     fun observeAll(): Flow<List<Tag>>
 
     suspend fun create(tag: Tag)
+
+    suspend fun rename(
+        id: UUID,
+        name: String,
+    )
+
+    suspend fun setPinned(
+        id: UUID,
+        pinned: Boolean,
+    )
+
+    /** The tag and, in the same database transaction, the tag of its movements (S9-DOM02). */
+    suspend fun delete(id: UUID)
+
+    /** Income and expenses per tag in [from, to), transfers apart (REQ-ETQ-03). */
+    fun observeTotals(
+        from: Instant,
+        to: Instant,
+    ): Flow<List<TagTotal>>
 }
 
 interface TransactionRepository {
