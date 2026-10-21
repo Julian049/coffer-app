@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
+import com.dev.julian09.financeapp.domain.finance.ReportAggregator
+import com.dev.julian09.financeapp.domain.finance.ReportSpan
 import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
@@ -51,6 +53,7 @@ import com.dev.julian09.financeapp.domain.model.RowProblem
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.ImportStatus
@@ -83,6 +86,7 @@ import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
 import com.dev.julian09.financeapp.ui.feature.history.HistoryFilters
 import com.dev.julian09.financeapp.ui.feature.history.HistoryRow
 import com.dev.julian09.financeapp.ui.feature.history.HistoryUiState
+import com.dev.julian09.financeapp.ui.feature.history.buildDays
 import com.dev.julian09.financeapp.ui.feature.home.HomeContent
 import com.dev.julian09.financeapp.ui.feature.home.HomeUiState
 import com.dev.julian09.financeapp.ui.feature.importexport.ExportChoice
@@ -98,10 +102,19 @@ import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormActions
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormContent
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormState
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringUiState
+import com.dev.julian09.financeapp.ui.feature.reports.ReportsActions
+import com.dev.julian09.financeapp.ui.feature.reports.ReportsContent
+import com.dev.julian09.financeapp.ui.feature.reports.ReportsState
 import com.dev.julian09.financeapp.ui.feature.settings.ServerState
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsContent
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsUiState
 import com.dev.julian09.financeapp.ui.feature.sync.InitialDownloadContent
+import com.dev.julian09.financeapp.ui.feature.tags.TagDetailActions
+import com.dev.julian09.financeapp.ui.feature.tags.TagDetailContent
+import com.dev.julian09.financeapp.ui.feature.tags.TagDetailState
+import com.dev.julian09.financeapp.ui.feature.tags.TagLine
+import com.dev.julian09.financeapp.ui.feature.tags.TagRange
+import com.dev.julian09.financeapp.ui.feature.tags.TagsContent
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionChoices
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetail
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetailContent
@@ -218,6 +231,18 @@ class ComponentsScreenshotTest {
 
     @Test
     fun transactionDetailLight() = capture("transaction_detail_light", dark = false) { TransactionDetailPreview() }
+
+    @Test
+    fun reportsLight() = capture("reports_light", dark = false) { Reports() }
+
+    @Test
+    fun reportsDark() = capture("reports_dark", dark = true) { Reports() }
+
+    @Test
+    fun tagsLight() = capture("tags_light", dark = false) { Tags() }
+
+    @Test
+    fun tagDetailLight() = capture("tag_detail_light", dark = false) { TagDetail() }
 
     @Test
     fun importExportLight() = capture("import_export_light", dark = false) { ImportExport() }
@@ -472,6 +497,132 @@ class ComponentsScreenshotTest {
     }
 
     @Composable
+    private fun Reports() {
+        val home = Category(UUID.randomUUID(), "Hogar", CategoryKind.EXPENSE, icon = "home")
+        val food = Category(UUID.randomUUID(), "Comida", CategoryKind.EXPENSE, icon = "restaurant")
+        val salary = Category(UUID.randomUUID(), "Salario", CategoryKind.INCOME, icon = "work")
+        val card = UUID.randomUUID()
+        val month = ReportAggregator.period(ReportSpan.MONTH, LocalDate.of(2026, 10, 20))
+        val rows =
+            (0L..5L).flatMap { back ->
+                val day =
+                    LocalDate
+                        .of(2026, 10, 10)
+                        .minusMonths(back)
+                        .atStartOfDay()
+                        .toInstant(ZoneOffset.UTC)
+                listOf(
+                    Transaction(
+                        UUID.randomUUID(),
+                        TransactionType.INCOME,
+                        Money.ofPesos(2_850_000 - back * 90_000),
+                        day,
+                        card,
+                        categoryId = salary.id,
+                    ),
+                    Transaction(
+                        UUID.randomUUID(),
+                        TransactionType.EXPENSE,
+                        Money.ofPesos(620_000 + back * 40_000),
+                        day,
+                        card,
+                        categoryId = home.id,
+                    ),
+                    Transaction(UUID.randomUUID(), TransactionType.EXPENSE, Money.ofPesos(412_400), day, card, categoryId = food.id),
+                    Transaction(
+                        UUID.randomUUID(),
+                        TransactionType.TRANSFER,
+                        Money.ofPesos(250_000),
+                        day,
+                        UUID.randomUUID(),
+                        destinationAccountId = card,
+                        interest = Money.ofPesos(42_000),
+                    ),
+                )
+            }
+        val report =
+            ReportAggregator.aggregate(
+                ReportSpan.MONTH,
+                month,
+                LocalDate.of(2026, 10, 20),
+                ZoneOffset.UTC,
+                rows,
+                listOf(home, food, salary),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+            )
+        ReportsContent(
+            ReportsState(ReportSpan.MONTH, month, report, mapOf(card to "Tarjeta Visa Platinum")),
+            ReportsActions(),
+            avatarInitial = 'J',
+        )
+    }
+
+    @Composable
+    private fun Tags() {
+        fun line(
+            name: String,
+            pinned: Boolean,
+            pesos: Long,
+            count: Int,
+        ) = Tag(UUID.randomUUID(), name, pinned).let { TagLine(it, TagTotal(it.id, Money.ZERO, Money.ofPesos(pesos), count)) }
+        TagsContent(
+            listOf(line("Viaje Cartagena", true, 1_240_000, 12), line("Salidas", true, 182_000, 8), line("Trabajo", false, 54_000, 3)),
+            onBack = {},
+            onOpenTag = {},
+            onNew = {},
+            onTogglePin = {},
+        )
+    }
+
+    @Composable
+    private fun TagDetail() {
+        val tag = Tag(UUID.randomUUID(), "Viaje Cartagena", pinned = true)
+        val visa = UUID.randomUUID()
+        val lodging = Category(UUID.randomUUID(), "Alojamiento", CategoryKind.EXPENSE, icon = "home")
+        val transport = Category(UUID.randomUUID(), "Transporte", CategoryKind.EXPENSE, icon = "directions_bus")
+        val food = Category(UUID.randomUUID(), "Comida", CategoryKind.EXPENSE, icon = "restaurant")
+
+        fun tx(
+            pesos: Long,
+            day: Int,
+            category: Category,
+            note: String,
+        ) = Transaction(
+            UUID.randomUUID(),
+            TransactionType.EXPENSE,
+            Money.ofPesos(pesos),
+            LocalDate.of(2026, 10, day).atTime(15, 0).toInstant(ZoneOffset.UTC),
+            visa,
+            categoryId = category.id,
+            tagId = tag.id,
+            note = note,
+        )
+        val rows =
+            listOf(
+                tx(680_000, 4, lodging, "Hotel Caribe"),
+                tx(300_000, 2, transport, "Vuelo Bogotá – Cartagena"),
+                tx(96_000, 5, food, "Restaurante La Cevichería"),
+            )
+        TagDetailContent(
+            TagDetailState(
+                tag = tag,
+                range = TagRange.THIS_MONTH,
+                from = LocalDate.of(2026, 10, 1),
+                to = LocalDate.of(2026, 10, 31),
+                income = Money.ZERO,
+                expense = Money.ofPesos(1_076_000),
+                count = 3,
+                byCategory = listOf(lodging to Money.ofPesos(680_000), transport to Money.ofPesos(300_000), food to Money.ofPesos(96_000)),
+                days = buildDays(rows, mapOf(visa to "Tarjeta Visa"), listOf(lodging, transport, food), ZoneOffset.UTC),
+            ),
+            TagDetailActions(),
+            today = LocalDate.of(2026, 10, 16),
+        )
+    }
+
+    @Composable
     private fun ImportExport() {
         ImportExportContent(
             ImportExportState(export = ExportChoice.THIS_MONTH),
@@ -520,7 +671,7 @@ class ComponentsScreenshotTest {
             CardFormState(
                 name = "Visa Platinum",
                 limitDigits = "5000000",
-                availableDigits = "4200000",
+                debtDigits = "800000",
                 cutOffDay = "20",
                 paymentDay = "5",
                 rateText = "2,0",

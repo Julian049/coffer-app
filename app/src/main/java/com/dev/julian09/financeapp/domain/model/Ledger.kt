@@ -43,13 +43,27 @@ data class Category(
     val systemKey: String? = null,
     val icon: String? = null,
     val sortOrder: Int = 0,
+    /** REQ-CAT-04: set on parents; subcategories follow their parent ([excludedFromReports]). */
+    val excludeFromReports: Boolean = false,
 )
+
+/** REQ-CAT-04: a subcategory follows its parent; a parent (or an orphan) its own flag. */
+fun Category.excludedFromReports(byId: Map<UUID, Category>): Boolean = parentId?.let { byId[it]?.excludeFromReports } ?: excludeFromReports
 
 data class Tag(
     val id: UUID,
     val name: String,
     val pinned: Boolean = false,
 )
+
+data class TagTotal(
+    val tagId: UUID,
+    val income: Money,
+    val expense: Money,
+    val count: Int,
+) {
+    val net: Money get() = income - expense
+}
 
 enum class TransactionType { EXPENSE, INCOME, TRANSFER }
 

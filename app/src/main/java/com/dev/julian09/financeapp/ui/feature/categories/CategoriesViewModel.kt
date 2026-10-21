@@ -65,6 +65,11 @@ sealed interface CategorySheet {
         val category: Category,
     ) : CategorySheet
 
+    /** REQ-CAT-04: turning the exclusion on asks first; turning it off does not. */
+    data class Exclude(
+        val category: Category,
+    ) : CategorySheet
+
     data class Rename(
         val category: Category,
         val name: String,
@@ -145,6 +150,22 @@ class CategoriesViewModel
 
         fun openOptions(category: Category) {
             _sheet.value = CategorySheet.Options(category)
+        }
+
+        fun setExcluded(excluded: Boolean) {
+            val category = (_sheet.value as? CategorySheet.Options)?.category ?: return
+            if (excluded) {
+                _sheet.value = CategorySheet.Exclude(category)
+            } else {
+                viewModelScope.launch { repository.setExcludedFromReports(category.id, false) }
+                _sheet.value = CategorySheet.Options(category.copy(excludeFromReports = false))
+            }
+        }
+
+        fun confirmExclude() {
+            val category = (_sheet.value as? CategorySheet.Exclude)?.category ?: return
+            viewModelScope.launch { repository.setExcludedFromReports(category.id, true) }
+            _sheet.value = null
         }
 
         fun startRename() {

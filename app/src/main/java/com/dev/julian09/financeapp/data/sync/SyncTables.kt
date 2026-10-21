@@ -179,6 +179,7 @@ class SyncTables
                             put("systemKey", k.systemKey)
                             put("icon", k.icon)
                             put("sortOrder", k.sortOrder)
+                            put("excludeFromReports", k.excludeFromReports)
                         },
                     )
                 },
@@ -197,6 +198,7 @@ class SyncTables
                         updatedAt = Instant.parse(c.updatedAt),
                         deletedAt = c.deletedAt?.let(Instant::parse),
                         syncState = SyncState.SYNCED,
+                        excludeFromReports = d.bool("excludeFromReports"),
                     )
                 },
             )

@@ -25,7 +25,7 @@ class LedgerFixture(
     val accounts = AccountRepositoryImpl(db, db.accounts(), db.transactions(), clock)
     val categories = CategoryRepositoryImpl(db, db.categories(), db.transactions(), clock)
     val transactions = TransactionRepositoryImpl(db, db.transactions(), db.cards(), ChangeLogWriter(db), clock)
-    val tags = TagRepositoryImpl(db.tags(), clock)
+    val tags = TagRepositoryImpl(db, db.tags(), clock)
     val recurring = RecurringRepositoryImpl(db, db.recurring(), db.transactions(), ChangeLogWriter(db), clock)
     val settings = SettingsRepositoryImpl(db.settings(), clock)
     val cards = CardRepositoryImpl(db, db.cards(), db.accounts(), db.transactions(), db.syncMeta(), ChangeLogWriter(db), clock)
@@ -91,6 +91,7 @@ class LedgerFixture(
         at: Instant = clock.now(),
         category: UUID? = null,
         destination: UUID? = null,
+        tag: UUID? = null,
     ): UUID {
         val id = UUID.randomUUID()
         db.transactions().upsert(
@@ -103,6 +104,7 @@ class LedgerFixture(
                     accountId = account,
                     destinationAccountId = destination,
                     categoryId = category,
+                    tagId = tag,
                     createdAt = past,
                     updatedAt = past,
                     syncState = SyncState.SYNCED,

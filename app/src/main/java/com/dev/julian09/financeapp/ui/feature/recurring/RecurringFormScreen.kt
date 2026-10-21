@@ -144,7 +144,11 @@ fun RecurringFormContent(
     Column(modifier.fillMaxSize()) {
         AppHeader(title = if (state.editingId == null) "Nuevo gasto recurrente" else "Editar gasto recurrente", onBack = actions.onBack)
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AppTextField(
@@ -218,6 +222,9 @@ fun RecurringFormContent(
                     )
                 }
             }
+        }
+        // M4 (#88): the save button stays visible while the form scrolls
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AppButton(
                 if (state.editingId == null) "Guardar recurrente" else "Guardar cambios",
                 onClick = actions.onSave,

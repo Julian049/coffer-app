@@ -13,6 +13,7 @@ import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import kotlinx.coroutines.flow.Flow
@@ -65,6 +66,12 @@ interface CategoryRepository {
         name: String,
     )
 
+    /** REQ-CAT-04; the screen offers it on parents only. */
+    suspend fun setExcludedFromReports(
+        id: UUID,
+        excluded: Boolean,
+    )
+
     /** Movements of the category and its subcategories, which are deleted with it (REQ-CAT-03). */
     suspend fun transactionCount(id: UUID): Int
 
@@ -79,6 +86,25 @@ interface TagRepository {
     fun observeAll(): Flow<List<Tag>>
 
     suspend fun create(tag: Tag)
+
+    suspend fun rename(
+        id: UUID,
+        name: String,
+    )
+
+    suspend fun setPinned(
+        id: UUID,
+        pinned: Boolean,
+    )
+
+    /** The tag and, in the same database transaction, the tag of its movements (S9-DOM02). */
+    suspend fun delete(id: UUID)
+
+    /** Income and expenses per tag in [from, to), transfers apart (REQ-ETQ-03). */
+    fun observeTotals(
+        from: Instant,
+        to: Instant,
+    ): Flow<List<TagTotal>>
 }
 
 interface TransactionRepository {
@@ -106,7 +132,16 @@ interface TransactionRepository {
     /** Newest first, where the account is the source or the destination. */
     fun observeByAccount(accountId: UUID): Flow<List<Transaction>>
 
-    /** Income and expenses (no transfers) in [from, to) of active accounts included in the total. */
+    /** Not deleted, in [from, to), any order. */
+    fun observeBetween(
+        from: Instant,
+        to: Instant,
+    ): Flow<List<Transaction>>
+
+    /** Card purchases in 2 or more installments, whenever they happened (reports count them by installment). */
+    fun observeDeferredPurchases(): Flow<List<Transaction>>
+
+    /** Income and expenses (no transfers) in [from, to) of active accounts included in the total, without excluded categories (REQ-CAT-04). */
     fun observeTotals(
         from: Instant,
         to: Instant,

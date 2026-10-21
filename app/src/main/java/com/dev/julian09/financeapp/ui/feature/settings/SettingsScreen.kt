@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.ImportExport
+import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -69,6 +70,7 @@ fun SettingsScreen(
     onOpenDeactivated: () -> Unit,
     onOpenRecurring: () -> Unit,
     onOpenImportExport: () -> Unit = {},
+    onOpenTags: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
     reminderViewModel: ReminderSettingsViewModel = hiltViewModel(),
@@ -90,6 +92,7 @@ fun SettingsScreen(
         onOpenDeactivated = onOpenDeactivated,
         onOpenRecurring = onOpenRecurring,
         onOpenImportExport = onOpenImportExport,
+        onOpenTags = onOpenTags,
         reminders = reminders,
         onNotifications = { enabled ->
             reminderViewModel.setNotifications(enabled)
@@ -114,6 +117,7 @@ fun SettingsContent(
     onOpenDeactivated: () -> Unit = {},
     onOpenRecurring: () -> Unit = {},
     onOpenImportExport: () -> Unit = {},
+    onOpenTags: () -> Unit = {},
     reminders: Settings? = null,
     onNotifications: (Boolean) -> Unit = {},
     onLeadDays: (Int) -> Unit = {},
@@ -182,6 +186,8 @@ fun SettingsContent(
             reminders?.let { RemindersCard(it, onNotifications, onLeadDays) }
             AppCard {
                 LinkRow(Icons.AutoMirrored.Outlined.Label, "Categorías", onOpenCategories)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.Sell, "Etiquetas", onOpenTags)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.EventRepeat, "Gastos recurrentes", onOpenRecurring)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)

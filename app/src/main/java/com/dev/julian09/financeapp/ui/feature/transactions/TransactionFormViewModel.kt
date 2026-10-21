@@ -19,6 +19,7 @@ import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import com.dev.julian09.financeapp.domain.usecase.CreateTag
 import com.dev.julian09.financeapp.domain.usecase.DeferCardPurchase
+import com.dev.julian09.financeapp.domain.usecase.DeleteTransaction
 import com.dev.julian09.financeapp.domain.usecase.ObserveCards
 import com.dev.julian09.financeapp.domain.usecase.RegisterTransaction
 import com.dev.julian09.financeapp.domain.usecase.TransactionErrors
@@ -94,6 +95,7 @@ class TransactionFormViewModel
         private val update: UpdateTransaction,
         private val createTag: CreateTag,
         private val deferCardPurchase: DeferCardPurchase,
+        private val deleteTransaction: DeleteTransaction,
         observeCards: ObserveCards,
         clock: Clock,
     ) : ViewModel() {
@@ -193,6 +195,15 @@ class TransactionFormViewModel
         }
 
         fun clearTagError() = _state.update { it.copy(tagError = null) }
+
+        /** M3 (#87): Eliminar sits on top of the edit. */
+        fun delete() {
+            val id = _state.value.editingId ?: return
+            viewModelScope.launch {
+                deleteTransaction(id)
+                _state.update { it.copy(saved = true) }
+            }
+        }
 
         fun save() {
             val s = _state.value

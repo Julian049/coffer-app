@@ -67,6 +67,8 @@ data class CategoryEntity(
     val deletedAt: Instant? = null,
     val syncState: SyncState = SyncState.PENDING,
     val syncError: String? = null,
+    /** V11 / Room 5 (REQ-CAT-04). */
+    @ColumnInfo(defaultValue = "0") val excludeFromReports: Boolean = false,
 )
 
 @Entity(tableName = "tags", indices = [Index("syncState")])

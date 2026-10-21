@@ -346,7 +346,7 @@ private fun Section(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateField(
+internal fun DateField(
     label: String,
     value: LocalDate?,
     modifier: Modifier,

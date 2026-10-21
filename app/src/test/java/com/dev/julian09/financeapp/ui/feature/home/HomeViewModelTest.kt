@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,6 +53,8 @@ class HomeViewModelTest {
                 f.clock,
             ),
             f.categories,
+            f.tags,
+            f.clock,
         ).state.filterNotNull().first()
 
     private fun day(date: String) = Instant.parse("${date}T15:00:00Z")
@@ -111,5 +114,24 @@ class HomeViewModelTest {
             val s = state().dashboard
             assertNull(s.monthlyChange)
             assertEquals(FoxState.RESTING, s.fox.state)
+        }
+
+    @Test
+    fun aCategoryExcludedFromReportsAndItsSubcategoriesDoNotWorryTheFox() =
+        runBlocking {
+            val cash = f.account("Efectivo", 1_000_000)
+            val salary = f.category("Salario", kind = "INCOME")
+            val savings = f.category("Ahorros")
+            val pocket = f.category("Bolsillo", parent = savings)
+            f.tx("INCOME", 500_000, cash, day("2026-10-01"), salary)
+            f.tx("EXPENSE", 400_000, cash, day("2026-10-02"), savings)
+            f.tx("EXPENSE", 400_000, cash, day("2026-10-03"), pocket)
+            assertEquals(FoxState.WORRIED, state().dashboard.fox.state)
+
+            f.categories.setExcludedFromReports(savings, true)
+            val s = state().dashboard
+            assertTrue(s.fox.state != FoxState.WORRIED)
+            // REQ-CAT-04: the balance still moves
+            assertEquals(Money.ofPesos(700_000), s.available)
         }
 }

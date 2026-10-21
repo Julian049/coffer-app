@@ -24,6 +24,8 @@ import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -77,6 +79,7 @@ fun CategoriesScreen(
             )
         is CategorySheet.Options ->
             AppBottomSheet(onDismiss = viewModel::dismiss, title = s.category.name) {
+                if (s.category.parentId == null) ExcludeRow(s.category.excludeFromReports, viewModel::setExcluded)
                 OptionRow(Icons.Outlined.Edit, "Renombrar", null, danger = false, onClick = viewModel::startRename)
                 OptionRow(Icons.Outlined.DeleteOutline, "Eliminar", null, danger = true, onClick = viewModel::startDelete)
                 AppButton("Cancelar", onClick = viewModel::dismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
@@ -85,6 +88,17 @@ fun CategoriesScreen(
             AppBottomSheet(onDismiss = viewModel::dismiss, title = "Renombrar categoría") {
                 AppTextField(value = s.name, onValueChange = viewModel::typeName, label = "Nombre", error = s.error?.message())
                 AppButton("Guardar", onClick = viewModel::saveRename, modifier = Modifier.fillMaxWidth())
+            }
+        is CategorySheet.Exclude ->
+            AppBottomSheet(onDismiss = viewModel::dismiss, title = "Excluir «${s.category.name}» de reportes") {
+                Text(
+                    "Los movimientos de esta categoría no cuentan en ningún reporte, ni en los gastos e ingresos del mes de Inicio " +
+                        "ni en el zorro. También aplica a sus subcategorías y a los meses pasados. El saldo de tus cuentas no cambia.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CofferTheme.colors.textSecondary,
+                )
+                AppButton("Excluir de reportes", onClick = viewModel::confirmExclude, modifier = Modifier.fillMaxWidth())
+                AppButton("Cancelar", onClick = viewModel::dismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
             }
         is CategorySheet.Delete -> DeleteCategorySheet(s, viewModel::dismiss, viewModel::selectTarget, viewModel::confirmDelete)
     }
@@ -145,6 +159,31 @@ private fun share(
     return "${pct.toPlainString().replace('.', ',')} % del total"
 }
 
+@Composable
+private fun ExcludeRow(
+    excluded: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    val colors = CofferTheme.colors
+    AppCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Excluir de reportes", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                Text(
+                    "Para ahorros o ajustes de saldo: no cuentan como gasto ni ingreso.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
+            }
+            Switch(
+                checked = excluded,
+                onCheckedChange = onChange,
+                colors = SwitchDefaults.colors(checkedTrackColor = colors.primary, checkedThumbColor = colors.onPrimary),
+            )
+        }
+    }
+}
+
 private fun movements(count: Int) = if (count == 1) "1 transacción" else "$count transacciones"
 
 @Composable
@@ -173,7 +212,8 @@ private fun CategoryCard(
                         1 -> "1 subcategoría"
                         else -> "${node.children.size} subcategorías"
                     }
-                Text("$sub · ${movements(node.count)}", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                val excluded = if (main.excludeFromReports) " · Excluida de reportes" else ""
+                Text("$sub · ${movements(node.count)}$excluded", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
             }
             Column(horizontalAlignment = Alignment.End) {
                 MoneyText(
@@ -255,7 +295,11 @@ private fun NewCategorySheet(
         }
         if (sheet.parentId == null) {
             Text("Ícono", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 CATEGORY_ICONS.forEach { (key, icon) ->
                     val selected = sheet.icon == key
                     Box(

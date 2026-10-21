@@ -122,7 +122,7 @@ class ReminderWorkerTest {
         runBlocking {
             // A card created with $300.000 of debt on Oct 7: due on Nov 5 (cut 20, payment 5)
             CreateCard(f.accounts, f.cards, scheduler)(
-                CardDraft("Visa", Money.ofPesos(1_000_000), Money.ofPesos(700_000), 20, 5, BigDecimal("0.02"), RateType.MV, false),
+                CardDraft("Visa", Money.ofPesos(1_000_000), Money.ofPesos(300_000), 20, 5, BigDecimal("0.02"), RateType.MV, false),
             )
             assertEquals(0, on("2026-10-30")())
             assertEquals(1, on("2026-10-31")())
