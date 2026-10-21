@@ -3,6 +3,9 @@ package com.dev.julian09.financeapp.ui.components
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
@@ -38,18 +41,28 @@ fun MoneyText(
     Text(text = formatMoney(money, kind), modifier = modifier, color = color, style = style)
 }
 
+/**
+ * RNF-13: decimals shown in every amount, 0 or 2. It is snapshot state, so any composable that formats an amount
+ * redraws when Ajustes changes it; the root keeps it in step with user_settings.amount_decimals.
+ */
+object AmountFormat {
+    var decimals by mutableIntStateOf(0)
+}
+
 private const val MINUS = "−"
 private val COP_SYMBOLS = DecimalFormatSymbols(Locale.forLanguageTag("es-CO"))
 
 /**
- * Colombian pesos without decimals and with dots for thousands: `$1.250.000`.
+ * Colombian pesos with dots for thousands: `$1.250.000`, or `$1.250.000,50` with 2 [decimals].
  * Income gets `+`, expenses and debts `−` (U+2212), transfers no sign; neutral shows `−` only when negative.
  */
 fun formatMoney(
     money: Money,
     kind: MoneyKind = MoneyKind.Neutral,
+    decimals: Int = AmountFormat.decimals,
 ): String {
-    val format = DecimalFormat("#,##0", COP_SYMBOLS).apply { roundingMode = RoundingMode.HALF_UP }
+    val pattern = if (decimals == 2) "#,##0.00" else "#,##0"
+    val format = DecimalFormat(pattern, COP_SYMBOLS).apply { roundingMode = RoundingMode.HALF_UP }
     val amount = "$" + format.format(money.toBigDecimal().abs())
     val sign =
         when (kind) {
@@ -70,7 +83,8 @@ class PesosTransformation(
 ) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val pesos = text.text.toLongOrNull() ?: return TransformedText(text, OffsetMapping.Identity)
-        val formatted = formatMoney(Money.ofPesos(pesos))
+        // Fields take whole pesos, whatever Ajustes says about decimals
+        val formatted = formatMoney(Money.ofPesos(pesos), decimals = 0)
         val shown = if (symbol) formatted else formatted.removePrefix("$")
         val mapping =
             object : OffsetMapping {

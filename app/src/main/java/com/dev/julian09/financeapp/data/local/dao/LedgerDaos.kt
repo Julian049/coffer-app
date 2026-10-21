@@ -123,6 +123,13 @@ interface AccountDao {
         now: Instant,
     )
 
+    @Query("UPDATE accounts SET sortOrder = :order, updatedAt = :now, syncState = 'PENDING', syncError = NULL WHERE id = :id")
+    suspend fun setSortOrder(
+        id: UUID,
+        order: Int,
+        now: Instant,
+    )
+
     @Query("UPDATE accounts SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
     suspend fun markDeleted(
         id: UUID,

@@ -26,6 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.UserProfile
+import com.dev.julian09.financeapp.ui.components.AmountFormat
 import com.dev.julian09.financeapp.ui.feature.accounts.AccountDetailScreen
 import com.dev.julian09.financeapp.ui.feature.accounts.AccountFormScreen
 import com.dev.julian09.financeapp.ui.feature.accounts.AccountsScreen
@@ -33,12 +34,14 @@ import com.dev.julian09.financeapp.ui.feature.accounts.DeactivatedAccountsScreen
 import com.dev.julian09.financeapp.ui.feature.categories.CategoriesScreen
 import com.dev.julian09.financeapp.ui.feature.changes.ChangeHistoryScreen
 import com.dev.julian09.financeapp.ui.feature.history.HistoryScreen
+import com.dev.julian09.financeapp.ui.feature.home.CustomizeHomeScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportScreen
 import com.dev.julian09.financeapp.ui.feature.loans.LoanFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
+import com.dev.julian09.financeapp.ui.feature.settings.ReminderSettingsViewModel
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsScreen
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
 import com.dev.julian09.financeapp.ui.feature.tags.TagDetailScreen
@@ -72,6 +75,9 @@ fun AppNavHost(
     LaunchedEffect(pendingLink, cardLink, loanLink) {
         if (pendingLink != null || cardLink != null || loanLink != null) navController.navigateToTab(Tab.Home)
     }
+    // RNF-13: every amount follows Ajustes → Decimales
+    val settings by hiltViewModel<ReminderSettingsViewModel>().settings.collectAsStateWithLifecycle()
+    LaunchedEffect(settings?.amountDecimals) { settings?.let { AmountFormat.decimals = it.amountDecimals } }
     Scaffold(
         containerColor = CofferTheme.colors.background,
         bottomBar = { if (currentTab != null) BottomBar(selected = currentTab, onSelect = navController::navigateToTab) },
@@ -100,6 +106,7 @@ fun AppNavHost(
                     onOpenRecurring = { navController.navigate(RecurringRoute) },
                     onOpenTags = openTags,
                     onOpenTag = openTag,
+                    onCustomize = { navController.navigate(CustomizeHomeRoute) },
                     userName = user.displayName,
                     syncStatus = sync,
                 )
@@ -131,9 +138,11 @@ fun AppNavHost(
                     onOpenImportExport = { navController.navigate(ImportExportRoute) },
                     onOpenTags = openTags,
                     onOpenChangeHistory = { navController.navigate(ChangeHistoryRoute) },
+                    onOpenCustomizeHome = { navController.navigate(CustomizeHomeRoute) },
                 )
             }
             composable<ChangeHistoryRoute> { ChangeHistoryScreen(onBack = navController::popBackStack) }
+            composable<CustomizeHomeRoute> { CustomizeHomeScreen(onBack = navController::popBackStack) }
             composable<TagsRoute> { TagsScreen(onBack = navController::popBackStack, onOpenTag = openTag) }
             composable<TagDetailRoute> { TagDetailScreen(onBack = navController::popBackStack, onOpenTransaction = openTransaction) }
             composable<ImportExportRoute> { ImportExportScreen(onBack = navController::popBackStack) }

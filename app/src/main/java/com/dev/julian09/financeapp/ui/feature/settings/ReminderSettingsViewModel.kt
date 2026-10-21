@@ -30,6 +30,11 @@ class ReminderSettingsViewModel
             viewModelScope.launch { update { it.copy(reminderLeadDays = days) } }
         }
 
+        /** RNF-13: 0 or 2. */
+        fun setDecimals(decimals: Int) {
+            viewModelScope.launch { update { it.copy(amountDecimals = decimals) } }
+        }
+
         /** REQ-CTA-09: AVAILABLE or NET. */
         fun setBalanceView(view: String) {
             viewModelScope.launch { update { it.copy(homeBalanceView = view) } }

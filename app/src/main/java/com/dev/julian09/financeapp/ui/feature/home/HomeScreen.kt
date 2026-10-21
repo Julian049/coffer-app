@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,10 +50,12 @@ import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.DuePayment
+import com.dev.julian09.financeapp.domain.model.HomeSection
 import com.dev.julian09.financeapp.domain.model.LoanDue
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.Urgency
+import com.dev.julian09.financeapp.domain.model.homeLayout
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
@@ -98,6 +101,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onOpenTags: () -> Unit = {},
     onOpenTag: (UUID) -> Unit = {},
+    onCustomize: () -> Unit = {},
     userName: String? = null,
     syncStatus: SyncStatus? = null,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -144,6 +148,7 @@ fun HomeScreen(
         onOpenTags = onOpenTags,
         onOpenTag = onOpenTag,
         onBalanceView = viewModel::setBalanceView,
+        onCustomize = onCustomize,
         onOpenPending = { p ->
             when (p) {
                 is CardDue -> paying = p.id.toString()
@@ -154,7 +159,7 @@ fun HomeScreen(
     )
 }
 
-/** Inicio (S4-UI04, S6-UI02, S9-UI02): customization arrives in S11. */
+/** Inicio (S4-UI04, S6-UI02, S9-UI02, S11-UI04): the cards follow Personalizar inicio. */
 @Composable
 fun HomeContent(
     state: HomeUiState?,
@@ -172,6 +177,7 @@ fun HomeContent(
     onOpenTag: (UUID) -> Unit = {},
     onOpenPending: (DuePayment) -> Unit = {},
     onBalanceView: (BalanceView) -> Unit = {},
+    onCustomize: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     var balanceSheet by rememberSaveable { mutableStateOf(false) }
@@ -203,45 +209,68 @@ fun HomeContent(
                 }
                 StatusChip(dashboard.fox)
             }
-            // REQ-CTA-09: the chosen view; a tap shows both
-            AppCard(Modifier.fillMaxWidth(), highlight = true, onClick = { balanceSheet = true }) {
-                val net = state.balanceView == BalanceView.NET
-                Text(
-                    if (net) "Saldo neto" else "Saldo total disponible",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
-                )
-                MoneyText(if (net) dashboard.net else dashboard.available, style = MaterialTheme.typography.displaySmall)
-                dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
+            FoxCard(dashboard.fox, dashboard.previousMonth)
+            // REQ-INI-04: the cards in the order and with the visibility of Personalizar inicio
+            val layout = homeLayout(state.settings.homeCards)
+            val trend = layout.any { it.key == HomeSection.MONTHLY_TREND.name && it.visible }
+            layout.filter { it.visible }.forEach { card ->
+                when (runCatching { HomeSection.valueOf(card.key) }.getOrNull()) {
+                    HomeSection.BALANCE ->
+                        // REQ-CTA-09: the chosen view; a tap shows both
+                        AppCard(Modifier.fillMaxWidth(), highlight = true, onClick = { balanceSheet = true }) {
+                            val net = state.balanceView == BalanceView.NET
+                            Text(
+                                if (net) "Saldo neto" else "Saldo total disponible",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                            MoneyText(if (net) dashboard.net else dashboard.available, style = MaterialTheme.typography.displaySmall)
+                            if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
+                        }
+                    HomeSection.QUICK_ACTIONS -> QuickActions(onNewTransaction)
+                    HomeSection.ACCOUNTS -> {
+                        val active = dashboard.accounts.filter { it.account.active }
+                        SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
+                        LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(active, key = { it.account.id }) { AccountChipCard(it, onClick = { onOpenAccount(it.account.id) }) }
+                        }
+                    }
+                    HomeSection.PENDING ->
+                        if (dashboard.pending.isNotEmpty()) UpcomingPayments(dashboard.pending, onOpenRecurring, onOpenPending)
+                    HomeSection.PINNED_TAGS ->
+                        if (state.pinned.isNotEmpty()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "Etiquetas fijadas",
+                                    Modifier.weight(1f),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colors.textPrimary,
+                                )
+                                TextButton(onClick = onOpenTags) { Text("Ver todas", color = colors.textSecondary) }
+                            }
+                            AppCard {
+                                state.pinned.forEach { line -> TagRow(line, onOpen = { onOpenTag(line.tag.id) }) }
+                            }
+                        }
+                    HomeSection.RECENT ->
+                        if (state.days.isNotEmpty()) {
+                            SectionTitle("Últimos 5 días", null)
+                            state.days.forEach { DayGroup(it, today, onOpen = onOpenTransaction) }
+                        }
+                    HomeSection.MONTHLY_TREND, null -> Unit
+                }
             }
             if (balanceSheet) BalanceSheet(dashboard, state.balanceView, onBalanceView, onDismiss = { balanceSheet = false })
-            FoxCard(dashboard.fox, dashboard.previousMonth)
-            QuickActions(onNewTransaction)
-            val active = dashboard.accounts.filter { it.account.active }
-            SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
-            LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(active, key = { it.account.id }) { AccountChipCard(it, onClick = { onOpenAccount(it.account.id) }) }
-            }
-            if (dashboard.pending.isNotEmpty()) UpcomingPayments(dashboard.pending, onOpenRecurring, onOpenPending)
-            if (state.pinned.isNotEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Etiquetas fijadas", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                    TextButton(onClick = onOpenTags) { Text("Ver todas", color = colors.textSecondary) }
-                }
-                AppCard {
-                    state.pinned.forEach { line -> TagRow(line, onOpen = { onOpenTag(line.tag.id) }) }
-                }
-            }
-            if (state.days.isNotEmpty()) {
-                SectionTitle("Últimos 5 días", null)
-                state.days.forEach { DayGroup(it, today, onOpen = onOpenTransaction) }
-            }
             AppButton(
                 "Ver todas las transacciones",
                 onClick = onOpenHistory,
                 kind = ButtonKind.Secondary,
                 modifier = Modifier.fillMaxWidth(),
             )
+            TextButton(onClick = onCustomize, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Icon(Icons.Outlined.Edit, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(16.dp))
+                Text(" Personalizar inicio", color = colors.textSecondary)
+            }
         }
     }
 }

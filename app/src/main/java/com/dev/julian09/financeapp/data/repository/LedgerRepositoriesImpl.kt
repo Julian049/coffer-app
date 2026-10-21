@@ -108,8 +108,15 @@ class AccountRepositoryImpl
 
         override suspend fun update(account: Account) {
             val stored = dao.get(account.id) ?: return
-            dao.upsert(listOf(account.toEntity(createdAt = stored.createdAt, updatedAt = clock.now())))
+            // The carousel order is not part of the form (M9)
+            dao.upsert(listOf(account.toEntity(createdAt = stored.createdAt, updatedAt = clock.now()).copy(sortOrder = stored.sortOrder)))
         }
+
+        override suspend fun reorder(ids: List<UUID>) =
+            db.withTransaction {
+                val now = clock.now()
+                ids.forEachIndexed { index, id -> dao.setSortOrder(id, index, now) }
+            }
 
         override suspend fun setActive(
             id: UUID,

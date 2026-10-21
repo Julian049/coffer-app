@@ -36,6 +36,9 @@ interface AccountRepository {
 
     suspend fun update(account: Account)
 
+    /** M9: the carousel and the lists follow [ids], first to last. */
+    suspend fun reorder(ids: List<UUID>)
+
     suspend fun setActive(
         id: UUID,
         active: Boolean,
