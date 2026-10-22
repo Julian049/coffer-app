@@ -4,9 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountImpact
+import com.dev.julian09.financeapp.domain.model.CardOverview
 import com.dev.julian09.financeapp.domain.model.LedgerError
+import com.dev.julian09.financeapp.domain.model.LoanOverview
 import com.dev.julian09.financeapp.domain.model.RemoveMode
 import com.dev.julian09.financeapp.domain.port.AccountRepository
+import com.dev.julian09.financeapp.domain.usecase.ObserveCards
+import com.dev.julian09.financeapp.domain.usecase.ObserveLoans
 import com.dev.julian09.financeapp.domain.usecase.ReactivateAccount
 import com.dev.julian09.financeapp.domain.usecase.RemoveAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -53,7 +58,21 @@ class AccountsViewModel
         private val repository: AccountRepository,
         private val removeAccount: RemoveAccount,
         private val reactivateAccount: ReactivateAccount,
+        observeCards: ObserveCards,
+        observeLoans: ObserveLoans,
     ) : ViewModel() {
+        /** Each card's statement and limit, by account id (S12-UI04). */
+        val cards: StateFlow<Map<UUID, CardOverview>> =
+            observeCards()
+                .map { list -> list.associateBy { it.card.accountId } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+        /** Each loan's plan, by account id (S12-UI04). */
+        val loans: StateFlow<Map<UUID, LoanOverview>> =
+            observeLoans()
+                .map { list -> list.associateBy { it.loan.accountId } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
         /** Every not deleted account, active or not. */
         val accounts: StateFlow<List<AccountBalance>?> =
             repository.observeBalances().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

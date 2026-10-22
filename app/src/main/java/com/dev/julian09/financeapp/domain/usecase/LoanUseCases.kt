@@ -373,3 +373,72 @@ class ExtraPayment
 
 /** The principal still to pay in the plan (the debt of a detailed loan). */
 val LoanOverview.balance: Money get() = scheduled.fold(Money.ZERO) { s, i -> s + i.principal }
+
+/** Editar préstamo (S12-DOM01): what can change; the amount, the number of installments and the start stay. */
+data class LoanEdit(
+    val name: String,
+    /** A fraction: 0.015 = 1,5 %. Ignored for a simple loan. */
+    val rate: BigDecimal?,
+    val rateType: RateType?,
+    val paymentDay: Int,
+    val lifeInsurance: Money,
+    val otherCosts: Money,
+)
+
+/**
+ * S12-DOM01: new name and terms; a detailed loan recalculates the installments still to pay from their principal, on
+ * the new payment day, and keeps the paid ones as they were.
+ */
+class EditLoan
+    @Inject
+    constructor(
+        private val observeLoans: ObserveLoans,
+        private val accounts: AccountRepository,
+        private val loans: LoanRepository,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke(
+            loanId: UUID,
+            edit: LoanEdit,
+        ): LoanErrors {
+            val overview = observeLoans().first().firstOrNull { it.loan.accountId == loanId } ?: return emptyMap()
+            val errors = mutableMapOf<LoanField, LedgerError>()
+            if (edit.name.isBlank()) errors[LoanField.NAME] = LedgerError.NAME_REQUIRED
+            if (edit.paymentDay !in 1..31) errors[LoanField.PAYMENT_DAY] = LedgerError.DAY_INVALID
+            val detailed = overview.loan.mode == LoanMode.DETAILED
+            if (detailed && (edit.rate == null || edit.rate.signum() < 0)) errors[LoanField.RATE] = LedgerError.RATE_INVALID
+            if (errors.isNotEmpty()) return errors
+            accounts.update(overview.account.account.copy(name = edit.name.trim()))
+            val terms =
+                overview.loan.copy(
+                    paymentDay = edit.paymentDay,
+                    rate = if (detailed) edit.rate else overview.loan.rate,
+                    rateType = if (detailed) edit.rateType else overview.loan.rateType,
+                    lifeInsurance = edit.lifeInsurance,
+                    otherCosts = edit.otherCosts,
+                )
+            val first = overview.next
+            val plan =
+                if (!detailed || first == null) {
+                    emptyList()
+                } else {
+                    val due = first.dueDate.withDayOfMonth(minOf(edit.paymentDay, first.dueDate.lengthOfMonth()))
+                    overview.scheduled.map { it.copy(status = InstallmentStatus.CANCELLED) } +
+                        LoanScheduler
+                            .plan(
+                                overview.balance,
+                                overview.scheduled.size,
+                                RateConverter.toMonthly(terms.rate!!, terms.rateType ?: RateType.MV),
+                                due,
+                                edit.paymentDay,
+                                terms.amortization,
+                                terms.lifeInsurance,
+                                terms.otherCosts,
+                                firstNumber = first.number,
+                            ).toInstallments(loanId)
+                }
+            loans.update(terms, plan)
+            scheduler.requestSync()
+            return emptyMap()
+        }
+    }
