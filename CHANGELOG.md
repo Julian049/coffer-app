@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-22
+
 ### Added
 
 - Reportes as in Figma (S13-H01, #139): fixed filters with Mes ▾, the month's saving with its share of the income and the average, Ritmo de gasto (cumulative spending against the month before, in days), Cambios por categoría (to the same day, by how much they changed, with diverging bars), Ahorro por mes (values above the bars, the running month dashed), Por etiqueta with Ver todas and one tap to each tag, Intereses y cargos and the activity line
