@@ -18,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -58,7 +59,7 @@ class CustomizeHomeTest {
     }
 
     @Test
-    fun savingKeepsTheCardsAndTheOrderOfTheAccounts() =
+    fun eachChangeSavesItselfWithTheCardsAndTheOrderOfTheAccounts() =
         runBlocking {
             f.db.settings().upsert(SettingsEntity(UUID.randomUUID(), 5, true, "AVAILABLE", 0, "[]", Instant.EPOCH, Instant.EPOCH))
             val cash = f.account("Efectivo")
@@ -75,22 +76,24 @@ class CustomizeHomeTest {
             vm.setVisible("PINNED_TAGS", false)
             vm.moveCard(3, 0)
             vm.moveAccount(1, 0)
-            vm.save()
-            vm.state.first { it.saved }
 
+            // No Guardar: the last change reaches the database on its own
             val cards =
-                f.settings
-                    .observe()
-                    .first()
-                    .homeCards
-            assertEquals("PENDING", cards.first().key)
+                withTimeout(5_000) {
+                    f.settings
+                        .observe()
+                        .first { s -> s.homeCards.firstOrNull()?.key == "PENDING" }
+                        .homeCards
+                }
             assertEquals(false, cards.single { it.key == "PINNED_TAGS" }.visible)
             assertEquals(
                 listOf(cash, bank),
-                f.accounts
-                    .observeActive()
-                    .first()
-                    .map { it.id },
+                withTimeout(5_000) {
+                    f.accounts
+                        .observeActive()
+                        .first { list -> list.map { it.id } == listOf(cash, bank) }
+                        .map { it.id }
+                },
             )
             assertEquals(
                 SyncState.PENDING,

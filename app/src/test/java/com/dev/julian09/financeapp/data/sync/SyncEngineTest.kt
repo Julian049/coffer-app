@@ -127,6 +127,25 @@ class SyncEngineTest {
         }
 
     @Test
+    fun deletedRowsCountTowardsTheTotalButNotAsDownloadedData() =
+        runBlocking {
+            val account = UUID.randomUUID()
+            val category = UUID.randomUUID()
+            val deleted =
+                transactionChange(
+                    UUID.randomUUID(),
+                    account,
+                    category,
+                ).replace("\"deletedAt\":null", "\"deletedAt\":\"2026-10-17T10:00:00Z\"")
+            pulls = { page(listOf(accountChange(account), categoryChange(category), deleted), next = 3, hasMore = false, remaining = 0) }
+            var last: Triple<Long, Long?, Map<String, Long>>? = null
+
+            engine.sync { received, total, byEntity -> last = Triple(received, total, byEntity) }
+
+            assertEquals(Triple(3L, 3L, mapOf("account" to 1L, "category" to 1L)), last)
+        }
+
+    @Test
     fun aNewAccountGetsTheBaseCatalogAndBacksItUp() =
         runBlocking {
             engine.sync()

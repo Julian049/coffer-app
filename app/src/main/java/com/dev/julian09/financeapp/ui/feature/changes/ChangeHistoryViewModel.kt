@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.ui.feature.changes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dev.julian09.financeapp.di.DefaultDispatcher
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.ChangeAction
 import com.dev.julian09.financeapp.domain.model.ChangeEntry
@@ -18,11 +19,14 @@ import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.feature.history.typeLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -58,13 +62,18 @@ class ChangeHistoryViewModel
         private val restore: RestoreTransaction,
         private val revert: RevertEdit,
         private val clock: Clock,
+        @DefaultDispatcher dispatcher: CoroutineDispatcher,
     ) : ViewModel() {
-        private val lines: StateFlow<List<ChangeLine>> = observe().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        // An import logs one entry per movement: decoding and grouping thousands stays off the main thread (#127)
+        private val lines: StateFlow<List<ChangeLine>?> =
+            observe().flowOn(dispatcher).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+        /** Null while loading. */
         val days: StateFlow<List<ChangeDay>?> =
-            combine(observe(), accounts.observeBalances(), categories.observeAll()) { list, balances, cats ->
+            combine(lines.filterNotNull(), accounts.observeBalances(), categories.observeAll()) { list, balances, cats ->
                 changeDays(list, balances.associate { it.account.id to it.account.name }, cats, clock.zone())
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+            }.flowOn(dispatcher)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         private val _failed = MutableStateFlow(false)
 
@@ -72,7 +81,7 @@ class ChangeHistoryViewModel
         val failed: StateFlow<Boolean> = _failed.asStateFlow()
 
         fun undo(id: UUID) {
-            val line = lines.value.firstOrNull { it.entry.id == id } ?: return
+            val line = lines.value?.firstOrNull { it.entry.id == id } ?: return
             viewModelScope.launch {
                 val errors =
                     when {

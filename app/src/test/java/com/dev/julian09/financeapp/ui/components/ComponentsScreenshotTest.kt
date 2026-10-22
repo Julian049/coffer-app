@@ -649,7 +649,6 @@ class ComponentsScreenshotTest {
             onMoveCard = { _, _ -> },
             onVisible = { _, _ -> },
             onMoveAccount = { _, _ -> },
-            onSave = {},
         )
     }
 
