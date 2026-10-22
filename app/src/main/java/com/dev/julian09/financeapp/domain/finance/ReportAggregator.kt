@@ -41,6 +41,49 @@ data class CategorySum(
     val children: List<Pair<Category, Money>>,
 )
 
+/**
+ * Ritmo de gasto (S13-DOM01): what was spent day by day, added up, this month up to [today] and the whole month before.
+ * [matchDay] is the first day of the month before that reached today's spending; null when it never did.
+ */
+data class Pace(
+    val today: Int,
+    val current: List<Money>,
+    val previous: List<Money>,
+    val matchDay: Int?,
+) {
+    val spent: Money get() = current.lastOrNull() ?: Money.ZERO
+
+    /** Positive: spending runs ahead of the month before (more spent by today); negative: behind. */
+    val daysAhead: Int? get() = matchDay?.let { it - today }
+}
+
+/** Cambios por categoría (S13-DOM01): a main category this period and the one before, both up to the same day. */
+data class CategoryChange(
+    val category: Category,
+    val now: Money,
+    val before: Money,
+) {
+    val delta: Money get() = now - before
+
+    /** Whole percent; null when there was nothing before. */
+    val percent: Int? get() = percentOf(delta, before)
+}
+
+/** Whole percent of [part] over [whole], rounded half up; null when [whole] is zero. */
+fun percentOf(
+    part: Money,
+    whole: Money,
+): Int? =
+    if (whole == Money.ZERO) {
+        null
+    } else {
+        part
+            .toBigDecimal()
+            .multiply(BigDecimal(100))
+            .divide(whole.toBigDecimal().abs(), 0, RoundingMode.HALF_UP)
+            .toInt()
+    }
+
 data class Report(
     val period: ReportPeriod,
     val income: Money,
@@ -53,7 +96,45 @@ data class Report(
     val interestByCard: Map<UUID, Money>,
     /** Movements registered in the period, transfers included (REQ-REP-05). */
     val count: Int,
+    /** A month only (S13). */
+    val pace: Pace? = null,
+    /** Main expense categories by how much they changed against the period before, to the same day (S13). */
+    val changes: List<CategoryChange> = emptyList(),
+    /** False while [period] is still running (S13: «en curso»). */
+    val closed: Boolean = true,
 ) {
+    /** Ahorro del mes (S13): what is left of the income. */
+    val savingsRate: Int? get() = if (income > Money.ZERO) percentOf(balance, income) else null
+
+    /** The periods before this one that already closed, for the average saving. */
+    private val history: List<PeriodSums> get() = evolution.dropLast(1).filter { it.income > Money.ZERO || it.expense > Money.ZERO }
+
+    val averageSavings: Money?
+        get() =
+            history
+                .takeIf { it.isNotEmpty() }
+                ?.let { list ->
+                    Money.of(
+                        list
+                            .fold(
+                                BigDecimal.ZERO,
+                            ) { s, p -> s + (p.income - p.expense).toBigDecimal() }
+                            .divide(BigDecimal(list.size), 0, RoundingMode.HALF_UP),
+                    )
+                }
+
+    val averageRate: Int?
+        get() {
+            val rated = history.filter { it.income > Money.ZERO }
+            if (rated.isEmpty()) return null
+            val income = rated.fold(Money.ZERO) { s, p -> s + p.income }
+            return percentOf(rated.fold(Money.ZERO) { s, p -> s + p.income - p.expense }, income)
+        }
+
+    /** Total change of the expenses to the same day, for «… explican la subida del 3 %». */
+    val changePercent: Int?
+        get() = percentOf(changes.fold(Money.ZERO) { s, c -> s + c.delta }, changes.fold(Money.ZERO) { s, c -> s + c.before })
+
     val balance: Money get() = income - expense
     val interest: Money get() = interestByCard.values.fold(Money.ZERO, Money::plus)
     val perDay: BigDecimal get() = BigDecimal(count).divide(BigDecimal(period.days), 1, RoundingMode.HALF_UP)
@@ -156,7 +237,40 @@ object ReportAggregator {
                 t.occurredAt.atZone(zone).toLocalDate() in period &&
                     t.categoryId?.let { byId[it] }?.excludedFromReports(byId) != true
             }
+        val previous = evolution.getOrNull(evolution.size - 2)?.period
+        val pace =
+            if (span == ReportSpan.MONTH &&
+                previous != null &&
+                today >= period.from
+            ) {
+                pace(counted, period, previous, today)
+            } else {
+                null
+            }
+        val until = minOf(today, period.to)
+        val sameDay = previous?.let { minOf(it.from.plusDays((until.dayOfMonth - 1).toLong()), it.to) }
+        val changes =
+            if (span == ReportSpan.MONTH && previous != null && sameDay != null) {
+                val now = byCategory(current.filter { it.type == TransactionType.EXPENSE && it.date <= until }, byId)
+                val before =
+                    byCategory(counted.filter { it.type == TransactionType.EXPENSE && it.date in previous && it.date <= sameDay }, byId)
+                val mains = (now.map { it.category } + before.map { it.category }).distinctBy { it.id }
+                mains
+                    .map { c ->
+                        CategoryChange(
+                            c,
+                            now.firstOrNull { it.category.id == c.id }?.total ?: Money.ZERO,
+                            before.firstOrNull { it.category.id == c.id }?.total ?: Money.ZERO,
+                        )
+                    }.filter { it.delta != Money.ZERO }
+                    .sortedByDescending { kotlin.math.abs(it.delta.scaled) }
+            } else {
+                emptyList()
+            }
         return Report(
+            pace = pace,
+            changes = changes,
+            closed = today > period.to,
             period = period,
             income = current.sum(TransactionType.INCOME),
             expense = current.sum(TransactionType.EXPENSE),
@@ -170,6 +284,31 @@ object ReportAggregator {
                     .mapValues { (_, list) -> list.fold(Money.ZERO) { s, e -> s + e.amount } },
             count = count,
         )
+    }
+
+    private fun pace(
+        counted: List<Entry>,
+        period: ReportPeriod,
+        previous: ReportPeriod,
+        today: LocalDate,
+    ): Pace {
+        fun cumulative(
+            p: ReportPeriod,
+            days: Int,
+        ): List<Money> {
+            val byDay = counted.filter { it.type == TransactionType.EXPENSE && it.date in p }.groupBy { it.date.dayOfMonth }
+            var sum = Money.ZERO
+            return (1..days).map { d ->
+                sum += byDay[d]?.sumAll() ?: Money.ZERO
+                sum
+            }
+        }
+        val day = (if (today > period.to) period.to else today).dayOfMonth
+        val current = cumulative(period, day)
+        val before = cumulative(previous, previous.days.toInt())
+        val spent = current.last()
+        val match = before.indexOfFirst { it >= spent }.takeIf { it >= 0 && spent > Money.ZERO }?.plus(1)
+        return Pace(day, current, before, match)
     }
 
     private fun byCategory(

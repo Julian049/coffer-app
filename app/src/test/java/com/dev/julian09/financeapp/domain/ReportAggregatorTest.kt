@@ -204,4 +204,70 @@ class ReportAggregatorTest {
         assertEquals(BigDecimal("0.0"), r.perDay)
         assertNull(report(listOf(tx(TransactionType.EXPENSE, 1_000, "2026-10-10", food))).expenseChange)
     }
+
+    @Test
+    fun thePaceComparesWhatWasSpentByTodayWithTheMonthBefore() {
+        // September: 10.000 on the 5th and 20.000 on the 22nd; October, by the 20th: 25.000
+        val r =
+            report(
+                listOf(
+                    tx(TransactionType.EXPENSE, 10_000, "2026-09-05", restaurants),
+                    tx(TransactionType.EXPENSE, 20_000, "2026-09-22", restaurants),
+                    tx(TransactionType.EXPENSE, 25_000, "2026-10-03", restaurants),
+                ),
+            )
+        val pace = r.pace!!
+        assertEquals(20, pace.today)
+        assertEquals(Money.ofPesos(25_000), pace.spent)
+        // September reached 25.000 on the 22nd: two days ahead
+        assertEquals(22, pace.matchDay)
+        assertEquals(2, pace.daysAhead)
+        assertEquals(30, pace.previous.size)
+    }
+
+    @Test
+    fun changesCompareEachMainCategoryToTheSameDayOfTheMonthBefore() {
+        val r =
+            report(
+                listOf(
+                    tx(TransactionType.EXPENSE, 10_000, "2026-09-05", restaurants),
+                    // After the 20th of September: left out of the comparison
+                    tx(TransactionType.EXPENSE, 90_000, "2026-09-25", restaurants),
+                    tx(TransactionType.EXPENSE, 4_000, "2026-09-10", charges),
+                    tx(TransactionType.EXPENSE, 12_000, "2026-10-04", restaurants),
+                ),
+            )
+        val food = r.changes.first { it.category.id == food.id }
+        assertEquals(Money.ofPesos(12_000), food.now)
+        assertEquals(Money.ofPesos(10_000), food.before)
+        assertEquals(20, food.percent)
+        val interest = r.changes.first { it.category.id == charges.id }
+        assertEquals(Money.ofPesos(-4_000), interest.delta)
+        // Ordered by how much they changed: 4.000 down before 2.000 up
+        assertEquals(
+            charges.id,
+            r.changes
+                .first()
+                .category.id,
+        )
+        // 12.000 against 14.000: down 14 %
+        assertEquals(-14, r.changePercent)
+    }
+
+    @Test
+    fun theSavingRateAndItsAverageComeFromTheClosedMonths() {
+        val r =
+            report(
+                listOf(
+                    tx(TransactionType.INCOME, 1_000_000, "2026-09-01", salary),
+                    tx(TransactionType.EXPENSE, 700_000, "2026-09-02", restaurants),
+                    tx(TransactionType.INCOME, 2_000_000, "2026-10-01", salary),
+                    tx(TransactionType.EXPENSE, 1_160_000, "2026-10-02", restaurants),
+                ),
+            )
+        assertEquals(42, r.savingsRate)
+        // Only September closed with income: 300.000 of 1.000.000
+        assertEquals(30, r.averageRate)
+        assertEquals(false, r.closed)
+    }
 }
