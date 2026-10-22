@@ -82,6 +82,7 @@ class SyncTables
                             put("homeBalanceView", s.homeBalanceView)
                             put("amountDecimals", s.amountDecimals)
                             put("homeCards", homeCards(s.homeCards))
+                            put("netBalanceMode", s.netBalanceMode)
                         },
                     )
                 },
@@ -94,6 +95,7 @@ class SyncTables
                         homeBalanceView = d.text("homeBalanceView")!!,
                         amountDecimals = d.int("amountDecimals"),
                         homeCards = d["homeCards"]?.jsonArray?.toString() ?: "[]",
+                        netBalanceMode = d.text("netBalanceMode") ?: "PERIOD",
                         createdAt = Instant.parse(c.createdAt),
                         updatedAt = Instant.parse(c.updatedAt),
                         deletedAt = c.deletedAt?.let(Instant::parse),
@@ -611,6 +613,7 @@ internal fun transactionData(t: TransactionEntity): JsonObject =
         put("installmentId", t.installmentId?.toString())
         put("recurringId", t.recurringId?.toString())
         put("paymentKind", t.paymentKind)
+        put("concept", t.concept)
     }
 
 /** The inverse of [transactionData]; the timestamps are the caller's to set. */
@@ -634,6 +637,7 @@ internal fun transactionFromData(
     installmentId = d.text("installmentId")?.let(UUID::fromString),
     recurringId = d.text("recurringId")?.let(UUID::fromString),
     paymentKind = d.text("paymentKind"),
+    concept = d.text("concept"),
     createdAt = Instant.EPOCH,
     updatedAt = Instant.EPOCH,
 )

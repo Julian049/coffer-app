@@ -26,6 +26,7 @@ import com.dev.julian09.financeapp.domain.usecase.ObserveCards
 import com.dev.julian09.financeapp.domain.usecase.RegisterTransaction
 import com.dev.julian09.financeapp.domain.usecase.TransactionErrors
 import com.dev.julian09.financeapp.domain.usecase.UpdateTransaction
+import com.dev.julian09.financeapp.domain.usecase.isPickable
 import com.dev.julian09.financeapp.ui.feature.accounts.digitsOnly
 import com.dev.julian09.financeapp.ui.feature.accounts.wholePesos
 import com.dev.julian09.financeapp.ui.feature.cards.parsePercent
@@ -41,12 +42,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 
 /** REQ-TC-05: from 1 to 72 installments (deferred_purchases ck_dp_count). */
 const val MAX_INSTALLMENTS = 72
+
+/** transactions.concept (V13). */
+const val CONCEPT_MAX = 200
 
 data class TransactionFormState(
     val editingId: UUID? = null,
@@ -59,6 +64,8 @@ data class TransactionFormState(
     val occurredAt: Instant,
     val tagId: UUID? = null,
     val note: String = "",
+    /** A transfer's note or concept, apart from its title (S12-H01). */
+    val concept: String = "",
     /** A card purchase (S7-UI02): 1 by default (RNF-15). */
     val installments: Int = 1,
     /** Null: the card's own rate and type (REQ-TC-06). */
@@ -80,6 +87,8 @@ data class TransactionChoices(
     val tags: List<Tag> = emptyList(),
     /** Credit cards by account id, with their available credit. */
     val cards: Map<UUID, CardOverview> = emptyMap(),
+    /** Movements per category, for «más usadas primero» (S12-UI02). */
+    val usage: Map<UUID, Int> = emptyMap(),
 ) {
     /** "Condiciones del crédito" show for a new expense on a card. */
     fun cardOf(state: TransactionFormState): CardOverview? =
@@ -119,8 +128,20 @@ class TransactionFormViewModel
         val state: StateFlow<TransactionFormState> = _state.asStateFlow()
 
         val choices: StateFlow<TransactionChoices> =
-            combine(accounts.observeBalances(), categories.observeAll(), tags.observeAll(), observeCards()) { accs, cats, tgs, cards ->
-                TransactionChoices(accs.filter { it.account.active }, cats, tgs, cards.associateBy { it.card.accountId })
+            combine(
+                accounts.observeBalances(),
+                categories.observeAll(),
+                tags.observeAll(),
+                observeCards(),
+                categories.observeTotals(Instant.EPOCH, clock.now().plus(Duration.ofDays(1))),
+            ) { accs, cats, tgs, cards, totals ->
+                TransactionChoices(
+                    accs.filter { it.account.active },
+                    cats.filter { it.isPickable },
+                    tgs,
+                    cards.associateBy { it.card.accountId },
+                    totals.associate { it.categoryId to it.count },
+                )
             }.stateIn(viewModelScope, SharingStarted.Eagerly, TransactionChoices())
 
         init {
@@ -139,6 +160,7 @@ class TransactionFormViewModel
                                 occurredAt = t.occurredAt,
                                 tagId = t.tagId,
                                 note = t.note.orEmpty(),
+                                concept = t.concept.orEmpty(),
                             )
                         }
                     }
@@ -180,6 +202,8 @@ class TransactionFormViewModel
 
         /** At most one tag (REQ-ETQ-02): tapping the chosen one clears it. */
         fun toggleTag(id: UUID) = edit { it.copy(tagId = if (it.tagId == id) null else id) }
+
+        fun setConcept(value: String) = edit { it.copy(concept = value.take(CONCEPT_MAX)) }
 
         private var suggesting: Job? = null
 
@@ -253,6 +277,11 @@ class TransactionFormViewModel
                     categoryId = s.categoryId,
                     tagId = s.tagId.takeIf { s.type != TransactionType.TRANSFER },
                     note = s.note,
+                    concept =
+                        s.concept
+                            .trim()
+                            .ifEmpty { null }
+                            .takeIf { s.type == TransactionType.TRANSFER },
                 )
             // An edit keeps what the form does not show, like the recurring expense a payment came from
             val transaction =
