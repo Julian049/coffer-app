@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.domain.model.AuthFailure
 import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.domain.model.RegisterInput
+import com.dev.julian09.financeapp.domain.usecase.AcceptLegalTerms
 import com.dev.julian09.financeapp.domain.usecase.RegisterUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ data class RegisterUiState(
     val email: String = "",
     val username: String = "",
     val password: String = "",
+    val acceptedLegal: Boolean = false,
     val errors: Map<AuthField, String> = emptyMap(),
     val formError: String? = null,
     val loading: Boolean = false,
@@ -29,6 +31,7 @@ class RegisterViewModel
     @Inject
     constructor(
         private val register: RegisterUser,
+        private val acceptLegalTerms: AcceptLegalTerms,
     ) : ViewModel() {
         private val _state = MutableStateFlow(RegisterUiState())
         val state: StateFlow<RegisterUiState> = _state.asStateFlow()
@@ -49,12 +52,21 @@ class RegisterViewModel
             edited.copy(errors = it.errors - field, formError = null)
         }
 
+        fun onAcceptedLegal(accepted: Boolean) = _state.update { it.copy(acceptedLegal = accepted, formError = null) }
+
         fun submit() {
             if (_state.value.loading) return
+            if (!_state.value.acceptedLegal) {
+                _state.update { it.copy(formError = "Acepta los términos y la política de privacidad para crear tu cuenta.") }
+                return
+            }
             _state.update { it.copy(loading = true, formError = null) }
             viewModelScope.launch {
                 val input = _state.value.let { RegisterInput(it.displayName, it.email, it.username, it.password) }
-                val failure = register(input).exceptionOrNull() as? AuthFailure
+                val result = register(input)
+                // Remembered before the session reaches the root, which would otherwise ask again
+                result.getOrNull()?.let { acceptLegalTerms(it.id) }
+                val failure = result.exceptionOrNull() as? AuthFailure
                 _state.update {
                     it.copy(
                         loading = false,
