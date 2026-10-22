@@ -108,7 +108,8 @@ class SyncEngine
                 val page = api.pull(cursor, PULL_PAGE)
                 applier.apply(page.changes, page.nextCursor)
                 received += page.changes.size
-                page.changes.forEach { byEntity.merge(it.entity, 1, Long::plus) }
+                // Deleted rows still arrive (REQ-SYN-03) but are not shown as downloaded data (#128)
+                page.changes.filter { it.deletedAt == null }.forEach { byEntity.merge(it.entity, 1, Long::plus) }
                 // remaining only comes with since=0, the start of the initial download
                 if (total == null && page.remaining != null) total = page.changes.size + page.remaining
                 onProgress(received, total, byEntity.toMap())
