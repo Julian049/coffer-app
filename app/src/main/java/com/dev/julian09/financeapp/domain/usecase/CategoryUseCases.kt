@@ -19,7 +19,7 @@ const val OPENING_BALANCE = "OPENING_BALANCE"
 
 val Category.isPickable: Boolean get() = systemKey != OPENING_BALANCE
 
-/** Same kind and parent, ignoring case: the server refuses duplicates there (uq_cat_name). */
+/** Any other category, ignoring case: categories are flat outside Categorías and Reportes, so names are unique (S13). */
 private fun nameError(
     name: String,
     siblings: List<Category>,
@@ -59,7 +59,7 @@ class CreateCategory
                 if (parent.parentId != null) return LedgerError.ONE_LEVEL_ONLY
                 if (parent.kind != category.kind) return LedgerError.KIND_MISMATCH
             }
-            nameError(category.name, all.siblingsOf(category))?.let { return it }
+            nameError(category.name, all)?.let { return it }
             val last = all.siblingsOf(category).maxOfOrNull { it.sortOrder } ?: -1
             repository.create(category.copy(name = category.name.trim(), sortOrder = last + 1))
             scheduler.requestSync()
@@ -79,7 +79,7 @@ class RenameCategory
         ): LedgerError? {
             val all = repository.observeAll().first()
             val category = all.first { it.id == id }
-            nameError(name, all.siblingsOf(category), except = id)?.let { return it }
+            nameError(name, all, except = id)?.let { return it }
             repository.rename(id, name.trim())
             scheduler.requestSync()
             return null

@@ -81,6 +81,12 @@ interface CategoryRepository {
         name: String,
     )
 
+    /** S13-UI04: a category's icon changes after it was created. */
+    suspend fun setIcon(
+        id: UUID,
+        icon: String,
+    )
+
     /** REQ-CAT-04; the screen offers it on parents only. */
     suspend fun setExcludedFromReports(
         id: UUID,

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.ChildCare
+import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
@@ -20,11 +21,18 @@ import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.outlined.Handyman
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.LocalBar
 import androidx.compose.material.icons.outlined.LocalCafe
 import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material.icons.outlined.LocalHospital
+import androidx.compose.material.icons.outlined.LocalPharmacy
+import androidx.compose.material.icons.outlined.LocalTaxi
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LunchDining
+import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Payments
@@ -39,6 +47,7 @@ import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.Work
@@ -97,9 +106,67 @@ private val OTHER_ICONS =
     mapOf(
         "percent" to Icons.Outlined.Percent,
         "more" to Icons.Outlined.MoreHoriz,
+        // S13: an icon of its own for each base subcategory (Figma, Categorías · Versión C)
+        "food" to Icons.Outlined.LunchDining,
+        "taxi" to Icons.Outlined.LocalTaxi,
+        "key" to Icons.Outlined.Key,
+        "hardware" to Icons.Outlined.Handyman,
+        "tv" to Icons.Outlined.Tv,
+        "bar" to Icons.Outlined.LocalBar,
+        "ticket" to Icons.Outlined.ConfirmationNumber,
+        "pharmacy" to Icons.Outlined.LocalPharmacy,
+        "doctor" to Icons.Outlined.MedicalServices,
     )
 
 private val ALL_ICONS = ACCOUNT_ICONS.toMap() + CATEGORY_ICONS.toMap() + OTHER_ICONS
+
+/** Hoja · Elegir ícono (Figma `113:90`): every icon, in four groups. */
+val ICON_GROUPS: List<Pair<String, List<String>>> =
+    listOf(
+        "Dinero" to listOf("wallet", "bank", "cash", "savings", "money", "card", "trending_up", "exchange", "phone_wallet", "percent"),
+        "Hogar y comida" to
+            listOf(
+                "home",
+                "key",
+                "power",
+                "water",
+                "internet",
+                "repairs",
+                "hardware",
+                "cart",
+                "store",
+                "food",
+                "restaurant",
+                "cafe",
+                "bar",
+            ),
+        "Transporte y viajes" to listOf("car", "taxi", "bus", "gas", "flight"),
+        "Personal" to
+            listOf(
+                "health",
+                "pharmacy",
+                "doctor",
+                "fitness",
+                "beauty",
+                "clothes",
+                "kids",
+                "pets",
+                "favorite",
+                "gift",
+                "book",
+                "school",
+                "work",
+                "phone",
+                "movie",
+                "tv",
+                "ticket",
+                "games",
+                "lock",
+                "more",
+            ),
+    )
+
+fun iconByKey(key: String): ImageVector = ALL_ICONS[key] ?: Icons.Outlined.Category
 
 fun accountIcon(
     key: String?,

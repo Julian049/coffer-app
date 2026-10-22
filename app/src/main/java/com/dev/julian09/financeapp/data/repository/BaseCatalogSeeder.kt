@@ -37,7 +37,7 @@ class BaseCatalogSeeder
                             updatedAt = now,
                         )
                     rows += parent
-                    base.children.forEachIndexed { childIndex, child ->
+                    base.children.forEachIndexed { childIndex, (child, icon) ->
                         rows +=
                             CategoryEntity(
                                 id = UUID.randomUUID(),
@@ -45,6 +45,7 @@ class BaseCatalogSeeder
                                 name = child,
                                 kind = base.kind,
                                 isBase = true,
+                                icon = icon,
                                 sortOrder = childIndex,
                                 createdAt = now,
                                 updatedAt = now,
@@ -76,7 +77,8 @@ class BaseCatalogSeeder
         private class Base(
             val name: String,
             val kind: String,
-            val children: List<String> = emptyList(),
+            /** Name and icon: every category shows its own (S13). */
+            val children: List<Pair<String, String>> = emptyList(),
             val systemKey: String? = null,
             val icon: String? = null,
         )
@@ -85,11 +87,27 @@ class BaseCatalogSeeder
             // Approved by the PO in the S3 planning (detailed-design §6.9.10)
             val BASE =
                 listOf(
-                    Base("Comida", "EXPENSE", listOf("Restaurantes", "Supermercado", "Cafeterías"), icon = "restaurant"),
-                    Base("Transporte", "EXPENSE", listOf("Taxi / Apps", "Gasolina", "Mantenimiento"), icon = "car"),
-                    Base("Hogar", "EXPENSE", listOf("Servicios públicos", "Arriendo", "Mantenimiento"), icon = "home"),
-                    Base("Entretenimiento", "EXPENSE", listOf("Streaming", "Salidas", "Cine"), icon = "movie"),
-                    Base("Salud", "EXPENSE", listOf("Farmacia", "Consultas"), icon = "health"),
+                    Base(
+                        "Comida",
+                        "EXPENSE",
+                        listOf("Restaurantes" to "restaurant", "Supermercado" to "cart", "Cafeterías" to "cafe"),
+                        icon = "food",
+                    ),
+                    // Names are unique across the tree (S13): Taller and Reparaciones, not two «Mantenimiento»
+                    Base(
+                        "Transporte",
+                        "EXPENSE",
+                        listOf("Taxi / Apps" to "taxi", "Gasolina" to "gas", "Taller" to "repairs"),
+                        icon = "bus",
+                    ),
+                    Base(
+                        "Hogar",
+                        "EXPENSE",
+                        listOf("Servicios públicos" to "power", "Arriendo" to "key", "Reparaciones" to "hardware"),
+                        icon = "home",
+                    ),
+                    Base("Entretenimiento", "EXPENSE", listOf("Streaming" to "tv", "Salidas" to "bar", "Cine" to "ticket"), icon = "movie"),
+                    Base("Salud", "EXPENSE", listOf("Farmacia" to "pharmacy", "Consultas" to "doctor"), icon = "health"),
                     Base("Educación", "EXPENSE", icon = "school"),
                     Base("Intereses y cargos financieros", "EXPENSE", systemKey = "FINANCIAL_CHARGES", icon = "percent"),
                     Base("Otros gastos", "EXPENSE", icon = "more"),

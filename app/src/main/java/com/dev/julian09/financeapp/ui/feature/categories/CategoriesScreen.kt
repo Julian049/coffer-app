@@ -1,37 +1,47 @@
 package com.dev.julian09.financeapp.ui.feature.categories
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.PieChart
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,13 +57,17 @@ import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.CATEGORY_ICONS
-import com.dev.julian09.financeapp.ui.components.MoneyKind
+import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
+import com.dev.julian09.financeapp.ui.components.IconBubble
+import com.dev.julian09.financeapp.ui.components.IconPickerSheet
+import com.dev.julian09.financeapp.ui.components.IconRow
 import com.dev.julian09.financeapp.ui.components.MoneyText
+import com.dev.julian09.financeapp.ui.components.MoreBubble
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.categoryIcon
-import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.accounts.OptionRow
+import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -66,13 +80,25 @@ fun CategoriesScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sheet by viewModel.sheet.collectAsStateWithLifecycle()
-    CategoriesContent(state, onBack, viewModel::selectKind, viewModel::startNew, viewModel::openOptions)
+    CategoriesContent(
+        state,
+        onBack,
+        viewModel::selectKind,
+        { viewModel.startNew() },
+        viewModel::openOptions,
+        onAddSub = viewModel::startNew,
+    )
     when (val s = sheet) {
         null -> Unit
         is CategorySheet.New ->
             NewCategorySheet(
                 s,
-                mains = state?.nodes?.map { it.line.category }.orEmpty(),
+                mains =
+                    state
+                        ?.nodes
+                        ?.sortedByDescending { it.count }
+                        ?.map { it.line.category }
+                        .orEmpty(),
                 onDismiss = viewModel::dismiss,
                 onEdit = viewModel::editNew,
                 onSave = viewModel::saveNew,
@@ -81,6 +107,7 @@ fun CategoriesScreen(
             AppBottomSheet(onDismiss = viewModel::dismiss, title = s.category.name) {
                 if (s.category.parentId == null) ExcludeRow(s.category.excludeFromReports, viewModel::setExcluded)
                 OptionRow(Icons.Outlined.Edit, "Renombrar", null, danger = false, onClick = viewModel::startRename)
+                OptionRow(Icons.Outlined.Palette, "Cambiar ícono", null, danger = false, onClick = viewModel::startIcon)
                 OptionRow(Icons.Outlined.DeleteOutline, "Eliminar", null, danger = true, onClick = viewModel::startDelete)
                 AppButton("Cancelar", onClick = viewModel::dismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
             }
@@ -103,11 +130,12 @@ fun CategoriesScreen(
                 AppButton("Excluir de reportes", onClick = viewModel::confirmExclude, modifier = Modifier.fillMaxWidth())
                 AppButton("Cancelar", onClick = viewModel::dismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
             }
+        is CategorySheet.Icon -> IconPickerSheet(s.category.icon, onPick = viewModel::saveIcon, onDismiss = viewModel::dismiss)
         is CategorySheet.Delete -> DeleteCategorySheet(s, viewModel::dismiss, viewModel::selectTarget, viewModel::confirmDelete)
     }
 }
 
-/** Categorías: expense and income tabs, monthly totals and subcategories (S4-UI03). */
+/** Categorías · Versión C, mosaico (Figma `86:1199`): each main category in a card, its subcategories as tiles. */
 @Composable
 fun CategoriesContent(
     state: CategoriesState?,
@@ -116,6 +144,7 @@ fun CategoriesContent(
     onNew: () -> Unit,
     onOpen: (Category) -> Unit,
     modifier: Modifier = Modifier,
+    onAddSub: (UUID) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
@@ -133,25 +162,26 @@ fun CategoriesContent(
                 modifier = Modifier.fillMaxWidth(),
             )
             AppButton("Nueva categoría", onClick = onNew, icon = Icons.Outlined.AddCircleOutline, modifier = Modifier.fillMaxWidth())
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.PieChart, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
-                }
-                Column(Modifier.weight(1f)) {
-                    Text("Total del mes", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-                    MoneyText(state.monthTotal, style = MaterialTheme.typography.titleLarge)
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Total del mes", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                MoneyText(state.monthTotal, style = MaterialTheme.typography.displaySmall)
                 Text(
-                    if (state.subcategories == 1) "1 subcategoría" else "${state.subcategories} subcategorías",
+                    "${plural(state.nodes.size, "categoría", "categorías")} · " +
+                        plural(state.subcategories, "subcategoría", "subcategorías"),
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary,
                 )
             }
-            val kind = if (state.kind == CategoryKind.EXPENSE) MoneyKind.Expense else MoneyKind.Income
-            state.nodes.forEach { node -> CategoryCard(node, state.monthTotal, kind, onOpen) }
+            state.nodes.forEach { node -> CategoryCard(node, state.monthTotal, onOpen, onAddSub) }
         }
     }
 }
+
+private fun plural(
+    n: Int,
+    one: String,
+    many: String,
+) = if (n == 1) "1 $one" else "$n $many"
 
 private fun share(
     part: Money,
@@ -187,14 +217,14 @@ private fun ExcludeRow(
     }
 }
 
-private fun movements(count: Int) = if (count == 1) "1 transacción" else "$count transacciones"
+private fun movements(count: Int) = plural(count, "movimiento", "movimientos")
 
 @Composable
 private fun CategoryCard(
     node: CategoryNode,
     monthTotal: Money,
-    kind: MoneyKind,
     onOpen: (Category) -> Unit,
+    onAddSub: (UUID) -> Unit,
 ) {
     val colors = CofferTheme.colors
     val main = node.line.category
@@ -204,64 +234,106 @@ private fun CategoryCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(categoryIcon(main.icon), contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
+            Box(Modifier.size(48.dp).background(colors.primary, CofferShapes.card), contentAlignment = Alignment.Center) {
+                Icon(categoryIcon(main.icon), contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(24.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text(main.name, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                val sub =
-                    when (node.children.size) {
-                        0 -> "Categoría principal"
-                        1 -> "1 subcategoría"
-                        else -> "${node.children.size} subcategorías"
-                    }
                 val excluded = if (main.excludeFromReports) " · Excluida de reportes" else ""
-                Text("$sub · ${movements(node.count)}$excluded", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                Text(movements(node.count) + excluded, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
             }
             Column(horizontalAlignment = Alignment.End) {
-                MoneyText(
-                    node.total,
-                    kind =
-                        if (node.total ==
-                            Money.ZERO
-                        ) {
-                            MoneyKind.Neutral
-                        } else {
-                            kind
-                        },
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                MoneyText(node.total, style = MaterialTheme.typography.titleLarge)
                 share(node.total, monthTotal)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary) }
             }
         }
-        if (node.children.isNotEmpty()) HorizontalDivider(thickness = 1.dp, color = colors.border)
-        node.children.forEach { child ->
+        if (monthTotal > Money.ZERO) {
+            LinearProgressIndicator(
+                progress = { (node.total.toBigDecimal().toFloat() / monthTotal.toBigDecimal().toFloat()).coerceIn(0f, 1f) },
+                Modifier.fillMaxWidth().height(6.dp),
+                color = colors.primary,
+                trackColor = colors.border,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+            )
+        }
+        if (node.children.isEmpty()) {
+            Row(Modifier.fillMaxWidth()) {
+                SubTile(Modifier.weight(1f), onClick = { onAddSub(main.id) }) {
+                    Box(Modifier.size(32.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Add, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(18.dp))
+                    }
+                    Text("Primera subcategoría", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                }
+                Spacer(Modifier.weight(2f))
+            }
+        } else {
+            node.children.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { child ->
+                        SubTile(Modifier.weight(1f), onClick = { onOpen(child.category) }) {
+                            Box(
+                                Modifier.size(32.dp).background(colors.iconContainer, CofferShapes.card),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    categoryIcon(child.category.icon ?: main.icon),
+                                    contentDescription = null,
+                                    tint = colors.iconOnContainer,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                            Text(
+                                child.category.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textPrimary,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            MoneyText(child.total, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                plural(child.count, "mov.", "mov."),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                            )
+                        }
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
             Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        onClickLabel = "Opciones de ${child.category.name}",
-                    ) { onOpen(child.category) }
-                    .padding(vertical = 4.dp),
+                Modifier.clip(CofferShapes.pill).clickable { onAddSub(main.id) }.padding(vertical = 6.dp, horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(
-                    "•  ${child.category.name}",
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.textPrimary,
-                )
-                Text(
-                    "${formatMoney(child.total)} (${child.count} tx)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.textSecondary,
-                )
+                Icon(Icons.Outlined.Add, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(16.dp))
+                Text("Añadir subcategoría", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
             }
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SubTile(
+    modifier: Modifier,
+    onClick: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Column(
+        modifier
+            .clip(CofferShapes.card)
+            .background(colors.background)
+            .border(1.dp, colors.border, CofferShapes.card)
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        content = content,
+    )
+}
+
+/** Hoja · Nueva categoría (Figma `20:1212`, `115:192`): Ubicación and Ícono as icon rows, and the button fixed at the foot. */
 @Composable
 private fun NewCategorySheet(
     sheet: CategorySheet.New,
@@ -272,10 +344,13 @@ private fun NewCategorySheet(
 ) {
     val colors = CofferTheme.colors
     val kinds = listOf(CategoryKind.EXPENSE, CategoryKind.INCOME)
+    var morePlaces by rememberSaveable { mutableStateOf(false) }
+    val taken = sheet.error == LedgerError.NAME_TAKEN
+    val ofKind = mains.filter { it.kind == sheet.kind }
     AppBottomSheet(
         onDismiss = onDismiss,
         title = "Nueva categoría",
-        actions = { AppButton("Crear categoría", onClick = onSave, modifier = Modifier.fillMaxWidth()) },
+        actions = { AppButton("Crear categoría", onClick = onSave, enabled = !taken, modifier = Modifier.fillMaxWidth()) },
     ) {
         SegmentedSelector(
             listOf("Gasto", "Ingreso"),
@@ -287,43 +362,41 @@ private fun NewCategorySheet(
             value = sheet.name,
             onValueChange = { name -> onEdit { it.copy(name = name) } },
             label = "Nombre",
-            error = sheet.error?.takeIf { it != LedgerError.ONE_LEVEL_ONLY && it != LedgerError.KIND_MISMATCH }?.message(),
+            error =
+                when {
+                    taken -> "Ya existe una categoría llamada «${sheet.name.trim()}». Usa otro nombre."
+                    sheet.error == LedgerError.ONE_LEVEL_ONLY || sheet.error == LedgerError.KIND_MISMATCH -> null
+                    else -> sheet.error?.message()
+                },
         )
-        Text("Ubicación", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AppChip("Categoría principal", selected = sheet.parentId == null, onClick = { onEdit { it.copy(parentId = null) } })
-            mains.forEach { parent ->
-                AppChip(
-                    "Subcategoría de ${parent.name}",
-                    selected = sheet.parentId == parent.id,
-                    onClick = { onEdit { it.copy(parentId = parent.id) } },
-                )
-            }
-        }
-        if (sheet.parentId == null) {
-            Text("Ícono", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-            FlowRow(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CATEGORY_ICONS.forEach { (key, icon) ->
-                    val selected = sheet.icon == key
-                    Box(
-                        Modifier
-                            .size(44.dp)
-                            .background(if (selected) colors.primaryContainer else colors.background, CircleShape)
-                            .selectable(selected, role = Role.RadioButton, onClick = { onEdit { it.copy(icon = key) } }),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(icon, contentDescription = key, tint = if (selected) colors.onPrimaryContainer else colors.textSecondary)
-                    }
+        Text("Ubicación · dentro de qué categoría va", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+        val chosen = ofKind.firstOrNull { it.id == sheet.parentId }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            IconBubble("Principal", Icons.Outlined.Category, selected = sheet.parentId == null) { onEdit { it.copy(parentId = null) } }
+            (listOfNotNull(chosen) + ofKind).distinctBy { it.id }.take(3).forEach { parent ->
+                IconBubble(parent.name, categoryIcon(parent.icon), selected = sheet.parentId == parent.id) {
+                    onEdit { it.copy(parentId = parent.id) }
                 }
             }
+            MoreBubble { morePlaces = true }
         }
+        Text("Ícono", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+        IconRow(sheet.icon, CATEGORY_ICONS.map { it.first }, onPick = { key -> onEdit { it.copy(icon = key) } })
         sheet.error?.takeIf { it == LedgerError.ONE_LEVEL_ONLY || it == LedgerError.KIND_MISMATCH }?.let {
             Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense)
         }
+    }
+    if (morePlaces) {
+        CategoryGridSheet(
+            ofKind,
+            mains,
+            selected = setOfNotNull(sheet.parentId),
+            onPick = { id ->
+                onEdit { it.copy(parentId = id) }
+                morePlaces = false
+            },
+            onDismiss = { morePlaces = false },
+        )
     }
 }
 
