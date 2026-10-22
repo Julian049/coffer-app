@@ -1,14 +1,18 @@
 package com.dev.julian09.financeapp.ui.feature.accounts
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -17,31 +21,48 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.finance.BalanceCalculator
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountImpact
+import com.dev.julian09.financeapp.domain.model.AccountType
+import com.dev.julian09.financeapp.domain.model.CardOverview
+import com.dev.julian09.financeapp.domain.model.InstallmentStatus
+import com.dev.julian09.financeapp.domain.model.LoanOverview
+import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.RemoveMode
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
@@ -52,11 +73,16 @@ import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.EmptyState
+import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.accountIcon
 import com.dev.julian09.financeapp.ui.components.accountTypeLabel
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
+import com.dev.julian09.financeapp.ui.feature.cards.PayCardSheet
+import com.dev.julian09.financeapp.ui.feature.loans.LoanPaymentSheet
+import com.dev.julian09.financeapp.ui.feature.loans.LoanSheet
+import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.ZoneId
@@ -72,11 +98,18 @@ fun AccountsScreen(
     onEditAccount: (UUID) -> Unit,
     onOpenDeactivated: () -> Unit,
     modifier: Modifier = Modifier,
+    onNewLoan: () -> Unit = {},
     avatarInitial: Char? = null,
     viewModel: AccountsViewModel = hiltViewModel(),
 ) {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val sheet by viewModel.sheet.collectAsStateWithLifecycle()
+    val cards by viewModel.cards.collectAsStateWithLifecycle()
+    val loans by viewModel.loans.collectAsStateWithLifecycle()
+    var payingCard by rememberSaveable { mutableStateOf<String?>(null) }
+    var payingLoan by rememberSaveable { mutableStateOf<String?>(null) }
+    PayCardSheet(payingCard?.let(UUID::fromString), onDismiss = { payingCard = null })
+    LoanPaymentSheet(payingLoan?.let(UUID::fromString), LoanSheet.PAY, onDismiss = { payingLoan = null })
     AccountsContent(
         accounts = accounts,
         onOpenSettings = onOpenSettings,
@@ -86,6 +119,12 @@ fun AccountsScreen(
         onOpenDeactivated = onOpenDeactivated,
         modifier = modifier,
         avatarInitial = avatarInitial,
+        cards = cards,
+        loans = loans,
+        onNewLoan = onNewLoan,
+        onPay = { a ->
+            if (a.account.type == AccountType.LOAN) payingLoan = a.account.id.toString() else payingCard = a.account.id.toString()
+        },
     )
     sheet?.let {
         AccountSheetHost(
@@ -106,7 +145,7 @@ fun AccountsScreen(
     }
 }
 
-/** Gestión de cuentas (S4-UI01). Cards and loans get their own section in S7 and S10. */
+/** Gestión de cuentas (Figma `1:1990`, S12-UI04): what you have, and what you owe on cards and loans. */
 @Composable
 fun AccountsContent(
     accounts: List<AccountBalance>?,
@@ -117,22 +156,44 @@ fun AccountsContent(
     onOpenDeactivated: () -> Unit,
     modifier: Modifier = Modifier,
     avatarInitial: Char? = null,
+    cards: Map<UUID, CardOverview> = emptyMap(),
+    loans: Map<UUID, LoanOverview> = emptyMap(),
+    onNewLoan: () -> Unit = {},
+    onPay: (AccountBalance) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = "Cuentas", actions = { Avatar(onClick = onOpenSettings, initial = avatarInitial) })
+        AppHeader(title = "Gestión de cuentas", actions = { Avatar(onClick = onOpenSettings, initial = avatarInitial) })
         if (accounts == null) return@Column
         val active = accounts.filter { it.account.active }
         val inactive = accounts.size - active.size
+        val assets = active.filter { !it.account.type.isDebt }
+        val creditCards = active.filter { it.account.type == AccountType.CREDIT_CARD }
+        val loanAccounts = active.filter { it.account.type == AccountType.LOAN }
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AppCard(highlight = true) {
-                Text("Saldo total disponible", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Patrimonio neto disponible",
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                    )
+                    Surface(shape = CofferShapes.pill, color = colors.primaryContainer) {
+                        Text(
+                            "Consolidado",
+                            Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.onPrimaryContainer,
+                        )
+                    }
+                }
                 MoneyText(BalanceCalculator.available(active), style = MaterialTheme.typography.displaySmall)
                 Text(
-                    if (active.size == 1) "1 cuenta activa" else "${active.size} cuentas activas",
+                    if (active.size == 1) "1 cuenta sincronizada al instante" else "${active.size} cuentas sincronizadas al instante",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary,
                 )
@@ -140,27 +201,59 @@ fun AccountsContent(
             }
             if (active.isEmpty()) {
                 EmptyState(title = "Aún no tienes cuentas", message = "Crea tu primera cuenta de efectivo o de ahorros.")
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Cuentas bancarias y efectivo",
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.textPrimary,
-                    )
-                    Text(
-                        if (active.size ==
-                            1
-                        ) {
-                            "1 activa"
-                        } else {
-                            "${active.size} activas"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textSecondary,
+            }
+            if (assets.isNotEmpty()) {
+                GroupTitle("Lo que tienes", assets.fold(Money.ZERO) { sum, it -> sum + it.balance }, MoneyKind.Neutral)
+                SubTitle("Cuentas bancarias y efectivo", assets.size)
+                assets.forEach { AccountCard(it, onOpen = { onOpenAccount(it.account.id) }, onMore = { onOpenOptions(it) }) }
+            }
+            GroupTitle("Lo que debes", (creditCards + loanAccounts).fold(Money.ZERO) { sum, it -> sum + it.balance }, MoneyKind.Expense)
+            SubTitle("Tarjetas de crédito", creditCards.size)
+            // Empty sections are a quiet row, not a big empty card (BRIEF-cuentas §5)
+            if (creditCards.isEmpty()) EmptyRow("Agrega una tarjeta de crédito", onNewAccount)
+            run {
+                creditCards.forEach { card ->
+                    CardAccountCard(
+                        card,
+                        cards[card.account.id],
+                        onOpen = { onOpenAccount(card.account.id) },
+                        onMore = { onOpenOptions(card) },
+                        onPay = { onPay(card) },
                     )
                 }
-                active.forEach { AccountCard(it, onClick = { onOpenAccount(it.account.id) }, onMore = { onOpenOptions(it) }) }
+            }
+            SubTitle("Préstamos", loanAccounts.size) {
+                TextButton(onClick = onNewLoan) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, tint = colors.textPrimary, modifier = Modifier.size(16.dp))
+                    Text(" Agregar", color = colors.textPrimary, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+            if (loanAccounts.isEmpty()) EmptyRow("¿Tienes un préstamo? Regístralo para seguir tus cuotas", onNewLoan)
+            loanAccounts.forEach { loan ->
+                LoanAccountCard(
+                    loan,
+                    loans[loan.account.id],
+                    onOpen = { onOpenAccount(loan.account.id) },
+                    onMore = { onOpenOptions(loan) },
+                    onPay = { onPay(loan) },
+                )
+            }
+            if (creditCards.isNotEmpty()) {
+                Surface(shape = CofferShapes.card, color = colors.primaryContainer) {
+                    Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(
+                            Icons.Outlined.Lightbulb,
+                            contentDescription = null,
+                            tint = colors.onPrimaryContainer,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            "Mantener las tarjetas por debajo del 30% del cupo total fortalece tu perfil crediticio.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onPrimaryContainer,
+                        )
+                    }
+                }
             }
             if (inactive > 0) {
                 AppCard(onClick = onOpenDeactivated) {
@@ -176,6 +269,54 @@ fun AccountsContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyRow(
+    text: String,
+    onClick: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(CofferShapes.card)
+            .border(1.dp, colors.border, CofferShapes.card)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        Icon(Icons.Outlined.Add, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun GroupTitle(
+    title: String,
+    total: Money,
+    kind: MoneyKind,
+) {
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = CofferTheme.colors.textPrimary)
+        MoneyText(total, kind = kind, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+@Composable
+private fun SubTitle(
+    title: String,
+    count: Int,
+    action: @Composable () -> Unit = {},
+) {
+    val colors = CofferTheme.colors
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+        Text("$count", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary.copy(alpha = 0.6f))
+        Spacer(Modifier.weight(1f))
+        action()
     }
 }
 
@@ -201,31 +342,94 @@ fun AccountIcon(
     }
 }
 
+/** The head of every account card: icon, name with two lines at most (S12-UI07), detail and options. */
 @Composable
-private fun AccountCard(
+private fun CardHead(
     item: AccountBalance,
-    onClick: () -> Unit,
+    detail: String,
     onMore: () -> Unit,
 ) {
     val colors = CofferTheme.colors
-    AppCard(onClick = onClick) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AccountIcon(item)
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(item.account.name, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                    item.account.color?.let { ColorDot(it) }
-                }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        AccountIcon(item)
+        Column(Modifier.weight(1f)) {
+            Text(
+                item.account.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                item.account.color?.let { ColorDot(it) }
                 Text(
-                    listOfNotNull(accountTypeLabel(item.account.type), item.account.institution).joinToString(" · "),
+                    detail,
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onClick = onMore) {
-                Icon(Icons.Outlined.MoreVert, contentDescription = "Opciones de ${item.account.name}", tint = colors.textSecondary)
-            }
         }
+        IconButton(onClick = onMore) {
+            Icon(Icons.Outlined.MoreVert, contentDescription = "Opciones de ${item.account.name}", tint = colors.textSecondary)
+        }
+    }
+}
+
+/** Pagar · Ver movimientos, or Ver movimientos alone, under a divider. */
+@Composable
+private fun CardActions(
+    onOpen: () -> Unit,
+    onPay: (() -> Unit)? = null,
+) {
+    val colors = CofferTheme.colors
+    HorizontalDivider(thickness = 1.dp, color = colors.border)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        onPay?.let {
+            TextButton(onClick = it, Modifier.weight(1f)) {
+                Icon(Icons.Outlined.Payments, contentDescription = null, tint = colors.textPrimary, modifier = Modifier.size(18.dp))
+                Text("  Pagar", color = colors.textPrimary, style = MaterialTheme.typography.labelLarge)
+            }
+            Box(Modifier.size(width = 1.dp, height = 20.dp).background(colors.border))
+        }
+        TextButton(onClick = onOpen, Modifier.weight(1f)) {
+            Icon(
+                Icons.AutoMirrored.Outlined.ReceiptLong,
+                contentDescription = null,
+                tint = colors.textPrimary,
+                modifier = Modifier.size(18.dp),
+            )
+            Text("  Ver movimientos", color = colors.textPrimary, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+private fun UsageBar(
+    fraction: Float,
+    color: androidx.compose.ui.graphics.Color,
+) {
+    LinearProgressIndicator(
+        progress = { fraction.coerceIn(0f, 1f) },
+        Modifier.fillMaxWidth().height(6.dp),
+        color = color,
+        trackColor = CofferTheme.colors.border,
+        strokeCap = StrokeCap.Round,
+        gapSize = 0.dp,
+        drawStopIndicator = {},
+    )
+}
+
+@Composable
+private fun AccountCard(
+    item: AccountBalance,
+    onOpen: () -> Unit,
+    onMore: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    AppCard(onClick = onOpen) {
+        CardHead(item, listOfNotNull(accountTypeLabel(item.account.type), item.account.institution).joinToString(" · "), onMore)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 if (item.account.includeInTotal) "Saldo disponible" else "Saldo · fuera del total",
@@ -235,8 +439,114 @@ private fun AccountCard(
             )
             MoneyText(item.balance, style = MaterialTheme.typography.titleLarge)
         }
+        CardActions(onOpen)
     }
 }
+
+@Composable
+private fun CardAccountCard(
+    item: AccountBalance,
+    overview: CardOverview?,
+    onOpen: () -> Unit,
+    onMore: () -> Unit,
+    onPay: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    AppCard(onClick = onOpen) {
+        CardHead(item, listOfNotNull("Crédito rotativo", item.account.institution).joinToString(" · "), onMore)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                Text("Deuda actual al corte", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                MoneyText(item.balance, kind = MoneyKind.Expense, style = MaterialTheme.typography.titleLarge)
+            }
+            overview?.let {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "Próximo pago · ${dayMonth(it.statement.period.dueDate)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                    )
+                    MoneyText(it.statement.minimum, style = MaterialTheme.typography.titleSmall)
+                }
+            }
+        }
+        overview?.takeIf { it.card.creditLimit > Money.ZERO }?.let {
+            UsageBar(
+                (
+                    it.debt.toBigDecimal().toFloat() /
+                        it.card.creditLimit
+                            .toBigDecimal()
+                            .toFloat()
+                ),
+                colors.expense,
+            )
+            Row(Modifier.fillMaxWidth()) {
+                Text(
+                    "Disponible ${formatMoney(it.available)}",
+                    Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
+                Text("Cupo ${formatMoney(it.card.creditLimit)}", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            }
+        }
+        CardActions(onOpen, onPay)
+    }
+}
+
+@Composable
+private fun LoanAccountCard(
+    item: AccountBalance,
+    overview: LoanOverview?,
+    onOpen: () -> Unit,
+    onMore: () -> Unit,
+    onPay: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    val total = overview?.installments?.count { it.status != InstallmentStatus.CANCELLED } ?: 0
+    val next = overview?.next
+    val detail =
+        listOfNotNull(
+            item.account.institution,
+            next?.let { "cuota ${it.number} de $total" },
+        ).joinToString(" · ").ifEmpty { accountTypeLabel(item.account.type) }
+    AppCard(onClick = onOpen) {
+        CardHead(item, detail, onMore)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                Text("Deuda pendiente", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                MoneyText(item.balance, kind = MoneyKind.Expense, style = MaterialTheme.typography.titleLarge)
+            }
+            next?.let {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "Próxima cuota · ${dayMonth(it.dueDate)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                    )
+                    MoneyText(it.total, style = MaterialTheme.typography.titleSmall)
+                }
+            }
+        }
+        if (overview != null && total > 0) {
+            UsageBar(overview.paid.toFloat() / total, colors.primary)
+            Row(Modifier.fillMaxWidth()) {
+                Text(
+                    "${overview.paid} de $total cuotas pagadas",
+                    Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
+                overview.installments.lastOrNull { it.status != InstallmentStatus.CANCELLED }?.let {
+                    Text("Termina ${monthYear(it.dueDate)}", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                }
+            }
+        }
+        CardActions(onOpen, onPay)
+    }
+}
+
+private fun monthYear(date: java.time.LocalDate) = MONTH_YEAR.format(date).replace(".", "")
 
 @Composable
 fun ColorDot(hex: String) {
@@ -279,7 +589,7 @@ private fun AccountSheetHost(
     onConfirmDelete: () -> Unit,
 ) {
     when (sheet) {
-        is AccountSheet.Options -> OptionsSheet(onDismiss, onEdit, onStartRemove)
+        is AccountSheet.Options -> OptionsSheet(sheet.account.account.type, onDismiss, onEdit, onStartRemove)
         is AccountSheet.Remove -> RemoveSheet(sheet, accounts, onDismiss, onSelectMode, onSelectTarget, onApply)
         is AccountSheet.Confirm -> ConfirmSheet(sheet, onDismiss, onType, onConfirmDelete)
     }
@@ -287,21 +597,35 @@ private fun AccountSheetHost(
 
 @Composable
 private fun OptionsSheet(
+    type: AccountType,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    AppBottomSheet(onDismiss = onDismiss, title = "Opciones de la cuenta") {
+    // Hoja · Opciones de la cuenta and de la tarjeta (Figma `14:310`, `103:90`)
+    val (what, detail) =
+        when (type) {
+            AccountType.CREDIT_CARD -> "tarjeta" to "Nombre, cupo, tasa, fechas y color"
+            AccountType.LOAN -> "préstamo" to "Nombre, tasa, día de pago, seguro y costos"
+            else -> "cuenta" to "Nombre, ícono, color e inclusión en el saldo total"
+        }
+    val title =
+        when (type) {
+            AccountType.CREDIT_CARD -> "Opciones de la tarjeta"
+            AccountType.LOAN -> "Opciones del préstamo"
+            else -> "Opciones de la cuenta"
+        }
+    AppBottomSheet(onDismiss = onDismiss, title = title) {
         OptionRow(
             Icons.Outlined.Edit,
-            "Editar cuenta",
-            "Nombre, saldo inicial e inclusión en el saldo total",
+            "Editar $what",
+            detail,
             danger = false,
             onClick = onEdit,
         )
         OptionRow(
             Icons.Outlined.DeleteOutline,
-            "Eliminar cuenta",
+            "Eliminar $what",
             "Desactivarla, mover sus movimientos o borrarla",
             danger = true,
             onClick = onRemove,

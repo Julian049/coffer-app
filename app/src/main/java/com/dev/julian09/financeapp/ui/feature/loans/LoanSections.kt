@@ -186,7 +186,7 @@ fun LoanDetailSections(
         }
     }
     Text(
-        "En el saldo neto solo se descuenta la cuota del periodo actual.",
+        "El saldo neto descuenta la cuota del periodo o toda la deuda pendiente, según elijas en Detalle del saldo.",
         style = MaterialTheme.typography.bodySmall,
         color = colors.textSecondary,
     )
@@ -222,12 +222,9 @@ fun LoanPaymentSheet(
         }
     }
     if (loanId == null || state.overview?.loan?.accountId != loanId) return
-    AppBottomSheet(onDismiss = onDismiss) {
-        LoanPaymentContent(
-            state,
-            sources,
-            LoanPaymentActions(viewModel::setAmount, viewModel::setMode, viewModel::setSource, viewModel::confirm, onDismiss),
-        )
+    val actions = LoanPaymentActions(viewModel::setAmount, viewModel::setMode, viewModel::setSource, viewModel::confirm, onDismiss)
+    AppBottomSheet(onDismiss = onDismiss, actions = { LoanPaymentButtons(state.sheet, actions) }) {
+        LoanPaymentContent(state, sources, actions, withButtons = false)
     }
 }
 
@@ -245,6 +242,8 @@ fun LoanPaymentContent(
     state: LoanPaymentState,
     sources: List<AccountBalance>,
     actions: LoanPaymentActions,
+    /** False inside the sheet, which shows them fixed under the content (S12-UI09). */
+    withButtons: Boolean = true,
 ) {
     val colors = CofferTheme.colors
     val overview = state.overview ?: return
@@ -314,19 +313,21 @@ fun LoanPaymentContent(
                 color = colors.expense,
             )
         }
-        AppButton(
-            if (state.sheet ==
-                LoanSheet.EXTRA
-            ) {
-                "Registrar abono"
-            } else {
-                "Registrar pago"
-            },
-            onClick = actions.onConfirm,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        AppButton("Cancelar", onClick = actions.onCancel, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
+        if (withButtons) LoanPaymentButtons(state.sheet, actions)
     }
+}
+
+@Composable
+private fun LoanPaymentButtons(
+    sheet: LoanSheet,
+    actions: LoanPaymentActions,
+) {
+    AppButton(
+        if (sheet == LoanSheet.EXTRA) "Registrar abono" else "Registrar pago",
+        onClick = actions.onConfirm,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    AppButton("Cancelar", onClick = actions.onCancel, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
 }
 
 @Composable

@@ -590,7 +590,7 @@ class ComponentsScreenshotTest {
                 emptyList(),
             )
         ReportsContent(
-            ReportsState(ReportSpan.MONTH, month, report, mapOf(card to "Tarjeta Visa Platinum")),
+            ReportsState(ReportSpan.MONTH, month, report, mapOf(card to "Tarjeta Visa Platinum"), today = LocalDate.of(2026, 10, 20)),
             ReportsActions(),
             avatarInitial = 'J',
         )

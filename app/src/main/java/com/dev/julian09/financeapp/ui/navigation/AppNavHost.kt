@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -89,7 +90,8 @@ fun AppNavHost(
         NavHost(
             navController = navController,
             startDestination = HomeRoute,
-            modifier = Modifier.padding(padding),
+            // Consumed, so a form's imePadding() lifts its button by the keyboard alone (S12-UI09)
+            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             enterTransition = { fadeIn(tween(ENTER_MS)) + slideInHorizontally(tween(ENTER_MS)) { it / SLIDE_FRACTION } },
             exitTransition = { fadeOut(tween(EXIT_MS)) },
             popEnterTransition = { fadeIn(tween(ENTER_MS)) },
@@ -118,7 +120,9 @@ fun AppNavHost(
                     avatarInitial = initial,
                 )
             }
-            composable<ReportsRoute> { ReportsScreen(onOpenSettings = openSettings, onOpenTags = openTags, avatarInitial = initial) }
+            composable<ReportsRoute> {
+                ReportsScreen(onOpenSettings = openSettings, onOpenTags = openTags, onOpenTag = openTag, avatarInitial = initial)
+            }
             composable<AccountsRoute> {
                 AccountsScreen(
                     onOpenSettings = openSettings,
@@ -126,6 +130,7 @@ fun AppNavHost(
                     onOpenAccount = openAccount,
                     onEditAccount = editAccount,
                     onOpenDeactivated = { navController.navigate(DeactivatedAccountsRoute) },
+                    onNewLoan = { navController.navigate(NewLoanRoute) },
                     avatarInitial = initial,
                 )
             }
@@ -156,6 +161,7 @@ fun AppNavHost(
             }
             composable<RecurringFormRoute> { RecurringFormScreen(onBack = navController::popBackStack) }
             composable<NewAccountRoute> { AccountFormScreen(onBack = navController::popBackStack) }
+            composable<NewLoanRoute> { LoanFormScreen(onBack = navController::popBackStack, name = "") }
             composable<EditAccountRoute> { AccountFormScreen(onBack = navController::popBackStack) }
             composable<AccountDetailRoute> {
                 AccountDetailScreen(

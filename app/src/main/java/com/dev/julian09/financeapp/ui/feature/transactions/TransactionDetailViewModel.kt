@@ -60,7 +60,7 @@ class TransactionDetailViewModel
                 TransactionDetail(
                     transaction = t,
                     category = category ?: parent,
-                    categoryLabel = category?.let { c -> parent?.let { "${it.name} > ${c.name}" } ?: c.name },
+                    categoryLabel = category?.name,
                     accountName = names[t.accountId] ?: "Cuenta",
                     destinationName = t.destinationAccountId?.let { names[it] ?: "Cuenta" },
                     tagName = tgs.firstOrNull { it.id == t.tagId }?.name,

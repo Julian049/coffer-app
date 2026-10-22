@@ -12,8 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.DuePayment
 import com.dev.julian09.financeapp.domain.model.LoanDue
+import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
@@ -30,11 +32,13 @@ import com.dev.julian09.financeapp.ui.theme.CofferTheme
 fun BalanceSheet(
     dashboard: HomeDashboard,
     view: BalanceView,
+    mode: NetBalanceMode,
     onView: (BalanceView) -> Unit,
+    onMode: (NetBalanceMode) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AppBottomSheet(onDismiss = onDismiss, title = "Detalle del saldo", subtitle = "Elige qué vista ves en inicio; la otra queda aquí.") {
-        BalanceViews(dashboard, view)
+        BalanceViews(dashboard, view, mode, onMode)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Mostrar en inicio", style = MaterialTheme.typography.labelMedium, color = CofferTheme.colors.textSecondary)
             SegmentedSelector(
@@ -51,6 +55,8 @@ fun BalanceSheet(
 private fun BalanceViews(
     dashboard: HomeDashboard,
     view: BalanceView,
+    mode: NetBalanceMode,
+    onMode: (NetBalanceMode) -> Unit,
 ) {
     val colors = CofferTheme.colors
     AppCard(Modifier.fillMaxWidth(), highlight = view == BalanceView.AVAILABLE) {
@@ -64,11 +70,35 @@ private fun BalanceViews(
     }
     AppCard(Modifier.fillMaxWidth(), highlight = view == BalanceView.NET) {
         ViewTitle("Saldo neto", view == BalanceView.NET)
-        MoneyText(dashboard.net, style = MaterialTheme.typography.headlineMedium)
+        // S12-H03: what the net subtracts, the period's dues or the whole debt
+        SegmentedSelector(
+            listOf("Cuotas del periodo", "Deuda total"),
+            selectedIndex = mode.ordinal,
+            onSelect = { onMode(NetBalanceMode.entries[it]) },
+        )
+        MoneyText(dashboard.net(mode), style = MaterialTheme.typography.headlineMedium)
         Line("Cuentas incluidas") { MoneyText(dashboard.available, style = MaterialTheme.typography.bodyMedium) }
-        dashboard.dues.forEach { due ->
-            Line(dueLabel(due)) { MoneyText(due.amount, kind = MoneyKind.Expense, style = MaterialTheme.typography.bodyMedium) }
+        when (mode) {
+            NetBalanceMode.PERIOD ->
+                dashboard.dues.forEach { due ->
+                    Line(dueLabel(due)) { MoneyText(due.amount, kind = MoneyKind.Expense, style = MaterialTheme.typography.bodyMedium) }
+                }
+            NetBalanceMode.TOTAL_DEBT ->
+                dashboard.debts.forEach { debt ->
+                    val label = if (debt.account.type == AccountType.LOAN) "deuda pendiente" else "deuda total"
+                    Line("${debt.account.name} · $label") {
+                        MoneyText(-debt.balance, kind = MoneyKind.Expense, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
         }
+        Text(
+            when (mode) {
+                NetBalanceMode.PERIOD -> "Resta lo que pagas este periodo: el pago de la tarjeta y la cuota del préstamo."
+                NetBalanceMode.TOTAL_DEBT -> "Resta todo lo que debes, como si lo pagaras hoy."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
     }
 }
 

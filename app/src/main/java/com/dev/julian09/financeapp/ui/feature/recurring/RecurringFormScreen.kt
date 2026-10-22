@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -141,7 +142,8 @@ fun RecurringFormContent(
     modifier: Modifier = Modifier,
 ) {
     val colors = CofferTheme.colors
-    Column(modifier.fillMaxSize()) {
+    // S12-UI09: the bottom button rides on the keyboard
+    Column(modifier.fillMaxSize().imePadding()) {
         AppHeader(title = if (state.editingId == null) "Nuevo gasto recurrente" else "Editar gasto recurrente", onBack = actions.onBack)
         Column(
             Modifier

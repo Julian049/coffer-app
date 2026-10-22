@@ -8,6 +8,7 @@ import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.DuePayment
 import com.dev.julian09.financeapp.domain.model.LoanDue
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.Clock
@@ -34,7 +35,16 @@ data class HomeDashboard(
     val net: Money = available,
     /** What the cards and loans ask for this period: each card's statement and each loan's next installment. */
     val dues: List<DuePayment> = emptyList(),
-)
+    /** Active cards and loans with a debt, for [NetBalanceMode.TOTAL_DEBT]. */
+    val debts: List<AccountBalance> = emptyList(),
+) {
+    /** REQ-CTA-08 (S12-H03): the available total minus this period's [dues] or the whole debt of [debts]. */
+    fun net(mode: NetBalanceMode): Money =
+        when (mode) {
+            NetBalanceMode.PERIOD -> net
+            NetBalanceMode.TOTAL_DEBT -> BalanceCalculator.net(available, debts.map { -it.balance })
+        }
+}
 
 /** S4-DOM03: total available, accounts, last 5 days and the mascot state. */
 class ObserveHomeDashboard
@@ -99,6 +109,7 @@ class ObserveHomeDashboard
                     pending = pending.filter { it.inWindow },
                     net = BalanceCalculator.net(available, dues.map { it.amount }),
                     dues = dues,
+                    debts = BalanceCalculator.debts(now),
                 )
             }
         }

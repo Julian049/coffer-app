@@ -21,6 +21,7 @@ import com.dev.julian09.financeapp.domain.port.ImportStatus
 import com.dev.julian09.financeapp.domain.usecase.CommitImport
 import com.dev.julian09.financeapp.domain.usecase.ExportCsv
 import com.dev.julian09.financeapp.domain.usecase.PreviewImport
+import com.dev.julian09.financeapp.domain.usecase.isPickable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -81,7 +82,8 @@ class ImportExportViewModel
         val state: StateFlow<ImportExportState> = _state.asStateFlow()
 
         val catalog: StateFlow<ImportCatalog> =
-            combine(accounts.observeActive(), categories.observeAll(), scheduler.observe()) { accs, cats, status ->
+            combine(accounts.observeActive(), categories.observeAll(), scheduler.observe()) { accs, all, status ->
+                val cats = all.filter { it.isPickable }
                 ImportCatalog(accs, cats, status)
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ImportCatalog())
 

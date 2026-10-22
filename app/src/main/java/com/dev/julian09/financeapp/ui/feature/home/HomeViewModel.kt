@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.ui.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
@@ -34,6 +35,9 @@ data class HomeUiState(
     val settings: Settings = Settings(),
 ) {
     val balanceView: BalanceView get() = if (settings.homeBalanceView == BalanceView.NET.name) BalanceView.NET else BalanceView.AVAILABLE
+
+    /** The net balance by the chosen mode (S12-H03). */
+    val net get() = dashboard.net(settings.netBalanceMode)
 }
 
 @HiltViewModel
@@ -65,5 +69,10 @@ class HomeViewModel
         /** Hoja · Detalle del saldo: which view Home shows (REQ-CTA-09). */
         fun setBalanceView(view: BalanceView) {
             viewModelScope.launch { updateSettings { it.copy(homeBalanceView = view.name) } }
+        }
+
+        /** Hoja · Detalle del saldo: what the net balance subtracts (S12-H03). */
+        fun setNetMode(mode: NetBalanceMode) {
+            viewModelScope.launch { updateSettings { it.copy(netBalanceMode = mode) } }
         }
     }

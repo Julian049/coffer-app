@@ -101,7 +101,7 @@ class AccountFormViewModel
                             Account(UUID.randomUUID(), s.name, s.type, balance, s.includeInTotal, icon = s.icon, color = s.color),
                         )
                     } else {
-                        updateAccount(s.editingId, s.name, balance, s.includeInTotal)
+                        updateAccount(s.editingId, s.name, s.includeInTotal, s.icon, s.color)
                     }
                 _state.update { if (error == null) it.copy(saved = true) else it.copy(error = error) }
             }

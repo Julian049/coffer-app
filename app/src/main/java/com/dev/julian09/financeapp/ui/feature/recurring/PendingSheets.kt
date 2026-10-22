@@ -131,6 +131,10 @@ fun PendingSheets(
                 onDismiss = onDismiss,
                 title = "Pagar ${r.name}",
                 subtitle = "Se registrará como gasto real en ${state.categoryLabel}.",
+                actions = {
+                    AppButton("Confirmar pago", onClick = viewModel::confirmPay, modifier = Modifier.fillMaxWidth())
+                    AppButton("Cancelar", onClick = onDismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
+                },
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     AppTextField(
@@ -151,8 +155,6 @@ fun PendingSheets(
                             color = colors.expense,
                         )
                     }
-                    AppButton("Confirmar pago", onClick = viewModel::confirmPay, modifier = Modifier.fillMaxWidth())
-                    AppButton("Cancelar", onClick = onDismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
                 }
             }
         PendingStep.CONFIRM_END ->

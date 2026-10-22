@@ -137,4 +137,26 @@ class FinanceDatabaseMigrationTest {
             close()
         }
     }
+
+    @Test
+    fun version6To7KeepsTheSettingsByPeriodAndAddsTheConcept() {
+        helper.createDatabase(6).apply {
+            execSQL(
+                "INSERT INTO settings (id, reminderLeadDays, notificationsEnabled, homeBalanceView, amountDecimals, homeCards, " +
+                    "createdAt, updatedAt, syncState) VALUES ('u1', 5, 1, 'NET', 0, '[]', 0, 0, 'SYNCED')",
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(7).apply {
+            prepare("SELECT netBalanceMode FROM settings").use {
+                it.step()
+                assertEquals("PERIOD", it.getText(0))
+            }
+            prepare("SELECT COUNT(concept) FROM transactions").use {
+                it.step()
+                assertEquals(0L, it.getLong(0))
+            }
+            close()
+        }
+    }
 }

@@ -7,14 +7,13 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -111,7 +110,7 @@ class LoanFormActions(
     val onSave: () -> Unit = {},
 )
 
-private fun LedgerError.loanMessage(field: LoanField) =
+internal fun LedgerError.loanMessage(field: LoanField) =
     if (field == LoanField.COUNT && this == LedgerError.INSTALLMENTS_INVALID) "Elige de 1 a 600 cuotas" else message()
 
 /** Nuevo préstamo · Detallado y Simple (S10-UI01, REQ-PRE-01, 02, 08, 10). */
@@ -129,7 +128,8 @@ fun LoanFormContent(
     val inProgress = state.inProgress || converting
 
     fun error(field: LoanField) = state.errors[field]?.loanMessage(field)
-    Column(modifier.fillMaxSize()) {
+    // S12-UI09: the bottom button rides on the keyboard
+    Column(modifier.fillMaxSize().imePadding()) {
         AppHeader(title = if (converting) "Pasar a detallado" else "Nuevo préstamo", onBack = actions.onBack)
         Column(
             Modifier
@@ -347,9 +347,9 @@ private fun SwitchRow(
     }
 }
 
-/** REQ-PRE-02: checking it asks for the monthly value and says it is charged in every installment. */
+/** REQ-PRE-02 (Figma, S13): a switch; turned on, the monthly value appears in the same card and goes into every installment. */
 @Composable
-private fun ChargeRow(
+internal fun ChargeRow(
     title: String,
     checked: Boolean,
     digits: String,
@@ -357,23 +357,28 @@ private fun ChargeRow(
     onAmount: (String) -> Unit,
 ) {
     val colors = CofferTheme.colors
+    val insurance = title == "Seguro de vida"
     AppCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = checked,
-                onCheckedChange = onCheck,
-                colors = CheckboxDefaults.colors(checkedColor = colors.primary, checkmarkColor = colors.onPrimary),
-            )
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
-                Text("Se cobrará en cada cuota", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                Text(
+                    if (insurance) "Se cobra en cada cuota" else "Cuota de manejo u otros cobros mensuales",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
             }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheck,
+                colors = SwitchDefaults.colors(checkedTrackColor = colors.primary, checkedThumbColor = colors.onPrimary),
+            )
         }
         if (checked) {
             AppTextField(
                 value = digits,
                 onValueChange = onAmount,
-                label = "Valor mensual",
+                label = if (insurance) "Valor mensual del seguro" else "Valor mensual de los costos",
                 placeholder = "0",
                 keyboardType = KeyboardType.Number,
                 visualTransformation = PesosTransformation(),

@@ -1,15 +1,22 @@
 package com.dev.julian09.financeapp.ui.feature.cards
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -35,6 +42,7 @@ import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
+import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
@@ -88,7 +96,8 @@ fun CardFormContent(
     val colors = CofferTheme.colors
     val editing = state.editingId != null
     val errors = state.errors
-    Column(modifier.fillMaxSize()) {
+    // S12-UI09: the bottom button rides on the keyboard
+    Column(modifier.fillMaxSize().imePadding()) {
         AppHeader(title = if (editing) "Editar tarjeta" else "Nueva tarjeta de crédito", onBack = actions.onBack)
         Column(
             Modifier
@@ -104,11 +113,33 @@ fun CardFormContent(
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary,
                 )
+            } else {
+                // Editar tarjeta (Figma `100:229`): what is calculated shows above, only the editable fields below
+                AppCard(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(Modifier.size(48.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.CreditCard, contentDescription = null, tint = colors.iconOnContainer)
+                        }
+                        Column {
+                            Text(state.name.ifBlank { "Tarjeta" }, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                            Text(
+                                "Tarjeta de crédito · deuda ${formatMoney(state.debt)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textSecondary,
+                            )
+                        }
+                    }
+                    Text(
+                        "La deuda se calcula con tus compras y pagos. Para cambiarla, registra un pago o un movimiento.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                    )
+                }
             }
             AppTextField(
                 value = state.name,
                 onValueChange = actions.onName,
-                label = "Nombre / Entidad financiera",
+                label = if (editing) "Nombre" else "Nombre / Entidad financiera",
                 placeholder = "ej. Visa Platinum",
                 error = errors[CardField.NAME]?.message(),
             )
@@ -116,7 +147,7 @@ fun CardFormContent(
                 value = state.limitDigits,
                 visualTransformation = PesosTransformation(symbol = false),
                 onValueChange = actions.onLimit,
-                label = "Cupo total asignado",
+                label = if (editing) "Cupo total" else "Cupo total asignado",
                 placeholder = "0",
                 keyboardType = KeyboardType.Number,
                 error = errors[CardField.LIMIT]?.message(),
@@ -132,25 +163,27 @@ fun CardFormContent(
                     error = errors[CardField.DEBT]?.message(),
                 )
             }
-            AppCard(Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            if (!editing) {
+                AppCard(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            if (editing) "Deuda inicial" else "Cupo disponible calculado",
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary,
+                        )
+                        if (editing) {
+                            MoneyText(state.debt, kind = if (state.debt == Money.ZERO) MoneyKind.Neutral else MoneyKind.Debt)
+                        } else {
+                            MoneyText(state.available)
+                        }
+                    }
                     Text(
-                        if (editing) "Deuda inicial" else "Cupo disponible calculado",
-                        Modifier.weight(1f),
+                        "Cuenta como una compra a 1 cuota del periodo en que creas la tarjeta.",
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textSecondary,
                     )
-                    if (editing) {
-                        MoneyText(state.debt, kind = if (state.debt == Money.ZERO) MoneyKind.Neutral else MoneyKind.Debt)
-                    } else {
-                        MoneyText(state.available)
-                    }
                 }
-                Text(
-                    "Cuenta como una compra a 1 cuota del periodo en que creas la tarjeta.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.textSecondary,
-                )
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -189,7 +222,7 @@ fun CardFormContent(
                 AppTextField(
                     value = state.paymentDay,
                     onValueChange = actions.onPayment,
-                    label = "Límite de pago",
+                    label = if (editing) "Día de pago" else "Límite de pago",
                     placeholder = "5",
                     keyboardType = KeyboardType.Number,
                     error = errors[CardField.PAYMENT]?.message(),

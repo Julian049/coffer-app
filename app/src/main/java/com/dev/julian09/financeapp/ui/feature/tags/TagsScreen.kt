@@ -30,6 +30,9 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -43,6 +46,7 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.ButtonKind
+import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.EmptyState
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
@@ -174,20 +178,40 @@ internal fun TagSheetContent(
 ) {
     val colors = CofferTheme.colors
     val editing = sheet.editing != null
-    AppBottomSheet(onDismiss = onDismiss, title = if (editing) "Editar etiqueta" else "Nueva etiqueta") {
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    AppBottomSheet(
+        onDismiss = onDismiss,
+        title = if (editing) "Editar etiqueta" else "Nueva etiqueta",
+        actions = {
+            AppButton(if (editing) "Guardar cambios" else "Crear etiqueta", onClick = onSave, modifier = Modifier.fillMaxWidth())
+            onDelete?.let {
+                AppButton(
+                    "Eliminar etiqueta",
+                    onClick = { confirming = true },
+                    kind = ButtonKind.Danger,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+    ) {
         AppTextField(value = sheet.name, onValueChange = { name ->
             onEdit { it.copy(name = name) }
         }, label = "Nombre", error = sheet.error?.message())
         if (!editing) PinCard(sheet.pinned) { pinned -> onEdit { it.copy(pinned = pinned) } }
-        AppButton(if (editing) "Guardar cambios" else "Crear etiqueta", onClick = onSave, modifier = Modifier.fillMaxWidth())
-        onDelete?.let {
-            Text(
-                "Al eliminarla, sus movimientos se quedan sin etiqueta.",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textSecondary,
-            )
-            AppButton("Eliminar etiqueta", onClick = it, kind = ButtonKind.Danger, modifier = Modifier.fillMaxWidth())
-        }
+    }
+    // S12-UI12: what deleting a tag does to its movements, before it happens
+    if (confirming && onDelete != null) {
+        ConfirmDialog(
+            title = "¿Eliminar «${sheet.name.trim()}»?",
+            message = "Los movimientos conservan sus datos, pero pierden la asociación con esta etiqueta.",
+            confirmText = "Eliminar",
+            onConfirm = {
+                confirming = false
+                onDelete()
+            },
+            onDismiss = { confirming = false },
+            destructive = true,
+        )
     }
 }
 

@@ -38,6 +38,13 @@ interface AccountRepository {
 
     suspend fun update(account: Account)
 
+    /**
+     * S12-H03: each asset account's opening balance becomes a «Saldo inicial» income, excluded from reports, and the
+     * field goes to 0; the balance does not change. Ids are derived from the user and the account, so two phones write
+     * the same rows. Does nothing before the database has an owner. True when it wrote something to push.
+     */
+    suspend fun moveOpeningBalances(): Boolean
+
     /** M9: the carousel and the lists follow [ids], first to last. */
     suspend fun reorder(ids: List<UUID>)
 
@@ -72,6 +79,12 @@ interface CategoryRepository {
     suspend fun rename(
         id: UUID,
         name: String,
+    )
+
+    /** S13-UI04: a category's icon changes after it was created. */
+    suspend fun setIcon(
+        id: UUID,
+        icon: String,
     )
 
     /** REQ-CAT-04; the screen offers it on parents only. */

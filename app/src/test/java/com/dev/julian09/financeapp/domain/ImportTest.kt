@@ -218,8 +218,8 @@ class ImportTest {
             CsvReader.open(ByteArrayInputStream(files.content.getValue("out"))).use { table ->
                 assertEquals(NATIVE_COLUMNS, table.headers)
                 val rows = table.records.map { it.values }.toList()
-                assertEquals(listOf("2026-10-18 09:00", "Transferencia", "50000", "Banco", "Efectivo", "", "", "", ""), rows[0])
-                assertEquals(listOf("2026-10-18 13:10", "Gasto", "4500", "Banco", "", "Comida", "Cafeterías", "", ""), rows[1])
+                assertEquals(listOf("2026-10-18 09:00", "Transferencia", "50000", "Banco", "Efectivo", "", "", "", "", ""), rows[0])
+                assertEquals(listOf("2026-10-18 13:10", "Gasto", "4500", "Banco", "", "Comida", "Cafeterías", "", "", ""), rows[1])
             }
         }
 }

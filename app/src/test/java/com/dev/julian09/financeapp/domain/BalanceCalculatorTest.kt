@@ -40,6 +40,22 @@ class BalanceCalculatorTest {
     }
 
     @Test
+    fun `the net balance by total debt takes off every active card and loan that owes`() {
+        val balances =
+            listOf(
+                AccountBalance(account(initial = 2_750_000), AccountFlows()),
+                AccountBalance(account(AccountType.CREDIT_CARD, initial = 800_000), AccountFlows()),
+                AccountBalance(account(AccountType.LOAN, initial = 4_375_000), AccountFlows()),
+                AccountBalance(account(AccountType.LOAN, initial = 100_000, active = false), AccountFlows()),
+                AccountBalance(account(AccountType.CREDIT_CARD, initial = 0), AccountFlows()),
+            )
+        val debts = BalanceCalculator.debts(balances)
+        assertEquals(2, debts.size)
+        // Figma, Hoja · Detalle del saldo · Neto con deuda total: 2.750.000 − 800.000 − 4.375.000 = −2.425.000
+        assertEquals(pesos(-2_425_000), BalanceCalculator.net(BalanceCalculator.available(balances), debts.map { -it.balance }))
+    }
+
+    @Test
     fun `a debt shows negative and only what comes in lowers it`() {
         val card = account(AccountType.CREDIT_CARD, initial = 1_000_000)
         val debt = AccountFlows(expense = pesos(200_000), transfersIn = pesos(300_000))

@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -29,29 +29,31 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.LedgerError
-import com.dev.julian09.financeapp.domain.usecase.AVAILABLE_ACCOUNT_TYPES
 import com.dev.julian09.financeapp.ui.components.ACCOUNT_COLORS
 import com.dev.julian09.financeapp.ui.components.ACCOUNT_ICONS
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
-import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.IconRow
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.accountIcon
 import com.dev.julian09.financeapp.ui.components.accountTypeLabel
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.cards.CardFormScreen
+import com.dev.julian09.financeapp.ui.feature.loans.LoanEditScreen
 import com.dev.julian09.financeapp.ui.feature.loans.LoanFormScreen
+import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 @Composable
@@ -66,9 +68,9 @@ fun AccountFormScreen(
         CardFormScreen(onBack = onBack, name = state.name)
         return
     }
-    // A new loan has its own form too (S10-UI01); its edit stays here (name, icon, color)
-    if (state.type == AccountType.LOAN && state.editingId == null) {
-        LoanFormScreen(onBack = onBack, name = state.name)
+    // A loan is created from Gestión de cuentas → Préstamos (S12-UI05) and has its own edit (S12-DOM01)
+    if (state.type == AccountType.LOAN) {
+        if (state.editingId == null) LoanFormScreen(onBack = onBack, name = state.name) else LoanEditScreen(onBack = onBack)
         return
     }
     AccountFormContent(
@@ -83,6 +85,9 @@ fun AccountFormScreen(
         onSave = viewModel::save,
     )
 }
+
+/** Types offered by Nueva cuenta (Figma `1:2293`). */
+private val NEW_ACCOUNT_TYPES = listOf(AccountType.CASH, AccountType.SAVINGS, AccountType.CREDIT_CARD)
 
 /** Nueva cuenta and Editar cuenta: the type is chosen once and never changes (S4-SRV01). */
 @OptIn(ExperimentalLayoutApi::class)
@@ -101,7 +106,8 @@ fun AccountFormContent(
 ) {
     val colors = CofferTheme.colors
     val editing = state.editingId != null
-    Column(modifier.fillMaxSize()) {
+    // S12-UI09: the bottom button rides on the keyboard
+    Column(modifier.fillMaxSize().imePadding()) {
         AppHeader(title = if (editing) "Editar cuenta" else "Nueva cuenta", onBack = onBack)
         Column(
             Modifier
@@ -139,60 +145,70 @@ fun AccountFormContent(
                     label = "Saldo inicial",
                     placeholder = "0",
                     keyboardType = KeyboardType.Number,
-                    help = if (editing) "Cambiarlo recalcula el saldo: saldo inicial + ingresos − gastos ± transferencias." else null,
+                    help = null,
                 )
             }
             if (editing) {
+                // Editar cuenta (Figma `20:745`): the type and the opening balance are fixed
+                AppCard(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(Modifier.size(48.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(accountIcon(state.icon, state.type), contentDescription = null, tint = colors.iconOnContainer)
+                        }
+                        Column {
+                            Text(state.name.ifBlank { "Cuenta" }, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                            Text(accountTypeLabel(state.type), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                        }
+                    }
+                    Text(
+                        "El tipo y el saldo inicial no se pueden cambiar.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                    )
+                }
                 nameField()
-                balanceField()
-                AppTextField(
-                    value = accountTypeLabel(state.type),
-                    onValueChange = {},
-                    label = "Tipo de cuenta",
-                    help = "El tipo no se puede cambiar después de crear la cuenta.",
-                    enabled = false,
-                )
             } else {
                 balanceField()
                 nameField()
                 Label("Tipo de cuenta")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AccountType.entries.forEach { type ->
-                        val available = type in AVAILABLE_ACCOUNT_TYPES || type.isDebt
-                        AppChip(
-                            if (available) accountTypeLabel(type) else "${accountTypeLabel(type)} · Disponible pronto",
-                            selected = state.type == type,
-                            onClick = { if (available) onType(type) },
-                            modifier = if (available) Modifier else Modifier.alpha(0.5f),
-                        )
-                    }
-                }
-                Label("Ícono representativo")
-                AppCard {
-                    FlowRow(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        ACCOUNT_ICONS.forEach { (key, icon) ->
-                            val selected = state.icon == key
-                            Box(
-                                Modifier
-                                    .size(40.dp)
-                                    .background(if (selected) colors.primaryContainer else Color.Transparent, CircleShape)
-                                    .selectable(selected, role = Role.RadioButton, onClick = { onIcon(key) }),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    icon,
-                                    contentDescription = key,
-                                    tint = if (selected) colors.onPrimaryContainer else colors.textSecondary,
-                                )
-                            }
+                // S12-UI05: a loan is not an account to create here; it has its own section in Gestión de cuentas
+                // Figma `1:2293`: three equal boxes, icon above and the name in two lines at most
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NEW_ACCOUNT_TYPES.forEach { type ->
+                        val selected = state.type == type
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .clip(CofferShapes.card)
+                                .background(if (selected) colors.primaryContainer else colors.surface)
+                                .border(1.dp, if (selected) colors.onPrimaryContainer else colors.border, CofferShapes.card)
+                                .selectable(selected, role = Role.RadioButton, onClick = { onType(type) })
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                accountIcon(null, type),
+                                contentDescription = null,
+                                tint = if (selected) colors.onPrimaryContainer else colors.iconOnContainer,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                accountTypeLabel(type),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (selected) colors.onPrimaryContainer else colors.textPrimary,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                            )
                         }
                     }
                 }
-                Label("Distintivo de color")
+            }
+            run {
+                Label(if (editing) "Ícono" else "Ícono representativo")
+                // Figma, S13: five icons and «Más», the same states as the category pickers
+                IconRow(state.icon, ACCOUNT_ICONS.map { it.first }, onPick = onIcon)
+                Label(if (editing) "Color" else "Distintivo de color")
                 AppCard {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         ACCOUNT_COLORS.forEach { hex ->

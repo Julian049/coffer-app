@@ -3,7 +3,6 @@ package com.dev.julian09.financeapp.domain.usecase
 import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.LedgerError
-import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.RemoveMode
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
@@ -35,12 +34,26 @@ class CreateAccount
             if (account.type !in AVAILABLE_ACCOUNT_TYPES) return LedgerError.TYPE_NOT_AVAILABLE
             val last = repository.observeBalances().first().maxOfOrNull { it.account.sortOrder } ?: -1
             repository.create(account.copy(name = account.name.trim(), sortOrder = last + 1))
+            // S12-H03: the opening balance arrives as a «Saldo inicial» movement
+            repository.moveOpeningBalances()
             scheduler.requestSync()
             return null
         }
     }
 
-/** REQ-CTA-02, 07: name, initial balance and "include in total"; the type never changes (S4-SRV01). */
+/** S12-DAT02: on every start, asset accounts that still keep their opening balance as a field move it to a movement. */
+class MoveOpeningBalances
+    @Inject
+    constructor(
+        private val repository: AccountRepository,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke() {
+            if (repository.moveOpeningBalances()) scheduler.requestSync()
+        }
+    }
+
+/** REQ-CTA-02, 07: name, icon, color and "include in total"; the type and the opening balance never change (S12-H02). */
 class UpdateAccount
     @Inject
     constructor(
@@ -50,8 +63,9 @@ class UpdateAccount
         suspend operator fun invoke(
             id: UUID,
             name: String,
-            initialBalance: Money,
             includeInTotal: Boolean,
+            icon: String?,
+            color: String?,
         ): LedgerError? {
             nameError(name)?.let { return it }
             val current =
@@ -60,7 +74,7 @@ class UpdateAccount
                     .first()
                     .first { it.account.id == id }
                     .account
-            repository.update(current.copy(name = name.trim(), initialBalance = initialBalance, includeInTotal = includeInTotal))
+            repository.update(current.copy(name = name.trim(), includeInTotal = includeInTotal, icon = icon, color = color))
             scheduler.requestSync()
             return null
         }

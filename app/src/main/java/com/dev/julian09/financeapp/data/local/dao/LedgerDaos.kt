@@ -53,6 +53,7 @@ data class TotalsRow(
 data class NoteRow(
     val note: String,
     val categoryId: UUID?,
+    val accountId: UUID?,
 )
 
 data class SearchTotalsRow(
@@ -118,6 +119,10 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE id = :id")
     suspend fun get(id: UUID): AccountEntity?
 
+    /** Asset accounts whose opening balance is still a field, not a movement (S12-H03). */
+    @Query("SELECT * FROM accounts WHERE deletedAt IS NULL AND initialBalance > 0 AND type IN ('CASH', 'DEBIT', 'SAVINGS')")
+    suspend fun withOpeningBalance(): List<AccountEntity>
+
     @Query(
         "UPDATE accounts SET active = :active, deactivatedAt = :deactivatedAt, updatedAt = :now, syncState = 'PENDING' " +
             "WHERE id = :id",
@@ -171,6 +176,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE deletedAt IS NULL ORDER BY kind, sortOrder, name")
     fun observeAll(): Flow<List<CategoryEntity>>
 
+    @Query("SELECT * FROM categories WHERE id = :id")
+    suspend fun get(id: UUID): CategoryEntity?
+
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun count(): Int
 
@@ -178,6 +186,13 @@ interface CategoryDao {
     suspend fun rename(
         id: UUID,
         name: String,
+        now: Instant,
+    )
+
+    @Query("UPDATE categories SET icon = :icon, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun setIcon(
+        id: UUID,
+        icon: String,
         now: Instant,
     )
 
@@ -309,7 +324,7 @@ interface TransactionDao {
 
     // SQLite takes the bare categoryId from the row that holds MAX(occurredAt): the latest use of each note
     @Query(
-        "SELECT note, categoryId FROM transactions WHERE deletedAt IS NULL AND type = :type AND note LIKE :like ESCAPE '\\' " +
+        "SELECT note, categoryId, accountId FROM transactions WHERE deletedAt IS NULL AND type = :type AND note LIKE :like ESCAPE '\\' " +
             "GROUP BY note ORDER BY MAX(occurredAt) DESC LIMIT :limit",
     )
     suspend fun notes(

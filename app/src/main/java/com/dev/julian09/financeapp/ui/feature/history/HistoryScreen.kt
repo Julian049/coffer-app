@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.finance.FoxState
+import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
@@ -55,12 +56,15 @@ import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
+import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
 import com.dev.julian09.financeapp.ui.components.EmptyState
 import com.dev.julian09.financeapp.ui.components.FabClearance
+import com.dev.julian09.financeapp.ui.components.IconBubble
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
+import com.dev.julian09.financeapp.ui.components.MoreBubble
+import com.dev.julian09.financeapp.ui.components.iconOf
 import com.dev.julian09.financeapp.ui.feature.home.mascot
-import com.dev.julian09.financeapp.ui.feature.transactions.categoryLabel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -300,6 +304,21 @@ private fun FiltersSheet(
 ) {
     val colors = CofferTheme.colors
     var f by remember { mutableStateOf(initial) }
+    var pickingCategories by remember { mutableStateOf(false) }
+    if (pickingCategories) {
+        CategoryGridSheet(
+            mostUsedAll(choices.categories, choices.usage),
+            choices.categories,
+            selected = f.categoryIds,
+            multiple = true,
+            onApply = {
+                f = f.copy(categoryIds = it)
+                pickingCategories = false
+            },
+            onDismiss = { pickingCategories = false },
+        )
+        return
+    }
     AppBottomSheet(onDismiss = onDismiss, title = "Filtros", subtitle = "Se combinan entre sí y con la búsqueda.") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Section("Tipo") {
@@ -310,14 +329,18 @@ private fun FiltersSheet(
                     })
                 }
             }
-            Section("Categoría y subcategoría") {
-                // "Padre > Sub", sorted so each subcategory follows its parent (E3, #77)
-                choices.categories.map { it to categoryLabel(it, choices.categories) }.sortedBy { it.second }.forEach { (c, label) ->
-                    AppChip(label, c.id in f.categoryIds, onClick = {
-                        f =
-                            f.copy(categoryIds = f.categoryIds.toggle(c.id))
-                    })
+            // Figma, Hoja · Filtros del historial: the icon row with several choices; «Más» opens Elegir categorías (varias)
+            Text("Categorías", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+            val ranked = mostUsedAll(choices.categories, choices.usage)
+            val quick = (ranked.filter { it.id in f.categoryIds } + ranked).distinctBy { it.id }.take(4)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                quick.forEach { c ->
+                    val on = c.id in f.categoryIds
+                    IconBubble(c.name, iconOf(c, choices.categories), selected = on, checked = on, multiple = true) {
+                        f = f.copy(categoryIds = f.categoryIds.toggle(c.id))
+                    }
                 }
+                MoreBubble { pickingCategories = true }
             }
             Section("Cuenta") {
                 choices.accounts.forEach { a ->
@@ -402,3 +425,10 @@ internal fun DateField(
         ) { DatePicker(state = picker) }
     }
 }
+
+/** Every category, the most used first, the main ones before their subcategories on a tie (S13). */
+internal fun mostUsedAll(
+    categories: List<Category>,
+    usage: Map<UUID, Int>,
+): List<Category> =
+    categories.sortedWith(compareByDescending<Category> { usage[it.id] ?: 0 }.thenBy { it.parentId != null }.thenBy { it.sortOrder })

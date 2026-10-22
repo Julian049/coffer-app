@@ -16,7 +16,10 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Coffer">
+        android:theme="@style/Theme.Coffer"
+        tools:targetApi="33"
+        android:enableOnBackInvokedCallback="false">
+        <!-- S12-UI10: no predictive back, whose preview shrank the window; back plays the screens' own transition -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

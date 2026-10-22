@@ -24,6 +24,7 @@ import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
+import com.dev.julian09.financeapp.data.sync.SyncMeta
 import com.dev.julian09.financeapp.data.sync.transactionData
 import com.dev.julian09.financeapp.data.sync.transactionFromData
 import com.dev.julian09.financeapp.domain.model.Account
@@ -48,6 +49,7 @@ import com.dev.julian09.financeapp.domain.model.Loan
 import com.dev.julian09.financeapp.domain.model.LoanInstallment
 import com.dev.julian09.financeapp.domain.model.LoanMode
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.RateType
@@ -69,6 +71,7 @@ import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
+import com.dev.julian09.financeapp.domain.usecase.OPENING_BALANCE
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -111,6 +114,52 @@ class AccountRepositoryImpl
             val stored = dao.get(account.id) ?: return
             // The carousel order is not part of the form (M9)
             dao.upsert(listOf(account.toEntity(createdAt = stored.createdAt, updatedAt = clock.now()).copy(sortOrder = stored.sortOrder)))
+        }
+
+        override suspend fun moveOpeningBalances(): Boolean {
+            val owner = db.syncMeta().get(SyncMeta.OWNER) ?: return false
+            val accounts = dao.withOpeningBalance().ifEmpty { return false }
+            db.withTransaction {
+                val now = clock.now()
+                val categoryId = UUID.nameUUIDFromBytes("$owner:$OPENING_BALANCE".toByteArray())
+                if (db.categories().get(categoryId) == null) {
+                    db.categories().upsert(
+                        listOf(
+                            CategoryEntity(
+                                id = categoryId,
+                                name = "Saldo inicial",
+                                kind = CategoryKind.INCOME.name,
+                                isBase = true,
+                                systemKey = OPENING_BALANCE,
+                                icon = "savings",
+                                sortOrder = Int.MAX_VALUE,
+                                createdAt = now,
+                                updatedAt = now,
+                                excludeFromReports = true,
+                            ),
+                        ),
+                    )
+                }
+                accounts.forEach { a ->
+                    transactions.upsert(
+                        listOf(
+                            TransactionEntity(
+                                id = UUID.nameUUIDFromBytes("$OPENING_BALANCE:${a.id}".toByteArray()),
+                                type = TransactionType.INCOME.name,
+                                amount = a.initialBalance,
+                                occurredAt = a.createdAt,
+                                accountId = a.id,
+                                categoryId = categoryId,
+                                note = "Saldo inicial",
+                                createdAt = now,
+                                updatedAt = now,
+                            ),
+                        ),
+                    )
+                    dao.upsert(listOf(a.copy(initialBalance = 0, updatedAt = now, syncState = SyncState.PENDING, syncError = null)))
+                }
+            }
+            return true
         }
 
         override suspend fun reorder(ids: List<UUID>) =
@@ -199,6 +248,11 @@ class CategoryRepositoryImpl
             id: UUID,
             name: String,
         ) = dao.rename(id, name, clock.now())
+
+        override suspend fun setIcon(
+            id: UUID,
+            icon: String,
+        ) = dao.setIcon(id, icon, clock.now())
 
         override suspend fun setExcludedFromReports(
             id: UUID,
@@ -398,7 +452,7 @@ class TransactionRepositoryImpl
             limit: Int,
         ): List<NoteSuggestion> {
             val pattern = like(text).ifEmpty { return emptyList() }
-            return dao.notes(type.name, pattern, limit).map { NoteSuggestion(it.note, it.categoryId) }
+            return dao.notes(type.name, pattern, limit).map { NoteSuggestion(it.note, it.categoryId, it.accountId) }
         }
 
         override fun observeSince(from: Instant): Flow<List<Transaction>> =
@@ -812,7 +866,14 @@ class SettingsRepositoryImpl
         override fun observe(): Flow<Settings> =
             dao.observe().map { row ->
                 row?.let {
-                    Settings(it.reminderLeadDays, it.notificationsEnabled, it.homeBalanceView, it.amountDecimals, homeCards(it.homeCards))
+                    Settings(
+                        it.reminderLeadDays,
+                        it.notificationsEnabled,
+                        it.homeBalanceView,
+                        it.amountDecimals,
+                        homeCards(it.homeCards),
+                        NetBalanceMode.valueOf(it.netBalanceMode),
+                    )
                 } ?: Settings()
             }
 
@@ -825,6 +886,7 @@ class SettingsRepositoryImpl
                     homeBalanceView = settings.homeBalanceView,
                     amountDecimals = settings.amountDecimals,
                     homeCards = homeCardsJson(settings.homeCards),
+                    netBalanceMode = settings.netBalanceMode.name,
                     updatedAt = clock.now(),
                     syncState = SyncState.PENDING,
                     syncError = null,
@@ -891,6 +953,7 @@ internal fun Transaction.toEntity(
     installmentId = installmentId,
     recurringId = recurringId,
     paymentKind = paymentKind,
+    concept = concept,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -951,6 +1014,7 @@ internal fun TransactionEntity.toDomain() =
         installmentId = installmentId,
         recurringId = recurringId,
         paymentKind = paymentKind,
+        concept = concept,
         createdAt = createdAt,
         pendingSync = syncState != SyncState.SYNCED,
     )
