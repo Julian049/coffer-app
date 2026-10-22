@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Personalizar inicio has no Guardar button: each change to Home's cards or the order of the accounts is saved as it happens, and leaving the screen keeps the last one
 
+### Fixed
+
+- Historial de cambios opens fast with thousands of entries (an import logs one per movement), shows a loading indicator meanwhile and no longer blocks Back (#127)
+- Descargando tus datos no longer counts deleted movements, categories or accounts as downloaded data (#128)
+- Pressing a movement highlights the whole row up to the card's edges (#129)
+- The bottom bar shows the press on the tab's pill, the same area as the active tab (#130)
+
 ## [1.3.0] - 2026-10-21
 
 ### Added

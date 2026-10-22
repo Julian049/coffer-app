@@ -1,6 +1,8 @@
 package com.dev.julian09.financeapp.ui.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,9 +23,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -64,18 +69,28 @@ fun BottomBar(
             Tab.entries.forEach { tab ->
                 val active = tab == selected
                 val tint = if (active) colors.primary else colors.textSecondary
+                // The whole cell takes the tap, the press shows on the pill like the active state (#130)
+                val interaction = remember { MutableInteractionSource() }
                 Column(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .selectable(selected = active, onClick = { onSelect(tab) }, role = Role.Tab),
+                            .selectable(
+                                selected = active,
+                                interactionSource = interaction,
+                                indication = null,
+                                role = Role.Tab,
+                                onClick = { onSelect(tab) },
+                            ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Box(
                         Modifier
                             .size(width = 56.dp, height = 28.dp)
-                            .background(if (active) colors.primaryContainer else Color.Transparent, CofferShapes.pill),
+                            .clip(CofferShapes.pill)
+                            .background(if (active) colors.primaryContainer else Color.Transparent)
+                            .indication(interaction, ripple()),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(tab.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
