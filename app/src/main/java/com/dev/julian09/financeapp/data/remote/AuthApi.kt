@@ -1,6 +1,7 @@
 package com.dev.julian09.financeapp.data.remote
 
 import com.dev.julian09.financeapp.data.remote.dto.AuthResponseDto
+import com.dev.julian09.financeapp.data.remote.dto.DeleteAccountRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.GoogleLoginRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.LoginRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.RefreshRequestDto
@@ -9,6 +10,7 @@ import com.dev.julian09.financeapp.data.remote.dto.UserDto
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.POST
 
 interface AuthApi {
@@ -36,6 +38,12 @@ interface AuthApi {
     @POST("api/v1/auth/logout")
     suspend fun logout(
         @Body body: RefreshRequestDto,
+    )
+
+    /** DELETE with a body, which Retrofit's @DELETE does not allow. */
+    @HTTP(method = "DELETE", path = "api/v1/me", hasBody = true)
+    suspend fun deleteAccount(
+        @Body body: DeleteAccountRequestDto,
     )
 
     @GET("api/v1/me")

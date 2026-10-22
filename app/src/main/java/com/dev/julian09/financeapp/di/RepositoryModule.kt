@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.di
 import com.dev.julian09.financeapp.data.clock.SystemClock
 import com.dev.julian09.financeapp.data.importing.ImportSchedulerImpl
 import com.dev.julian09.financeapp.data.io.ContentCsvFiles
+import com.dev.julian09.financeapp.data.local.RoomLocalDataEraser
 import com.dev.julian09.financeapp.data.reminder.NotificationPublisher
 import com.dev.julian09.financeapp.data.reminder.ReminderSchedulerImpl
 import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
@@ -26,6 +27,7 @@ import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.CsvFiles
 import com.dev.julian09.financeapp.domain.port.ImportScheduler
 import com.dev.julian09.financeapp.domain.port.LoanRepository
+import com.dev.julian09.financeapp.domain.port.LocalDataEraser
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.ReminderNotifier
 import com.dev.julian09.financeapp.domain.port.ReminderScheduler
@@ -45,6 +47,9 @@ import dagger.hilt.components.SingletonComponent
 abstract class RepositoryModule {
     @Binds
     abstract fun bindClock(impl: SystemClock): Clock
+
+    @Binds
+    abstract fun bindLocalDataEraser(impl: RoomLocalDataEraser): LocalDataEraser
 
     @Binds
     abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository

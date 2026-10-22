@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.data.repository
 
 import com.dev.julian09.financeapp.data.remote.AuthApi
 import com.dev.julian09.financeapp.data.remote.dto.AuthResponseDto
+import com.dev.julian09.financeapp.data.remote.dto.DeleteAccountRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.GoogleLoginRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.LoginRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.ProblemDto
@@ -71,6 +72,13 @@ class AuthRepositoryImpl
             }
         }
 
+        override suspend fun deleteAccount(
+            password: String?,
+            idToken: String?,
+        ): Result<Unit> = runMapped { api.deleteAccount(DeleteAccountRequestDto(password, idToken)) }
+
+        override suspend fun clearSession() = store.clear()
+
         override suspend fun refreshProfile(): Result<UserProfile> =
             runMapped {
                 val user = api.me().toStored()
@@ -129,6 +137,7 @@ class AuthRepositoryImpl
                     )
                 // On the public auth routes it means bad credentials; anywhere else, the session is gone
                 "FIN-AUTH-INVALID" -> if (e.isPublicRoute()) AuthFailure.WrongCredentials else AuthFailure.SessionExpired
+                "FIN-CONFIRMATION" -> AuthFailure.ConfirmationFailed
                 "FIN-AUTH-REVOKED" -> AuthFailure.SessionExpired
                 "FIN-RATE-LIMIT" ->
                     AuthFailure.TooManyAttempts(

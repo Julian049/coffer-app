@@ -20,6 +20,15 @@ interface AuthRepository {
     /** Revokes the refresh token when online and always forgets the session; local data stays (REQ-AUT-06). */
     suspend fun logout()
 
+    /** DELETE /me: the server erases the account and its data. The session stays until [clearSession]. */
+    suspend fun deleteAccount(
+        password: String?,
+        idToken: String?,
+    ): Result<Unit>
+
+    /** Forgets the session without telling the server (the account no longer exists). */
+    suspend fun clearSession()
+
     /** GET /me, refreshing the stored profile. */
     suspend fun refreshProfile(): Result<UserProfile>
 }

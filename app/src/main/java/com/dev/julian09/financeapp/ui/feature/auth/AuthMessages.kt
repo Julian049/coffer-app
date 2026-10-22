@@ -7,6 +7,7 @@ fun AuthFailure.formMessage(): String? =
     when (this) {
         AuthFailure.WrongCredentials -> "Usuario o contraseña incorrectos."
         is AuthFailure.TooManyAttempts -> "Demasiados intentos. Espera $retryAfterSeconds s y vuelve a intentarlo."
+        AuthFailure.ConfirmationFailed -> "No pudimos confirmar tu identidad. Revisa tu contraseña o usa Google."
         AuthFailure.NoConnection -> "Sin conexión. Revisa tu internet y vuelve a intentarlo."
         AuthFailure.SessionExpired, AuthFailure.Unexpected -> "Algo salió mal. Vuelve a intentarlo."
         is AuthFailure.Invalid, is AuthFailure.Taken -> null
