@@ -8,7 +8,10 @@ import com.dev.julian09.financeapp.domain.finance.ReportPeriod
 import com.dev.julian09.financeapp.domain.finance.ReportSpan
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.usecase.ObserveReport
+import com.dev.julian09.financeapp.ui.feature.tags.TagLine
+import com.dev.julian09.financeapp.ui.feature.tags.tagLines
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import java.time.LocalDate
+import java.time.YearMonth
 import java.util.UUID
 import javax.inject.Inject
 
@@ -29,6 +33,10 @@ data class ReportsState(
     val report: Report,
     /** Card names for "Intereses y cargos financieros". */
     val accounts: Map<UUID, String>,
+    /** Por etiqueta (S13): the tags with movements in the month, the largest first. */
+    val tags: List<TagLine> = emptyList(),
+    /** From the Clock, so «Del 1 al 21 · hoy» is the same in the screenshots on any day. */
+    val today: LocalDate = LocalDate.now(),
 )
 
 private data class Selection(
@@ -43,7 +51,8 @@ class ReportsViewModel
     constructor(
         private val observeReport: ObserveReport,
         accounts: AccountRepository,
-        clock: Clock,
+        private val tags: TagRepository,
+        private val clock: Clock,
     ) : ViewModel() {
         private val today = clock.today()
         private val selection = MutableStateFlow(Selection(ReportSpan.MONTH, ReportAggregator.period(ReportSpan.MONTH, today)))
@@ -53,8 +62,11 @@ class ReportsViewModel
             combine(
                 selection.flatMapLatest { s -> observeReport(s.span, s.period).map { s to it } },
                 accounts.observeBalances().map { list -> list.associate { it.account.id to it.account.name } },
-            ) { (s, report), names -> ReportsState(s.span, s.period, report, names) }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+                selection.flatMapLatest { s -> tagLines(tags, YearMonth.from(s.period.from), clock.zone()) },
+            ) { (s, report), names, lines ->
+                val shown = if (s.span == ReportSpan.MONTH) lines.filter { it.count > 0 }.sortedBy { it.net.scaled } else emptyList()
+                ReportsState(s.span, s.period, report, names, shown, clock.today())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         fun selectSpan(span: ReportSpan) =
             selection.update {

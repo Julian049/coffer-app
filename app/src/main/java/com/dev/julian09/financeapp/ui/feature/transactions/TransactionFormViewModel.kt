@@ -218,7 +218,12 @@ class TransactionFormViewModel
             }
             suggesting =
                 viewModelScope.launch {
-                    val found = transactions.suggestNotes(_state.value.type, text).filterNot { it.note.equals(text, ignoreCase = true) }
+                    // Figma `114:268`: one row, the most recent match, never a list
+                    val found =
+                        transactions
+                            .suggestNotes(_state.value.type, text)
+                            .filterNot { it.note.equals(text, ignoreCase = true) }
+                            .take(1)
                     _state.update { it.copy(suggestions = found) }
                 }
         }
@@ -232,7 +237,14 @@ class TransactionFormViewModel
                     s.type != TransactionType.TRANSFER &&
                         category != null &&
                         (category.kind == CategoryKind.EXPENSE) == (s.type == TransactionType.EXPENSE)
-                s.copy(note = suggestion.note, categoryId = if (fits) category.id else s.categoryId, suggestions = emptyList())
+                // The account it was paid with last time, while it is still active (S13)
+                val account = suggestion.accountId?.takeIf { id -> choices.value.accounts.any { it.account.id == id } }
+                s.copy(
+                    note = suggestion.note,
+                    categoryId = if (fits) category.id else s.categoryId,
+                    accountId = if (s.type == TransactionType.TRANSFER) s.accountId else account ?: s.accountId,
+                    suggestions = emptyList(),
+                )
             }
         }
 

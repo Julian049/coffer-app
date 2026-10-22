@@ -14,8 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -349,7 +347,7 @@ private fun SwitchRow(
     }
 }
 
-/** REQ-PRE-02: checking it asks for the monthly value and says it is charged in every installment. */
+/** REQ-PRE-02 (Figma, S13): a switch; turned on, the monthly value appears in the same card and goes into every installment. */
 @Composable
 internal fun ChargeRow(
     title: String,
@@ -359,23 +357,28 @@ internal fun ChargeRow(
     onAmount: (String) -> Unit,
 ) {
     val colors = CofferTheme.colors
+    val insurance = title == "Seguro de vida"
     AppCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = checked,
-                onCheckedChange = onCheck,
-                colors = CheckboxDefaults.colors(checkedColor = colors.primary, checkmarkColor = colors.onPrimary),
-            )
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
-                Text("Se cobrará en cada cuota", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                Text(
+                    if (insurance) "Se cobra en cada cuota" else "Cuota de manejo u otros cobros mensuales",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
             }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheck,
+                colors = SwitchDefaults.colors(checkedTrackColor = colors.primary, checkedThumbColor = colors.onPrimary),
+            )
         }
         if (checked) {
             AppTextField(
                 value = digits,
                 onValueChange = onAmount,
-                label = "Valor mensual",
+                label = if (insurance) "Valor mensual del seguro" else "Valor mensual de los costos",
                 placeholder = "0",
                 keyboardType = KeyboardType.Number,
                 visualTransformation = PesosTransformation(),

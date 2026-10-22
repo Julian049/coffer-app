@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -53,6 +55,8 @@ data class HistoryChoices(
     val categories: List<Category> = emptyList(),
     val accounts: List<AccountBalance> = emptyList(),
     val tags: List<Tag> = emptyList(),
+    /** Movements per category, for «más usadas primero» (S13). */
+    val usage: Map<UUID, Int> = emptyMap(),
 )
 
 data class HistoryUiState(
@@ -95,14 +99,13 @@ class HistoryViewModel
         private val inputs = MutableStateFlow(Inputs(YearMonth.from(clock.today()), "", HistoryFilters(), PAGE))
 
         private val choices =
-            combine(categories.observeAll(), accounts.observeBalances(), tags.observeAll()) { c, a, t ->
-                HistoryChoices(
-                    c.filter {
-                        it.isPickable
-                    },
-                    a,
-                    t,
-                )
+            combine(
+                categories.observeAll(),
+                accounts.observeBalances(),
+                tags.observeAll(),
+                categories.observeTotals(Instant.EPOCH, clock.now().plus(Duration.ofDays(1))),
+            ) { c, a, t, totals ->
+                HistoryChoices(c.filter { it.isPickable }, a, t, totals.associate { it.categoryId to it.count })
             }
 
         private val months =

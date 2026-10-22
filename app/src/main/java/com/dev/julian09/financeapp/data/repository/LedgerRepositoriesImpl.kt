@@ -249,6 +249,11 @@ class CategoryRepositoryImpl
             name: String,
         ) = dao.rename(id, name, clock.now())
 
+        override suspend fun setIcon(
+            id: UUID,
+            icon: String,
+        ) = dao.setIcon(id, icon, clock.now())
+
         override suspend fun setExcludedFromReports(
             id: UUID,
             excluded: Boolean,

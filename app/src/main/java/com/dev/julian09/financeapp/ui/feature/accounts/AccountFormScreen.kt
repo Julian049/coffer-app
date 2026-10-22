@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,9 +29,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,9 +43,9 @@ import com.dev.julian09.financeapp.ui.components.ACCOUNT_COLORS
 import com.dev.julian09.financeapp.ui.components.ACCOUNT_ICONS
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
-import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.IconRow
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.accountIcon
 import com.dev.julian09.financeapp.ui.components.accountTypeLabel
@@ -52,6 +53,7 @@ import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.cards.CardFormScreen
 import com.dev.julian09.financeapp.ui.feature.loans.LoanEditScreen
 import com.dev.julian09.financeapp.ui.feature.loans.LoanFormScreen
+import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 @Composable
@@ -170,38 +172,42 @@ fun AccountFormContent(
                 nameField()
                 Label("Tipo de cuenta")
                 // S12-UI05: a loan is not an account to create here; it has its own section in Gestión de cuentas
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Figma `1:2293`: three equal boxes, icon above and the name in two lines at most
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NEW_ACCOUNT_TYPES.forEach { type ->
-                        AppChip(accountTypeLabel(type), selected = state.type == type, onClick = { onType(type) })
+                        val selected = state.type == type
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .clip(CofferShapes.card)
+                                .background(if (selected) colors.primaryContainer else colors.surface)
+                                .border(1.dp, if (selected) colors.onPrimaryContainer else colors.border, CofferShapes.card)
+                                .selectable(selected, role = Role.RadioButton, onClick = { onType(type) })
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                accountIcon(null, type),
+                                contentDescription = null,
+                                tint = if (selected) colors.onPrimaryContainer else colors.iconOnContainer,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                accountTypeLabel(type),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (selected) colors.onPrimaryContainer else colors.textPrimary,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                            )
+                        }
                     }
                 }
             }
             run {
                 Label(if (editing) "Ícono" else "Ícono representativo")
-                AppCard {
-                    FlowRow(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        ACCOUNT_ICONS.forEach { (key, icon) ->
-                            val selected = state.icon == key
-                            Box(
-                                Modifier
-                                    .size(40.dp)
-                                    .background(if (selected) colors.primaryContainer else Color.Transparent, CircleShape)
-                                    .selectable(selected, role = Role.RadioButton, onClick = { onIcon(key) }),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    icon,
-                                    contentDescription = key,
-                                    tint = if (selected) colors.onPrimaryContainer else colors.textSecondary,
-                                )
-                            }
-                        }
-                    }
-                }
+                // Figma, S13: five icons and «Más», the same states as the category pickers
+                IconRow(state.icon, ACCOUNT_ICONS.map { it.first }, onPick = onIcon)
                 Label(if (editing) "Color" else "Distintivo de color")
                 AppCard {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

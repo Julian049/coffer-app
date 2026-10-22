@@ -1,6 +1,8 @@
 package com.dev.julian09.financeapp.ui.feature.accounts
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.Role
@@ -179,10 +182,18 @@ fun AccountsContent(
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )
+                    Surface(shape = CofferShapes.pill, color = colors.primaryContainer) {
+                        Text(
+                            "Consolidado",
+                            Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.onPrimaryContainer,
+                        )
+                    }
                 }
                 MoneyText(BalanceCalculator.available(active), style = MaterialTheme.typography.displaySmall)
                 Text(
-                    if (active.size == 1) "1 cuenta activa" else "${active.size} cuentas activas",
+                    if (active.size == 1) "1 cuenta sincronizada al instante" else "${active.size} cuentas sincronizadas al instante",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary,
                 )
@@ -196,11 +207,11 @@ fun AccountsContent(
                 SubTitle("Cuentas bancarias y efectivo", assets.size)
                 assets.forEach { AccountCard(it, onOpen = { onOpenAccount(it.account.id) }, onMore = { onOpenOptions(it) }) }
             }
-            if (creditCards.isNotEmpty() || loanAccounts.isNotEmpty()) {
-                GroupTitle("Lo que debes", (creditCards + loanAccounts).fold(Money.ZERO) { sum, it -> sum + it.balance }, MoneyKind.Expense)
-            }
-            if (creditCards.isNotEmpty()) {
-                SubTitle("Tarjetas de crédito", creditCards.size)
+            GroupTitle("Lo que debes", (creditCards + loanAccounts).fold(Money.ZERO) { sum, it -> sum + it.balance }, MoneyKind.Expense)
+            SubTitle("Tarjetas de crédito", creditCards.size)
+            // Empty sections are a quiet row, not a big empty card (BRIEF-cuentas §5)
+            if (creditCards.isEmpty()) EmptyRow("Agrega una tarjeta de crédito", onNewAccount)
+            run {
                 creditCards.forEach { card ->
                     CardAccountCard(
                         card,
@@ -217,6 +228,7 @@ fun AccountsContent(
                     Text(" Agregar", color = colors.textPrimary, style = MaterialTheme.typography.labelLarge)
                 }
             }
+            if (loanAccounts.isEmpty()) EmptyRow("¿Tienes un préstamo? Regístralo para seguir tus cuotas", onNewLoan)
             loanAccounts.forEach { loan ->
                 LoanAccountCard(
                     loan,
@@ -257,6 +269,27 @@ fun AccountsContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyRow(
+    text: String,
+    onClick: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(CofferShapes.card)
+            .border(1.dp, colors.border, CofferShapes.card)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        Icon(Icons.Outlined.Add, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
     }
 }
 

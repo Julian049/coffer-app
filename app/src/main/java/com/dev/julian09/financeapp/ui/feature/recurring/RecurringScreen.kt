@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CreditCard
@@ -40,9 +41,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.DuePayment
+import com.dev.julian09.financeapp.domain.model.LoanDue
 import com.dev.julian09.financeapp.domain.model.PendingPayment
 import com.dev.julian09.financeapp.domain.model.RecurringPayment
 import com.dev.julian09.financeapp.domain.model.Urgency
@@ -55,6 +56,8 @@ import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.feature.cards.PayCardSheet
 import com.dev.julian09.financeapp.ui.feature.home.monthName
+import com.dev.julian09.financeapp.ui.feature.loans.LoanPaymentSheet
+import com.dev.julian09.financeapp.ui.feature.loans.LoanSheet
 import com.dev.julian09.financeapp.ui.feature.transactions.CircleIcon
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -98,8 +101,10 @@ fun RecurringScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var paying by rememberSaveable { mutableStateOf<String?>(null) }
     var payingCard by rememberSaveable { mutableStateOf<String?>(null) }
+    var payingLoan by rememberSaveable { mutableStateOf<String?>(null) }
     PendingSheets(paying?.let(UUID::fromString), onDismiss = { paying = null }, payNow = true)
     PayCardSheet(payingCard?.let(UUID::fromString), onDismiss = { payingCard = null })
+    LoanPaymentSheet(payingLoan?.let(UUID::fromString), LoanSheet.PAY, onDismiss = { payingLoan = null })
     RecurringContent(
         state,
         RecurringActions(
@@ -111,6 +116,7 @@ fun RecurringScreen(
             viewModel::skip,
             onPay = { paying = it.toString() },
             onPayCard = { payingCard = it.toString() },
+            onPayLoan = { payingLoan = it.toString() },
         ),
     )
 }
@@ -124,6 +130,7 @@ class RecurringActions(
     val onSkip: (UUID) -> Unit = {},
     val onPay: (UUID) -> Unit = {},
     val onPayCard: (UUID) -> Unit = {},
+    val onPayLoan: (UUID) -> Unit = {},
 )
 
 /** Gastos recurrentes (S6-UI01): the month's commitments, the next payments and what was paid this month. */
@@ -139,7 +146,7 @@ fun RecurringContent(
         AppHeader(title = "Gastos recurrentes", onBack = actions.onBack)
         if (state == null) return@Column
         val overview = state.overview
-        val summary = overview.summary
+        val summary = state.summary
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -180,11 +187,11 @@ fun RecurringContent(
             )
             val overdue = overview.upcoming.filter { it.urgency == Urgency.OVERDUE }
             val upcoming = overview.upcoming - overdue.toSet()
-            val overdueCards = state.cards.filter { it.urgency == Urgency.OVERDUE }
-            val upcomingCards = state.cards - overdueCards.toSet()
+            val overdueCards = state.dues.filter { it.urgency == Urgency.OVERDUE }
+            val upcomingCards = state.dues - overdueCards.toSet()
             val chips =
                 listOf(
-                    RecurringFilter.ALL to "Todos (${overview.upcoming.size + state.cards.size + overview.paid.size})",
+                    RecurringFilter.ALL to "Todos (${overview.upcoming.size + state.dues.size + overview.paid.size})",
                     RecurringFilter.UPCOMING to "Próximos (${upcoming.size + upcomingCards.size})",
                     RecurringFilter.OVERDUE to "Vencidos (${overdue.size + overdueCards.size})",
                     RecurringFilter.PAID to "Pagados (${overview.paid.size})",
@@ -204,7 +211,7 @@ fun RecurringContent(
                 }
             val shownCards =
                 when (state.filter) {
-                    RecurringFilter.ALL -> state.cards
+                    RecurringFilter.ALL -> state.dues
                     RecurringFilter.UPCOMING -> upcomingCards
                     RecurringFilter.OVERDUE -> overdueCards
                     RecurringFilter.PAID -> emptyList()
@@ -220,7 +227,7 @@ fun RecurringContent(
                     Text("Pagos próximos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
                     Text("Orden por vencimiento", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                 }
-                shownCards.forEach { CardRow(it, actions.onPayCard) }
+                shownCards.forEach { DueRow(it, if (it is LoanDue) actions.onPayLoan else actions.onPayCard) }
                 shown.forEach { UpcomingRow(it, state.categories, actions) }
             }
             if (overview.paid.isNotEmpty() && (state.filter == RecurringFilter.ALL || state.filter == RecurringFilter.PAID)) {
@@ -314,8 +321,8 @@ private fun UpcomingRow(
 
 /** The payment of a card statement (S7-UI03): paid from Hoja · Pagar tarjeta, never skipped. */
 @Composable
-private fun CardRow(
-    due: CardDue,
+private fun DueRow(
+    due: DuePayment,
     onPay: (UUID) -> Unit,
 ) {
     val colors = CofferTheme.colors
@@ -324,11 +331,12 @@ private fun CardRow(
             Box(Modifier.width(4.dp).fillMaxHeight().background(urgencyTint(due), CofferShapes.pill))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CircleIcon(Icons.Outlined.CreditCard)
+                    CircleIcon(if (due is LoanDue) Icons.Outlined.AccountBalance else Icons.Outlined.CreditCard)
                     Column(Modifier.weight(1f)) {
                         Text(due.title, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary, maxLines = 1)
                         Text(
-                            "Vence ${LONG_DATE.format(due.dueDate)} · pago mínimo",
+                            // Figma `1:2674`: «Pago sugerido · Vence 12 de octubre»
+                            (if (due is LoanDue) "Cuota" else "Pago sugerido") + " · Vence ${LONG_DATE.format(due.dueDate)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.textSecondary,
                         )
@@ -339,7 +347,7 @@ private fun CardRow(
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    AppButton("Pagar tarjeta", onClick = { onPay(due.id) }, icon = Icons.Outlined.Check)
+                    AppButton("Registrar pago", onClick = { onPay(due.id) }, icon = Icons.Outlined.Check)
                 }
             }
         }

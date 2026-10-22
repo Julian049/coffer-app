@@ -85,7 +85,7 @@ fun buildDays(
                     val category = tx.categoryId?.let(byId::get)
                     val parent = category?.parentId?.let(byId::get)
                     val where = tx.destinationAccountId?.let { "$from → ${accountNames[it] ?: "Cuenta"}" } ?: from
-                    val categoryLabel = category?.let { c -> parent?.let { "${it.name} > ${c.name}" } ?: c.name }
+                    val categoryLabel = category?.name
                     HistoryRow(
                         title = tx.note ?: category?.name ?: typeLabel(tx.type),
                         subtitle = listOfNotNull(categoryLabel?.takeIf { tx.note != null }, where).joinToString(" · "),

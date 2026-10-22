@@ -120,7 +120,9 @@ fun AppNavHost(
                     avatarInitial = initial,
                 )
             }
-            composable<ReportsRoute> { ReportsScreen(onOpenSettings = openSettings, onOpenTags = openTags, avatarInitial = initial) }
+            composable<ReportsRoute> {
+                ReportsScreen(onOpenSettings = openSettings, onOpenTags = openTags, onOpenTag = openTag, avatarInitial = initial)
+            }
             composable<AccountsRoute> {
                 AccountsScreen(
                     onOpenSettings = openSettings,

@@ -66,6 +66,11 @@ sealed interface CategorySheet {
         val category: Category,
     ) : CategorySheet
 
+    /** S13-UI04: Hoja · Elegir ícono for a stored category. */
+    data class Icon(
+        val category: Category,
+    ) : CategorySheet
+
     /** REQ-CAT-04: turning the exclusion on asks first; turning it off does not. */
     data class Exclude(
         val category: Category,
@@ -132,8 +137,9 @@ class CategoriesViewModel
             _sheet.value = null
         }
 
-        fun startNew() {
-            _sheet.value = CategorySheet.New(kind.value)
+        /** «Añadir subcategoría» of a card starts with its parent chosen. */
+        fun startNew(parentId: UUID? = null) {
+            _sheet.value = CategorySheet.New(kind.value, parentId = parentId)
         }
 
         fun editNew(transform: (CategorySheet.New) -> CategorySheet.New) {
@@ -148,7 +154,8 @@ class CategoriesViewModel
             val s = _sheet.value as? CategorySheet.New ?: return
             viewModelScope.launch {
                 val error =
-                    createCategory(Category(UUID.randomUUID(), s.name, s.kind, s.parentId, icon = s.icon.takeIf { s.parentId == null }))
+                    // Every category has its own icon, subcategories too (S13)
+                    createCategory(Category(UUID.randomUUID(), s.name, s.kind, s.parentId, icon = s.icon))
                 _sheet.value = if (error == null) null else s.copy(error = error)
             }
         }
@@ -170,6 +177,17 @@ class CategoriesViewModel
         fun confirmExclude() {
             val category = (_sheet.value as? CategorySheet.Exclude)?.category ?: return
             viewModelScope.launch { repository.setExcludedFromReports(category.id, true) }
+            _sheet.value = null
+        }
+
+        fun startIcon() {
+            val category = (_sheet.value as? CategorySheet.Options)?.category ?: return
+            _sheet.value = CategorySheet.Icon(category)
+        }
+
+        fun saveIcon(icon: String) {
+            val category = (_sheet.value as? CategorySheet.Icon)?.category ?: return
+            viewModelScope.launch { repository.setIcon(category.id, icon) }
             _sheet.value = null
         }
 
