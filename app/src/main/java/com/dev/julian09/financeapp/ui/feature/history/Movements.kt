@@ -1,10 +1,12 @@
 package com.dev.julian09.financeapp.ui.feature.history
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,12 +25,12 @@ import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
-import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.TransferIcon
 import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
+import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.LocalDate
 import java.time.LocalTime
@@ -144,10 +147,23 @@ fun DayGroup(
                 )
             }
         }
-        AppCard {
-            day.rows.forEachIndexed { i, row ->
-                if (i > 0) HorizontalDivider(thickness = 1.dp, color = colors.border)
-                MovementRow(row, showTime, onOpen)
+        // AppCard without its padding: the press highlight fills the row up to the card's edges (#129)
+        Surface(shape = CofferShapes.card, color = colors.surface, border = BorderStroke(1.dp, colors.border)) {
+            Column {
+                day.rows.forEachIndexed { i, row ->
+                    if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = colors.border)
+                    MovementRow(
+                        row,
+                        showTime,
+                        onOpen,
+                        PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = if (i == 0) 16.dp else 12.dp,
+                            bottom = if (i == day.rows.lastIndex) 16.dp else 12.dp,
+                        ),
+                    )
+                }
             }
         }
     }
@@ -160,11 +176,12 @@ private fun MovementRow(
     row: HistoryRow,
     showTime: Boolean,
     onOpen: ((UUID) -> Unit)?,
+    padding: PaddingValues,
 ) {
     val colors = CofferTheme.colors
     val click = if (onOpen != null && row.id != null) Modifier.clickable(onClickLabel = "Ver detalle") { onOpen(row.id) } else Modifier
     Row(
-        Modifier.fillMaxWidth().then(click),
+        Modifier.fillMaxWidth().then(click).padding(padding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
