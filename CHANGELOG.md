@@ -9,12 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Reportes as in Figma (S13-H01, #139): fixed filters with Mes ▾, the month's saving with its share of the income and the average, Ritmo de gasto (cumulative spending against the month before, in days), Cambios por categoría (to the same day, by how much they changed, with diverging bars), Ahorro por mes (values above the bars, the running month dashed), Por etiqueta with Ver todas and one tap to each tag, Intereses y cargos and the activity line
+- Categorías as a mosaic (S13-H02, #140): the month's total, each main category in a card with its share and its subcategories as tiles, Añadir subcategoría; Cambiar ícono in a category's options; Hoja · Nueva categoría with Ubicación and Ícono as icon rows and the button fixed; a name is unique across the whole tree («Ya existe una categoría llamada…»)
+- One picker for categories everywhere: the four most used and Más (Hoja · Elegir categoría, a flat grid with search); Hoja · Filtros del historial picks several on the same row and Más opens Elegir categorías (varias). Accounts and categories pick their icon from five and Más (Hoja · Elegir ícono by group)
+- Gastos recurrentes counts card statements and loan installments in the month's commitments and lists the installments with Registrar pago (S13-H03, #131)
 - Título and, in a transfer, a separate Nota o concepto (S12-H01, #132; Room 7 `transactions.concept`, server V13). The form follows Figma: amount, title with earlier titles (category · account), the four most used categories and Más (Hoja · Elegir categoría, with search, most used first), date, the account without its balance, tags
 - Gestión de cuentas (S12-H02, #136): Lo que tienes (bank accounts and cash) and Lo que debes (cards with use of the limit and next payment, loans with paid installments and next installment), with Pagar and Ver movimientos; Préstamos · Agregar creates a loan, which Nueva cuenta no longer offers; Editar cuenta changes the icon and color and no longer the opening balance; Editar préstamo changes name, rate, payment day, insurance and costs and recalculates the installments left; long names take two lines at most
 - Net balance by total debt (S12-H03, #137): Hoja · Detalle del saldo chooses Cuotas del periodo or Deuda total (Room 7 `settings.netBalanceMode`, server V13)
 
 ### Changed
 
+- Categories are flat outside Categorías and Reportes: rows, filters, suggestions and sheets show «Restaurantes», never «Comida > Restaurantes»; new users get Taller and Reparaciones instead of two Mantenimiento, and every base subcategory has its own icon (S13-H04, #141)
+- Nueva transferencia as in Figma: full-width Desde and Hacia with a direction icon and the swap centred between them; Nota o concepto · opcional. The title suggestion is one row, the most recent, with what was typed in bold, and fills the account too
+- Nueva cuenta shows the three types as equal boxes; Editar tarjeta shows the card and its debt above the editable fields; loan insurance and other costs are switches that ask for the monthly value; Gestión de cuentas adds Consolidado and quiet rows when there are no cards or loans; Descargando tus datos shows the fox
 - An asset account's opening balance is a «Saldo inicial» movement, excluded from reports, and the field goes to 0; existing accounts move on the next start (S12-H03, #137)
 - Forms and sheets with text keep their buttons fixed above the keyboard (S12-H04, #138); predictive back is off, so going back plays the screens' own transition; Descargando tus datos shows a short message and groups recurring expenses and tags; Home drops «Bienvenido de nuevo» and Gasto · Ingreso · Transferencia get the same padding; deleting a tag asks first and says its movements keep their data
 

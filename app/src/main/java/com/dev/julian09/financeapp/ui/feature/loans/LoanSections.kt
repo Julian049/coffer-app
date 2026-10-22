@@ -186,7 +186,7 @@ fun LoanDetailSections(
         }
     }
     Text(
-        "En el saldo neto solo se descuenta la cuota del periodo actual.",
+        "El saldo neto descuenta la cuota del periodo o toda la deuda pendiente, según elijas en Detalle del saldo.",
         style = MaterialTheme.typography.bodySmall,
         color = colors.textSecondary,
     )

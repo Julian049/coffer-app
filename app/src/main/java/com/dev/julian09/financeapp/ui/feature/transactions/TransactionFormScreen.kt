@@ -26,15 +26,18 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.NorthEast
+import androidx.compose.material.icons.outlined.NorthWest
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SouthEast
 import androidx.compose.material.icons.outlined.SwapVert
+import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -59,10 +62,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -79,12 +86,16 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
+import com.dev.julian09.financeapp.ui.components.IconBubble
+import com.dev.julian09.financeapp.ui.components.MoreBubble
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.accountIcon
-import com.dev.julian09.financeapp.ui.components.categoryIcon
+import com.dev.julian09.financeapp.ui.components.accountTypeLabel
 import com.dev.julian09.financeapp.ui.components.formatMoney
+import com.dev.julian09.financeapp.ui.components.iconOf
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.cards.parsePercent
 import com.dev.julian09.financeapp.ui.feature.cards.percentText
@@ -233,37 +244,49 @@ fun TransactionFormContent(
             // Figma «Título» (S12-UI01): the name, with the titles used before (M5)
             TitleCard(state, choices, actions)
             if (transfer) {
-                AccountPicker(
-                    "Desde",
-                    choices.accounts,
-                    state.accountId,
-                    state.errors[TransactionField.ACCOUNT],
-                    actions.onAccount,
-                    subtitle = null,
-                )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    IconButton(onClick = actions.onSwap) {
+                // Figma `1:1807`: full-width accounts, a direction icon by each label and the swap between them
+                Box {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TransferAccount(
+                            "Desde",
+                            Icons.Outlined.NorthEast,
+                            choices.accounts,
+                            state.accountId,
+                            state.errors[TransactionField.ACCOUNT],
+                            actions.onAccount,
+                        )
+                        TransferAccount(
+                            "Hacia",
+                            Icons.Outlined.SouthEast,
+                            choices.accounts,
+                            state.destinationId,
+                            state.errors[TransactionField.DESTINATION],
+                            actions.onDestination,
+                        )
+                    }
+                    IconButton(
+                        onClick = actions.onSwap,
+                        modifier =
+                            Modifier
+                                .align(Alignment.Center)
+                                .size(40.dp)
+                                .background(CofferTheme.colors.surface, CircleShape)
+                                .border(1.dp, CofferTheme.colors.border, CircleShape),
+                    ) {
                         Icon(
                             Icons.Outlined.SwapVert,
                             contentDescription = "Intercambiar origen y destino",
-                            tint = CofferTheme.colors.iconOnContainer,
+                            tint = CofferTheme.colors.textPrimary,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                 }
-                AccountPicker(
-                    "Hacia",
-                    choices.accounts,
-                    state.destinationId,
-                    state.errors[TransactionField.DESTINATION],
-                    actions.onDestination,
-                    subtitle = null,
-                )
                 DateTimeCard(state.occurredAt, actions.onOccurredAt, today, zone)
                 AppCard {
                     AppTextField(
                         value = state.concept,
                         onValueChange = actions.onConcept,
-                        label = "Nota o concepto (opcional)",
+                        label = "Nota o concepto · opcional",
                         placeholder = "Para el efectivo de la semana",
                     )
                 }
@@ -359,16 +382,9 @@ private fun TitleCard(
             error = state.errors[TransactionField.NOTE]?.message(),
         )
         state.suggestions.forEach { s ->
-            val detail =
-                listOfNotNull(
-                    s.categoryId?.let { id -> choices.categories.firstOrNull { it.id == id }?.name },
-                    s.accountId?.let { id ->
-                        choices.accounts
-                            .firstOrNull { it.account.id == id }
-                            ?.account
-                            ?.name
-                    },
-                ).joinToString(" · ")
+            val category = s.categoryId?.let { id -> choices.categories.firstOrNull { it.id == id } }
+            val account = s.accountId?.let { id -> choices.accounts.firstOrNull { it.account.id == id } }
+            val detail = listOfNotNull(category?.name, account?.account?.name).joinToString(" · ")
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -379,18 +395,46 @@ private fun TitleCard(
             ) {
                 Icon(Icons.Outlined.History, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(20.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(s.note, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
-                    if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                    // What was typed in bold, as in Figma «**Alm**uerzo en restaurante»
+                    Text(boldMatch(s.note, state.note.trim()), style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+                    if (detail.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            category?.let {
+                                Icon(
+                                    iconOf(it, choices.categories),
+                                    contentDescription = null,
+                                    tint = colors.iconOnContainer,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
+                            Text(detail, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                        }
+                    }
                 }
+                Icon(Icons.Outlined.NorthWest, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
             }
         }
+    }
+}
+
+internal fun boldMatch(
+    text: String,
+    typed: String,
+) = buildAnnotatedString {
+    val at = text.indexOf(typed, ignoreCase = true)
+    if (typed.isEmpty() || at < 0) {
+        append(text)
+    } else {
+        append(text.substring(0, at))
+        withStyle(SpanStyle(fontWeight = FontWeight.Medium)) { append(text.substring(at, at + typed.length)) }
+        append(text.substring(at + typed.length))
     }
 }
 
 internal fun categoryLabel(
     category: Category,
     all: List<Category>,
-) = category.parentId?.let { parent -> all.firstOrNull { it.id == parent }?.name + " > " + category.name } ?: category.name
+) = category.name // Flat outside Categorías and Reportes (Figma, S13): never «Comida > Restaurantes»
 
 /** Categories of one kind, the most used first (S12-UI02); a subcategory without its own icon takes its parent's. */
 internal fun mostUsed(
@@ -401,11 +445,6 @@ internal fun mostUsed(
     categories
         .filter { it.kind == kind }
         .sortedWith(compareByDescending<Category> { usage[it.id] ?: 0 }.thenBy { it.parentId != null }.thenBy { it.sortOrder })
-
-internal fun iconOf(
-    category: Category,
-    all: List<Category>,
-) = categoryIcon(category.icon ?: all.firstOrNull { it.id == category.parentId }?.icon)
 
 private const val QUICK_CATEGORIES = 4
 
@@ -427,19 +466,19 @@ private fun CategoryCard(
         Text("Categoría", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             quick.forEach { c ->
-                CategoryBubble(c.name, iconOf(c, choices.categories), selected = c.id == state.categoryId) { onCategory(c.id) }
+                IconBubble(c.name, iconOf(c, choices.categories), selected = c.id == state.categoryId) { onCategory(c.id) }
             }
-            CategoryBubble("Más", Icons.Outlined.GridView, selected = false, outlined = true) { picking = true }
+            MoreBubble { picking = true }
         }
         state.errors[TransactionField.CATEGORY]?.let {
             Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense)
         }
     }
     if (picking) {
-        CategoryPickerSheet(
+        CategoryGridSheet(
             ranked,
             choices.categories,
-            selectedId = state.categoryId,
+            selected = setOfNotNull(state.categoryId),
             onPick = {
                 onCategory(it)
                 picking = false
@@ -449,97 +488,67 @@ private fun CategoryCard(
     }
 }
 
+/** One side of a transfer: the chosen account at full width; a tap opens the list to change it. */
 @Composable
-private fun CategoryBubble(
+private fun TransferAccount(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    selected: Boolean,
-    outlined: Boolean = false,
-    onClick: () -> Unit,
-) {
-    val colors = CofferTheme.colors
-    Column(
-        Modifier
-            .width(72.dp)
-            .clip(CofferShapes.card)
-            .selectable(selected, role = Role.RadioButton, onClick = onClick)
-            .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(
-            Modifier
-                .size(44.dp)
-                .background(
-                    when {
-                        selected -> colors.primary
-                        outlined -> colors.surface
-                        else -> colors.iconContainer
-                    },
-                    CircleShape,
-                ).then(if (outlined) Modifier.border(1.dp, colors.border, CircleShape) else Modifier),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = if (selected) colors.onPrimary else colors.iconOnContainer,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (selected) colors.textPrimary else colors.textSecondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-/** Hoja · Elegir categoría (Figma `111:90`): search, the most used first. */
-@Composable
-internal fun CategoryPickerSheet(
-    ranked: List<Category>,
-    all: List<Category>,
+    direction: androidx.compose.ui.graphics.vector.ImageVector,
+    accounts: List<AccountBalance>,
     selectedId: UUID?,
-    onPick: (UUID) -> Unit,
-    onDismiss: () -> Unit,
+    error: com.dev.julian09.financeapp.domain.model.LedgerError?,
+    onSelect: (UUID) -> Unit,
 ) {
     val colors = CofferTheme.colors
-    var query by rememberSaveable { mutableStateOf("") }
-    AppBottomSheet(onDismiss = onDismiss, title = "Elegir categoría") {
-        AppTextField(value = query, onValueChange = {
-            query = it
-        }, label = null, placeholder = "Buscar categoría", leadingIcon = Icons.Outlined.Search)
-        Text("Más usadas primero", style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
-        val text = query.trim()
-        ranked
-            .filter { text.isEmpty() || it.name.contains(text, ignoreCase = true) }
-            .forEach { c ->
-                val selected = c.id == selectedId
+    var choosing by rememberSaveable { mutableStateOf(false) }
+    val chosen = accounts.firstOrNull { it.account.id == selectedId }
+    AppCard(onClick = { choosing = true }) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(direction, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(14.dp))
+            Text(label, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CircleIcon(chosen?.let { accountIcon(it.account.icon, it.account.type) } ?: Icons.Outlined.AccountBalanceWallet)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    chosen?.account?.name ?: "Elige una cuenta",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (chosen == null) colors.textSecondary else colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                chosen?.let {
+                    Text(
+                        listOfNotNull(accountTypeLabel(it.account.type), it.account.institution).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                    )
+                }
+            }
+            Icon(Icons.Outlined.UnfoldMore, contentDescription = "Cambiar cuenta", tint = colors.textSecondary)
+        }
+        error?.let { Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense) }
+    }
+    if (choosing) {
+        AppBottomSheet(onDismiss = { choosing = false }, title = label) {
+            accounts.forEach { a ->
+                val on = a.account.id == selectedId
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .clip(CofferShapes.card)
-                        .background(if (selected) colors.primaryContainer else colors.surface)
-                        .selectable(selected, role = Role.RadioButton) { onPick(c.id) }
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                        .background(if (on) colors.primaryContainer else colors.surface)
+                        .selectable(on, role = Role.RadioButton) {
+                            onSelect(a.account.id)
+                            choosing = false
+                        }.padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    CircleIcon(iconOf(c, all))
-                    Column(Modifier.weight(1f)) {
-                        Text(c.name, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
-                        c.parentId?.let { parent ->
-                            all.firstOrNull { it.id == parent }?.let {
-                                Text(it.name, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-                            }
-                        }
-                    }
+                    CircleIcon(accountIcon(a.account.icon, a.account.type))
+                    Text(a.account.name, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
                 }
             }
+        }
     }
 }
 
