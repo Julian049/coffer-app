@@ -144,7 +144,7 @@ class ComponentsBehaviorTest {
         compose.onNodeWithText("Saldo total disponible").performClick()
         compose.onNodeWithText("Saldo neto").assertIsDisplayed()
         compose.onNodeWithText("$200.000").assertIsDisplayed()
-        compose.onNodeWithText("Neto").performClick()
+        compose.onNodeWithText("Neto").performScrollTo().performClick()
         assertEquals(BalanceView.NET, chosen)
     }
 

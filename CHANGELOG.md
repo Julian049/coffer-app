@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Título and, in a transfer, a separate Nota o concepto (S12-H01, #132; Room 7 `transactions.concept`, server V13). The form follows Figma: amount, title with earlier titles (category · account), the four most used categories and Más (Hoja · Elegir categoría, with search, most used first), date, the account without its balance, tags
+- Gestión de cuentas (S12-H02, #136): Lo que tienes (bank accounts and cash) and Lo que debes (cards with use of the limit and next payment, loans with paid installments and next installment), with Pagar and Ver movimientos; Préstamos · Agregar creates a loan, which Nueva cuenta no longer offers; Editar cuenta changes the icon and color and no longer the opening balance; Editar préstamo changes name, rate, payment day, insurance and costs and recalculates the installments left; long names take two lines at most
+- Net balance by total debt (S12-H03, #137): Hoja · Detalle del saldo chooses Cuotas del periodo or Deuda total (Room 7 `settings.netBalanceMode`, server V13)
+
+### Changed
+
+- An asset account's opening balance is a «Saldo inicial» movement, excluded from reports, and the field goes to 0; existing accounts move on the next start (S12-H03, #137)
+- Forms and sheets with text keep their buttons fixed above the keyboard (S12-H04, #138); predictive back is off, so going back plays the screens' own transition; Descargando tus datos shows a short message and groups recurring expenses and tags; Home drops «Bienvenido de nuevo» and Gasto · Ingreso · Transferencia get the same padding; deleting a tag asks first and says its movements keep their data
+
 ## [1.3.1] - 2026-10-21
 
 ### Changed

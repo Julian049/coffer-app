@@ -85,9 +85,12 @@ fun CategoriesScreen(
                 AppButton("Cancelar", onClick = viewModel::dismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
             }
         is CategorySheet.Rename ->
-            AppBottomSheet(onDismiss = viewModel::dismiss, title = "Renombrar categoría") {
+            AppBottomSheet(
+                onDismiss = viewModel::dismiss,
+                title = "Renombrar categoría",
+                actions = { AppButton("Guardar", onClick = viewModel::saveRename, modifier = Modifier.fillMaxWidth()) },
+            ) {
                 AppTextField(value = s.name, onValueChange = viewModel::typeName, label = "Nombre", error = s.error?.message())
-                AppButton("Guardar", onClick = viewModel::saveRename, modifier = Modifier.fillMaxWidth())
             }
         is CategorySheet.Exclude ->
             AppBottomSheet(onDismiss = viewModel::dismiss, title = "Excluir «${s.category.name}» de reportes") {
@@ -269,7 +272,11 @@ private fun NewCategorySheet(
 ) {
     val colors = CofferTheme.colors
     val kinds = listOf(CategoryKind.EXPENSE, CategoryKind.INCOME)
-    AppBottomSheet(onDismiss = onDismiss, title = "Nueva categoría") {
+    AppBottomSheet(
+        onDismiss = onDismiss,
+        title = "Nueva categoría",
+        actions = { AppButton("Crear categoría", onClick = onSave, modifier = Modifier.fillMaxWidth()) },
+    ) {
         SegmentedSelector(
             listOf("Gasto", "Ingreso"),
             selectedIndex = kinds.indexOf(sheet.kind),
@@ -317,7 +324,6 @@ private fun NewCategorySheet(
         sheet.error?.takeIf { it == LedgerError.ONE_LEVEL_ONLY || it == LedgerError.KIND_MISMATCH }?.let {
             Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense)
         }
-        AppButton("Crear categoría", onClick = onSave, modifier = Modifier.fillMaxWidth())
     }
 }
 

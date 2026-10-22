@@ -57,12 +57,9 @@ fun PayCardSheet(
         }
     }
     if (cardId == null || state.overview?.card?.accountId != cardId) return
-    AppBottomSheet(onDismiss = onDismiss) {
-        PayCardContent(
-            state,
-            sources,
-            PayCardActions(viewModel::setKind, viewModel::setAmount, viewModel::setSource, viewModel::confirm, onDismiss),
-        )
+    val actions = PayCardActions(viewModel::setKind, viewModel::setAmount, viewModel::setSource, viewModel::confirm, onDismiss)
+    AppBottomSheet(onDismiss = onDismiss, actions = { PayCardButtons(actions) }) {
+        PayCardContent(state, sources, actions, withButtons = false)
     }
 }
 
@@ -80,6 +77,8 @@ fun PayCardContent(
     state: PayCardState,
     sources: List<AccountBalance>,
     actions: PayCardActions,
+    /** False inside the sheet, which shows them fixed under the content (S12-UI09). */
+    withButtons: Boolean = true,
 ) {
     val colors = CofferTheme.colors
     val overview = state.overview ?: return
@@ -122,9 +121,14 @@ fun PayCardContent(
                 Line("Otros cargos", split.fees)
             }
         }
-        AppButton("Registrar pago", onClick = actions.onConfirm, modifier = Modifier.fillMaxWidth())
-        AppButton("Cancelar", onClick = actions.onCancel, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
+        if (withButtons) PayCardButtons(actions)
     }
+}
+
+@Composable
+private fun PayCardButtons(actions: PayCardActions) {
+    AppButton("Registrar pago", onClick = actions.onConfirm, modifier = Modifier.fillMaxWidth())
+    AppButton("Cancelar", onClick = actions.onCancel, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
 }
 
 @Composable

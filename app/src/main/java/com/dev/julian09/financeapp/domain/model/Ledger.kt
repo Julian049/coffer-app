@@ -85,6 +85,8 @@ data class Transaction(
     val installmentId: UUID? = null,
     val recurringId: UUID? = null,
     val paymentKind: String? = null,
+    /** A transfer's note or concept, apart from its title [note] (S12-H01). */
+    val concept: String? = null,
     /** When it was registered; null until stored. */
     val createdAt: Instant? = null,
     /** Not yet in the cloud (shown in the detail). */
@@ -95,6 +97,8 @@ data class Transaction(
 data class NoteSuggestion(
     val note: String,
     val categoryId: UUID?,
+    /** Where it was paid last time, shown next to the category (S12-UI03). */
+    val accountId: UUID? = null,
 )
 
 /** A card purchase in installments or a payment is not edited: it is deleted and registered again (S7). */
@@ -125,7 +129,17 @@ data class Settings(
     val homeBalanceView: String = "AVAILABLE",
     val amountDecimals: Int = 0,
     val homeCards: List<HomeCard> = emptyList(),
+    val netBalanceMode: NetBalanceMode = NetBalanceMode.PERIOD,
 )
+
+/** REQ-CTA-08 (S12-H03): what the net balance subtracts from the available one. */
+enum class NetBalanceMode {
+    /** What falls due this period: each card's statement and each loan's next installment. */
+    PERIOD,
+
+    /** Everything owed on cards and loans, as if paid today. */
+    TOTAL_DEBT,
+}
 
 /** Sums of what moved through an account, all positive (detailed-design §6.9.5). */
 data class AccountFlows(

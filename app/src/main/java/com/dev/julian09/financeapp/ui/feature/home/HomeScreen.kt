@@ -60,6 +60,7 @@ import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.DuePayment
 import com.dev.julian09.financeapp.domain.model.HomeSection
 import com.dev.julian09.financeapp.domain.model.LoanDue
+import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.Urgency
@@ -156,6 +157,7 @@ fun HomeScreen(
         onOpenTags = onOpenTags,
         onOpenTag = onOpenTag,
         onBalanceView = viewModel::setBalanceView,
+        onNetMode = viewModel::setNetMode,
         onCustomize = onCustomize,
         onOpenPending = { p ->
             when (p) {
@@ -185,6 +187,7 @@ fun HomeContent(
     onOpenTag: (UUID) -> Unit = {},
     onOpenPending: (DuePayment) -> Unit = {},
     onBalanceView: (BalanceView) -> Unit = {},
+    onNetMode: (NetBalanceMode) -> Unit = {},
     onCustomize: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
@@ -208,7 +211,6 @@ fun HomeContent(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Bienvenido de nuevo", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                     Text(
                         "Hola, ${userName?.substringBefore(' ') ?: ""}".trimEnd(',', ' '),
                         style = MaterialTheme.typography.headlineSmall,
@@ -232,7 +234,7 @@ fun HomeContent(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = colors.textSecondary,
                             )
-                            MoneyText(if (net) dashboard.net else dashboard.available, style = MaterialTheme.typography.displaySmall)
+                            MoneyText(if (net) state.net else dashboard.available, style = MaterialTheme.typography.displaySmall)
                             if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
                         }
                     HomeSection.QUICK_ACTIONS -> QuickActions(onNewTransaction)
@@ -268,7 +270,16 @@ fun HomeContent(
                     HomeSection.MONTHLY_TREND, null -> Unit
                 }
             }
-            if (balanceSheet) BalanceSheet(dashboard, state.balanceView, onBalanceView, onDismiss = { balanceSheet = false })
+            if (balanceSheet) {
+                BalanceSheet(
+                    dashboard,
+                    state.balanceView,
+                    state.settings.netBalanceMode,
+                    onBalanceView,
+                    onNetMode,
+                    onDismiss = { balanceSheet = false },
+                )
+            }
             AppButton(
                 "Ver todas las transacciones",
                 onClick = onOpenHistory,
@@ -473,12 +484,24 @@ private fun QuickActions(onNew: (TransactionType) -> Unit) {
     Row(
         Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(colors.iconContainer, CofferShapes.card),
         verticalAlignment = Alignment.CenterVertically,
+        // S12-UI11: each segment as wide as its label plus the same padding; «Transferencia» no longer touches the edge
+        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        QuickAction("Gasto", Icons.Outlined.ArrowDownward, colors.expense, Modifier.weight(1f)) { onNew(TransactionType.EXPENSE) }
+        QuickAction(
+            "Gasto",
+            Icons.Outlined.ArrowDownward,
+            colors.expense,
+            Modifier.weight(1f, fill = false),
+        ) { onNew(TransactionType.EXPENSE) }
         VerticalDivider(Modifier.padding(vertical = 10.dp), thickness = 1.dp, color = colors.border)
-        QuickAction("Ingreso", Icons.Outlined.ArrowUpward, colors.income, Modifier.weight(1f)) { onNew(TransactionType.INCOME) }
+        QuickAction(
+            "Ingreso",
+            Icons.Outlined.ArrowUpward,
+            colors.income,
+            Modifier.weight(1f, fill = false),
+        ) { onNew(TransactionType.INCOME) }
         VerticalDivider(Modifier.padding(vertical = 10.dp), thickness = 1.dp, color = colors.border)
-        QuickAction("Transferencia", Icons.Outlined.SwapHoriz, colors.textSecondary, Modifier.weight(1f)) {
+        QuickAction("Transferencia", Icons.Outlined.SwapHoriz, colors.textSecondary, Modifier.weight(1f, fill = false)) {
             onNew(TransactionType.TRANSFER)
         }
     }
@@ -493,7 +516,7 @@ private fun QuickAction(
     onClick: () -> Unit,
 ) {
     Row(
-        modifier.clip(CofferShapes.card).clickable(role = Role.Button, onClick = onClick).padding(vertical = 12.dp),
+        modifier.clip(CofferShapes.card).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {

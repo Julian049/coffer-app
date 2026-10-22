@@ -14,6 +14,11 @@ private const val CATEGORY_NAME_MAX = 50
 /** The category the app files card interest under (REQ-TC-09). */
 const val FINANCIAL_CHARGES = "FINANCIAL_CHARGES"
 
+/** The category of the «Saldo inicial» movements (S12-H03): excluded from reports, never offered in a picker. */
+const val OPENING_BALANCE = "OPENING_BALANCE"
+
+val Category.isPickable: Boolean get() = systemKey != OPENING_BALANCE
+
 /** Same kind and parent, ignoring case: the server refuses duplicates there (uq_cat_name). */
 private fun nameError(
     name: String,

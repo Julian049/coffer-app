@@ -30,6 +30,9 @@ data class SettingsEntity(
     val deletedAt: Instant? = null,
     val syncState: SyncState = SyncState.PENDING,
     val syncError: String? = null,
+    /** PERIOD or TOTAL_DEBT (V13, Room 7). */
+    @ColumnInfo(defaultValue = "PERIOD")
+    val netBalanceMode: String = "PERIOD",
 )
 
 @Entity(tableName = "accounts", indices = [Index("syncState")])
@@ -110,6 +113,8 @@ data class TransactionEntity(
     val installmentId: UUID? = null,
     val recurringId: UUID? = null,
     val paymentKind: String? = null,
+    /** A transfer's note, apart from its title [note] (V13, Room 7). */
+    val concept: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
     val deletedAt: Instant? = null,

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,6 +36,8 @@ fun AppBottomSheet(
     modifier: Modifier = Modifier,
     title: String? = null,
     subtitle: String? = null,
+    /** The sheet's buttons: fixed under the content, above the keyboard (S12-UI09). */
+    actions: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = CofferTheme.colors
@@ -51,7 +54,7 @@ fun AppBottomSheet(
         contentWindowInsets = { WindowInsets(0) },
     ) {
         Column(
-            Modifier.fillMaxWidth().border(1.dp, colors.border, CofferShapes.sheet),
+            Modifier.fillMaxWidth().border(1.dp, colors.border, CofferShapes.sheet).imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
@@ -71,9 +74,10 @@ fun AppBottomSheet(
                     Modifier
                         .fillMaxWidth()
                         // A long sheet scrolls, so its button is always reachable (#110); sheets do not add their own scroll
+                        .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState())
-                        .padding(start = 16.dp, end = 16.dp, bottom = 24.dp)
-                        .navigationBarsPadding(),
+                        .padding(start = 16.dp, end = 16.dp, bottom = if (actions == null) 24.dp else 8.dp)
+                        .then(if (actions == null) Modifier.navigationBarsPadding() else Modifier),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 if (title != null) {
@@ -85,6 +89,16 @@ fun AppBottomSheet(
                     }
                 }
                 content()
+            }
+            if (actions != null) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
+                        .navigationBarsPadding(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    content = actions,
+                )
             }
         }
     }

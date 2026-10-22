@@ -322,7 +322,7 @@ internal fun sameRef(
 ) = a.kind == b.kind && nameKey(a.name) == nameKey(b.name) && a.subcategory?.let(::nameKey) == b.subcategory?.let(::nameKey)
 
 /** Coffer's own format (detailed-design §6.9.9), column names in English (PO, 2026-10-19). */
-val NATIVE_COLUMNS = listOf("date", "type", "amount", "account", "destination_account", "category", "subcategory", "tag", "note")
+val NATIVE_COLUMNS = listOf("date", "type", "amount", "account", "destination_account", "category", "subcategory", "tag", "note", "concept")
 
 private val NATIVE_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
@@ -373,6 +373,7 @@ class ExportCsv
                             category?.takeIf { it.parentId != null }?.name,
                             t.tagId?.let { tagNames[it] },
                             t.note,
+                            t.concept,
                         )
                     }
             return files.write(uri, lines)

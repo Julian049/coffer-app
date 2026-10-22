@@ -16,6 +16,7 @@ import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import com.dev.julian09.financeapp.domain.usecase.ObserveMonthFox
 import com.dev.julian09.financeapp.domain.usecase.SearchTransactions
+import com.dev.julian09.financeapp.domain.usecase.isPickable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -94,7 +95,15 @@ class HistoryViewModel
         private val inputs = MutableStateFlow(Inputs(YearMonth.from(clock.today()), "", HistoryFilters(), PAGE))
 
         private val choices =
-            combine(categories.observeAll(), accounts.observeBalances(), tags.observeAll()) { c, a, t -> HistoryChoices(c, a, t) }
+            combine(categories.observeAll(), accounts.observeBalances(), tags.observeAll()) { c, a, t ->
+                HistoryChoices(
+                    c.filter {
+                        it.isPickable
+                    },
+                    a,
+                    t,
+                )
+            }
 
         private val months =
             transactions.observeFirstOccurredAt().map { first ->

@@ -13,6 +13,7 @@ import com.dev.julian09.financeapp.domain.usecase.CreateCategory
 import com.dev.julian09.financeapp.domain.usecase.DeleteCategory
 import com.dev.julian09.financeapp.domain.usecase.RenameCategory
 import com.dev.julian09.financeapp.domain.usecase.deleteTargets
+import com.dev.julian09.financeapp.domain.usecase.isPickable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -112,7 +113,11 @@ class CategoriesViewModel
                             .atStartOfDay(zone)
                             .toInstant(),
                     )
-                combine(repository.observeAll(), totals, kind) { all, sums, selected -> build(all, sums, selected) }
+                combine(
+                    repository.observeAll(),
+                    totals,
+                    kind,
+                ) { all, sums, selected -> build(all.filter { it.isPickable }, sums, selected) }
                     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
             }
 

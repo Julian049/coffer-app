@@ -26,6 +26,10 @@ data object RegisterRoute
 @Serializable
 data object NewAccountRoute
 
+/** Gestión de cuentas → Préstamos · Agregar (S12-UI05). */
+@Serializable
+data object NewLoanRoute
+
 /** Ids travel as text: type-safe routes keep them in the SavedStateHandle under the property name. */
 @Serializable
 data class EditAccountRoute(
