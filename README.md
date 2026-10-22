@@ -14,7 +14,7 @@
   <a href="https://github.com/Julian049/coffer-app/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Julian049/coffer-app/ci.yml?branch=develop&style=flat-square&label=CI" alt="CI"></a>
   <img src="https://img.shields.io/badge/Android-12%2B%20(API%2031)-4A3328?style=flat-square" alt="Android 12 o superior">
   <img src="https://img.shields.io/badge/Kotlin-2.4-4A3328?style=flat-square" alt="Kotlin 2.4">
-  <img src="https://img.shields.io/badge/licencia-pendiente-D9B99A?style=flat-square" alt="Licencia pendiente">
+  <img src="https://img.shields.io/badge/licencia-todos%20los%20derechos%20reservados-4A3328?style=flat-square" alt="Licencia propietaria">
 </p>
 
 <p align="center">
@@ -142,7 +142,7 @@ La CI corre lint, ktlint, las pruebas, la verificación de capturas y el APK de 
 
 ## Licencia
 
-La licencia todavía no está definida. Mientras tanto, el código, la marca y la mascota de Coffer quedan con **todos los derechos reservados**. El tema legal (licencia, privacidad, términos y avisos de terceros) está en el backlog: [coffer-docs#47](https://github.com/Julian049/coffer-docs/issues/47).
+Código propietario: **todos los derechos reservados** (ver [`LICENSE`](LICENSE)). No se concede permiso para copiar, modificar ni distribuir el código sin autorización escrita. La marca Coffer y la mascota se generaron con ChatGPT; su uso queda reservado sin afirmar un registro. Las bibliotecas de terceros conservan sus propias licencias: [avisos de terceros](https://github.com/Julian049/coffer-docs/blob/develop/10-legal/third-party-notices.md). [Política de privacidad](https://julian049.github.io/coffer-docs/10-legal/privacy-policy.html) · [Términos de uso](https://julian049.github.io/coffer-docs/10-legal/terms.html).
 
 ## Autor
 

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ImportExport
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -154,7 +155,9 @@ fun SettingsContent(
     onOpenCustomizeHome: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
+    var showAbout by rememberSaveable { mutableStateOf(false) }
     LogoutDialogIfNeeded(state.confirmingLogout, onLogoutConfirm, onLogoutDismiss)
+    if (showAbout) AboutSheet(state.appVersion, onDismiss = { showAbout = false })
     state.deleteAccount?.let { DeleteAccountDialog(it, onDeleteAccountConfirm, onDeleteAccountGoogle, onDeleteAccountDismiss) }
     Column(modifier.fillMaxSize()) {
         AppHeader(title = "Ajustes", onBack = onBack, actions = { syncStatus?.let { SyncBadge(it) } })
@@ -230,6 +233,8 @@ fun SettingsContent(
                 LinkRow(Icons.Outlined.ImportExport, "Importar y exportar", onOpenImportExport)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.History, "Historial de cambios", onOpenChangeHistory)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.Info, "Acerca de Coffer", { showAbout = true })
             }
             if (state.user != null) {
                 AppButton(
