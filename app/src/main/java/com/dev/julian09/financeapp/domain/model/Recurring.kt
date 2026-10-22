@@ -76,3 +76,21 @@ data class Reminder(
     val payment: DuePayment,
     val kind: ReminderKind,
 )
+
+/**
+ * #131 (S13-DOM02): the month's commitments also count what cards and loans ask for up to [monthEnd], overdue ones
+ * included, so Gastos recurrentes adds up to the same payments Home lists.
+ */
+fun RecurringSummary.withDues(
+    dues: List<DuePayment>,
+    monthEnd: LocalDate,
+): RecurringSummary {
+    val owed = dues.filter { it.amount > Money.ZERO && !it.dueDate.isAfter(monthEnd) }
+    val total = owed.fold(Money.ZERO) { sum, it -> sum + it.amount }
+    return copy(
+        committed = committed + total,
+        pendingCount = pendingCount + owed.size,
+        remaining = remaining + total,
+        overdueCount = overdueCount + owed.count { it.urgency == Urgency.OVERDUE },
+    )
+}
