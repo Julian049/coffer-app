@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -88,7 +89,8 @@ fun CardFormContent(
     val colors = CofferTheme.colors
     val editing = state.editingId != null
     val errors = state.errors
-    Column(modifier.fillMaxSize()) {
+    // S12-UI09: the bottom button rides on the keyboard
+    Column(modifier.fillMaxSize().imePadding()) {
         AppHeader(title = if (editing) "Editar tarjeta" else "Nueva tarjeta de crédito", onBack = actions.onBack)
         Column(
             Modifier

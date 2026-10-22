@@ -38,7 +38,12 @@ fun InitialDownloadScreen(viewModel: InitialDownloadViewModel = hiltViewModel())
 
 /** Labels per entity of the sync protocol, in the order they are listed. */
 private val ENTITY_LABELS =
-    listOf("account" to "Cuentas", "category" to "Categorías", "tag" to "Etiquetas", "transaction" to "Movimientos")
+    listOf(
+        listOf("account") to "Cuentas",
+        listOf("category") to "Categorías",
+        listOf("transaction") to "Transacciones",
+        listOf("recurringExpense", "tag") to "Recurrentes y etiquetas",
+    )
 
 /** Descargando tus datos (S3-UI01, Figma section 1 · Acceso). */
 @Composable
@@ -61,7 +66,7 @@ fun InitialDownloadContent(
             when {
                 progress.failed -> "No pudimos terminar la descarga. Revisa que hayas iniciado sesión con tu cuenta e inténtalo de nuevo."
                 progress.waiting -> "Esperando conexión. La descarga sigue sola cuando haya internet."
-                else -> "Solo pasa una vez por instalación. Al terminar, la app funciona sin conexión."
+                else -> "Puede tardar un momento."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
@@ -85,10 +90,14 @@ fun InitialDownloadContent(
             } else {
                 LinearProgressIndicator(Modifier.fillMaxWidth(), color = colors.primary, trackColor = colors.border)
             }
-            ENTITY_LABELS.forEach { (entity, label) ->
+            ENTITY_LABELS.forEach { (entities, label) ->
                 Row(Modifier.fillMaxWidth()) {
                     Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-                    Text("${progress.byEntity[entity] ?: 0}", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+                    Text(
+                        "${entities.sumOf { progress.byEntity[it] ?: 0L }}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textPrimary,
+                    )
                 }
             }
         }
