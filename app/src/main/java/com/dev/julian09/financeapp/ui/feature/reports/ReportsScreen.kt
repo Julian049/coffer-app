@@ -593,7 +593,7 @@ private fun periodName(state: ReportsState): String =
 /** «Del 1 al 21 · hoy» while the period runs, else its days. */
 private fun periodSpan(state: ReportsState): String {
     val p = state.period
-    val today = LocalDate.now()
+    val today = state.today
     return if (today in p.from..p.to) {
         "Del ${p.from.dayOfMonth} al ${today.dayOfMonth} · hoy"
     } else {

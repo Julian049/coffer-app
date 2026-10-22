@@ -35,6 +35,8 @@ data class ReportsState(
     val accounts: Map<UUID, String>,
     /** Por etiqueta (S13): the tags with movements in the month, the largest first. */
     val tags: List<TagLine> = emptyList(),
+    /** From the Clock, so «Del 1 al 21 · hoy» is the same in the screenshots on any day. */
+    val today: LocalDate = LocalDate.now(),
 )
 
 private data class Selection(
@@ -63,7 +65,7 @@ class ReportsViewModel
                 selection.flatMapLatest { s -> tagLines(tags, YearMonth.from(s.period.from), clock.zone()) },
             ) { (s, report), names, lines ->
                 val shown = if (s.span == ReportSpan.MONTH) lines.filter { it.count > 0 }.sortedBy { it.net.scaled } else emptyList()
-                ReportsState(s.span, s.period, report, names, shown)
+                ReportsState(s.span, s.period, report, names, shown, clock.today())
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         fun selectSpan(span: ReportSpan) =
