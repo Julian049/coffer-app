@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.dev.julian09.financeapp.data.local.LegacyDatabaseMigrator
 import com.dev.julian09.financeapp.di.ApplicationScope
+import com.dev.julian09.financeapp.domain.usecase.MoveOpeningBalances
 import com.dev.julian09.financeapp.domain.usecase.PurgeChangeHistory
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +26,9 @@ class FinanceApp :
     lateinit var purgeChangeHistory: PurgeChangeHistory
 
     @Inject
+    lateinit var moveOpeningBalances: MoveOpeningBalances
+
+    @Inject
     @ApplicationScope
     lateinit var appScope: CoroutineScope
 
@@ -38,6 +42,7 @@ class FinanceApp :
         appScope.launch {
             legacyMigrator.migrateIfNeeded()
             purgeChangeHistory()
+            moveOpeningBalances()
         }
     }
 }

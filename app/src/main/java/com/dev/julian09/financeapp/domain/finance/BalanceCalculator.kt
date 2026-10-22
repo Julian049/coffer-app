@@ -36,6 +36,10 @@ object BalanceCalculator {
         dues: List<Money>,
     ): Money = dues.fold(available) { left, due -> left - due }
 
+    /** Active cards and loans that owe something, for the net balance by total debt (S12-H03). */
+    fun debts(balances: List<AccountBalance>): List<AccountBalance> =
+        balances.filter { it.account.active && it.account.type.isDebt && it.balance.isNegative }
+
     /** Percent change against the close of the previous month, one decimal; null when there is nothing to compare. */
     fun monthlyChange(
         now: Money,
