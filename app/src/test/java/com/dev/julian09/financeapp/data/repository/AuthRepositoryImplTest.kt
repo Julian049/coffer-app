@@ -105,6 +105,30 @@ class AuthRepositoryImplTest {
             assertEquals(SessionState.SignedOut, repository.observeSession().first())
         }
 
+    @Test
+    fun `delete account sends the proof with the bearer and a wrong one is not an expired session`() =
+        runTest {
+            store.save(StoredSession("a", "r-0123456789012345678", TEST_USER))
+            server.enqueue(MockResponse.Builder().code(204).build())
+
+            repository.deleteAccount("clave-segura", null).getOrThrow()
+
+            val request = server.takeRequest()
+            assertEquals("DELETE", request.method)
+            assertEquals("/api/v1/me", request.url.encodedPath)
+            assertEquals("Bearer a", request.headers["Authorization"])
+            assertEquals(true, request.body?.utf8()?.contains("clave-segura"))
+            assertEquals(
+                "the session stays until the phone is wiped",
+                TEST_USER.toDomain(),
+                (repository.observeSession().first() as SessionState.Active).user,
+            )
+
+            server.enqueue(json(403, """{"code":"FIN-CONFIRMATION","detail":"No pudimos confirmar tu identidad."}"""))
+            assertEquals(AuthFailure.ConfirmationFailed, repository.deleteAccount("mala", null).exceptionOrNull())
+            assertEquals("a 403 must not trigger a token refresh", 2, server.requestCount)
+        }
+
     private fun json(
         code: Int,
         body: String,

@@ -34,6 +34,23 @@ class FakeAuthRepository : AuthRepository {
         session.value = SessionState.SignedOut
     }
 
+    var deleteResult: Result<Unit> = Result.success(Unit)
+    val deleteCalls = mutableListOf<Pair<String?, String?>>()
+    var sessionCleared = false
+
+    override suspend fun deleteAccount(
+        password: String?,
+        idToken: String?,
+    ): Result<Unit> {
+        deleteCalls += password to idToken
+        return deleteResult
+    }
+
+    override suspend fun clearSession() {
+        sessionCleared = true
+        session.value = SessionState.SignedOut
+    }
+
     override suspend fun refreshProfile() = Result.success(PROFILE)
 
     private fun respond(): Result<UserProfile> {

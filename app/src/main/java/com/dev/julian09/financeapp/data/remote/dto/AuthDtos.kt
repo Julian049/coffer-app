@@ -19,6 +19,13 @@ data class LoginRequestDto(
     val deviceId: String,
 )
 
+/** One proof of identity: the password, or a fresh Google ID token for accounts without one. */
+@Serializable
+data class DeleteAccountRequestDto(
+    val password: String? = null,
+    val idToken: String? = null,
+)
+
 @Serializable
 data class RefreshRequestDto(
     val refreshToken: String,
