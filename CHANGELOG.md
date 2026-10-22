@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The privacy policy, terms and third-party notices are published from `docs/` of this repository with GitHub Pages (`https://julian049.github.io/coffer-app/`), because `coffer-docs` goes private; `LegalDocs` points there
+
 ## [1.5.0] - 2026-10-22
 
 ### Added

@@ -1,0 +1,5 @@
+# Solo las páginas con "front matter" se publican como web; el resto de la documentación queda como archivos
+title: Coffer
+theme: jekyll-theme-minimal
+exclude:
+  - node_modules
