@@ -121,9 +121,18 @@ class NoteSuggestionsTest {
             spend("Busetón", transport, cash, daysAgo = 4)
 
             // Exact first (it is shown: it fills the category and the account), then prefix, then start of a word
-            assertEquals(listOf("Bus", "Busetón", "Pasaje en bus"), f.transactions.suggestNotes(TransactionType.EXPENSE, "Bus").map { it.note })
+            assertEquals(
+                listOf("Bus", "Busetón", "Pasaje en bus"),
+                f.transactions.suggestNotes(TransactionType.EXPENSE, "Bus").map { it.note },
+            )
             // "bu" no longer brings "Hamburguer" before the notes that start with it
-            assertEquals("Hamburguer", f.transactions.suggestNotes(TransactionType.EXPENSE, "bu").last().note)
+            assertEquals(
+                "Hamburguer",
+                f.transactions
+                    .suggestNotes(TransactionType.EXPENSE, "bu")
+                    .last()
+                    .note,
+            )
         }
 
     @Test
@@ -152,6 +161,13 @@ class NoteSuggestionsTest {
             vm.setCategory(food)
             vm.save()
             vm.state.first { it.saved }
-            assertEquals("Supermercado", f.transactions.observeRecent(1).first().single().note)
+            assertEquals(
+                "Supermercado",
+                f.transactions
+                    .observeRecent(1)
+                    .first()
+                    .single()
+                    .note,
+            )
         }
 }

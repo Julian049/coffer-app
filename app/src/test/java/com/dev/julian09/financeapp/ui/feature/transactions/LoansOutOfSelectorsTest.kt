@@ -71,7 +71,11 @@ class LoansOutOfSelectorsTest {
             f.tx("EXPENSE", 5, loan)
 
             val vm = form()
-            val offered = vm.choices.first { it.accounts.isNotEmpty() }.accounts.map { it.account.id }
+            val offered =
+                vm.choices
+                    .first { it.accounts.isNotEmpty() }
+                    .accounts
+                    .map { it.account.id }
             assertEquals(listOf(cash), offered)
             assertEquals(cash, vm.state.first { it.accountId != null }.accountId)
         }
@@ -84,8 +88,16 @@ class LoansOutOfSelectorsTest {
             val id: UUID = f.tx("EXPENSE", 5, loan)
 
             val vm = form("id" to id.toString())
-            val offered = vm.choices.first { c -> c.accounts.any { it.account.id == loan } }.accounts.map { it.account.id }
+            val offered =
+                vm.choices
+                    .first { c -> c.accounts.any { it.account.id == loan } }
+                    .accounts
+                    .map { it.account.id }
             assertTrue(loan in offered)
-            assertFalse(form().choices.value.accounts.any { it.account.id == loan })
+            assertFalse(
+                form()
+                    .choices.value.accounts
+                    .any { it.account.id == loan },
+            )
         }
 }

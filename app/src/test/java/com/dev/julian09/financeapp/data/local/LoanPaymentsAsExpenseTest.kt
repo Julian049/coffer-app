@@ -57,7 +57,12 @@ class LoanPaymentsAsExpenseTest {
     ) {
         val id = f.tx("TRANSFER", amount, from, at = at, destination = loan)
         f.db.transactions().upsert(
-            listOf(f.db.transactions().get(id)!!.copy(paymentKind = kind, principal = principal?.let { it * 10_000 })),
+            listOf(
+                f.db
+                    .transactions()
+                    .get(id)!!
+                    .copy(paymentKind = kind, principal = principal?.let { it * 10_000 }),
+            ),
         )
     }
 
@@ -76,13 +81,25 @@ class LoanPaymentsAsExpenseTest {
 
             val from = at.minusSeconds(86_400)
             val to = at.plusSeconds(86_400)
-            assertEquals(Money.ofPesos(190_000).scaled, f.db.transactions().observeTotals(from, to).first().expense)
+            assertEquals(
+                Money.ofPesos(190_000).scaled,
+                f.db
+                    .transactions()
+                    .observeTotals(from, to)
+                    .first()
+                    .expense,
+            )
             assertEquals(Money.ofPesos(190_000), search(october, 100).first().totals.expense)
             // The filter by «Deudas» finds the three payments
             val filtered = search(october.copy(categoryIds = setOf(debts)), 100).first()
             assertEquals(3, filtered.transactions.size)
             assertEquals(Money.ofPesos(180_000), filtered.totals.expense)
-            val byCategory = f.db.transactions().observeCategoryTotals(from, to).first().single { it.categoryId == debts }
+            val byCategory =
+                f.db
+                    .transactions()
+                    .observeCategoryTotals(from, to)
+                    .first()
+                    .single { it.categoryId == debts }
             assertEquals(Money.ofPesos(180_000).scaled, byCategory.total)
             assertEquals(3, byCategory.count)
         }
@@ -95,14 +112,36 @@ class LoanPaymentsAsExpenseTest {
             assertFalse(f.accounts.ensureLoanCategory())
             settings(null)
             assertTrue(f.accounts.ensureLoanCategory())
-            val id = f.db.settings().observe().first()!!.loanPaymentCategoryId
+            val id =
+                f.db
+                    .settings()
+                    .observe()
+                    .first()!!
+                    .loanPaymentCategoryId
             assertNotNull(id)
-            assertEquals("Deudas", f.db.categories().get(id!!)!!.name)
+            assertEquals(
+                "Deudas",
+                f.db
+                    .categories()
+                    .get(id!!)!!
+                    .name,
+            )
             assertFalse(f.accounts.ensureLoanCategory())
             // Deleted by the user and cleared: it is not brought back
-            f.db.settings().upsert(f.db.settings().observe().first()!!.copy(loanPaymentCategoryId = null))
+            f.db.settings().upsert(
+                f.db
+                    .settings()
+                    .observe()
+                    .first()!!
+                    .copy(loanPaymentCategoryId = null),
+            )
             assertFalse(f.accounts.ensureLoanCategory())
-            assertNull(f.db.settings().observe().first()!!.loanPaymentCategoryId)
+            assertNull(
+                f.db
+                    .settings()
+                    .observe()
+                    .first()!!
+                    .loanPaymentCategoryId,
+            )
         }
-
 }

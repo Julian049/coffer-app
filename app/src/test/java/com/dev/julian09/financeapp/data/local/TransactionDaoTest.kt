@@ -141,7 +141,14 @@ class TransactionDaoTest {
             f.tx("INCOME", 45_000, cash, at = at.plusSeconds(1))
             f.tx("EXPENSE", 450_000, cash, at = at.plusSeconds(2))
             val withText = f.tx("EXPENSE", 7, cash, at = at.plusSeconds(3))
-            f.db.transactions().upsert(listOf(f.db.transactions().get(withText)!!.copy(note = "Cuenta 45.000 pesos")))
+            f.db.transactions().upsert(
+                listOf(
+                    f.db
+                        .transactions()
+                        .get(withText)!!
+                        .copy(note = "Cuenta 45.000 pesos"),
+                ),
+            )
 
             for (text in listOf("45000", "$45.000")) assertEquals(text, setOf(45_000L), amounts(october.copy(query = text)).toSet())
             // «45.000» is also text in the note of the last one

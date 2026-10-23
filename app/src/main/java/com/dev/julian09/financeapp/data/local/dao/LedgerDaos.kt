@@ -340,7 +340,8 @@ interface TransactionDao {
 
     // SQLite takes the bare categoryId from the row that holds MAX(occurredAt): the latest use of each note
     @Query(
-        "SELECT note, categoryId, accountId, COUNT(*) AS uses FROM transactions WHERE deletedAt IS NULL AND type = :type AND note LIKE :like ESCAPE '\\' " +
+        "SELECT note, categoryId, accountId, COUNT(*) AS uses FROM transactions WHERE deletedAt IS NULL AND type = :type " +
+            "AND note LIKE :like ESCAPE '\\' " +
             "GROUP BY note ORDER BY MAX(occurredAt) DESC LIMIT :limit",
     )
     suspend fun notes(
@@ -455,7 +456,8 @@ interface TransactionDao {
     ): Flow<List<TransactionEntity>>
 
     @Query(
-        "SELECT $EFFECTIVE_CATEGORY AS categoryId, SUM(CASE WHEN t.type = 'TRANSFER' THEN COALESCE(t.principal, t.amount) ELSE t.amount END) " +
+        "SELECT $EFFECTIVE_CATEGORY AS categoryId, " +
+            "SUM(CASE WHEN t.type = 'TRANSFER' THEN COALESCE(t.principal, t.amount) ELSE t.amount END) " +
             "AS total, COUNT(*) AS count FROM transactions t LEFT JOIN settings ls ON ls.deletedAt IS NULL WHERE t.deletedAt IS NULL " +
             "AND $EFFECTIVE_CATEGORY IS NOT NULL AND t.occurredAt >= :from AND t.occurredAt < :to GROUP BY $EFFECTIVE_CATEGORY",
     )

@@ -1,11 +1,11 @@
 package com.dev.julian09.financeapp.domain
 
+import com.dev.julian09.financeapp.domain.finance.FoxMood
+import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountFlows
 import com.dev.julian09.financeapp.domain.model.AccountType
-import com.dev.julian09.financeapp.domain.finance.FoxMood
-import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.usecase.HomeDashboard

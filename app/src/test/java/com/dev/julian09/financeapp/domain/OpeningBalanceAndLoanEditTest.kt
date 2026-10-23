@@ -168,7 +168,15 @@ class OpeningBalanceAndLoanEditTest {
                 LoanEdit("Libre inversión", BigDecimal("0.015"), RateType.MV, paymentDay = 10, Money.ZERO, Money.ZERO),
             )
             // The 10th of November has passed on the 20th: the next one is December's
-            assertEquals(LocalDate.of(2026, 12, 10), f.observeLoans().first().single().next!!.dueDate)
+            assertEquals(
+                LocalDate.of(2026, 12, 10),
+                f
+                    .observeLoans()
+                    .first()
+                    .single()
+                    .next!!
+                    .dueDate,
+            )
         }
 
     @Test
@@ -176,24 +184,62 @@ class OpeningBalanceAndLoanEditTest {
         runBlocking {
             val id = loan()
             val cash = f.account("Efectivo", 10_000_000)
-            val validator = com.dev.julian09.financeapp.domain.usecase.TransactionValidator(f.accounts, f.categories)
+            val validator =
+                com.dev.julian09.financeapp.domain.usecase
+                    .TransactionValidator(f.accounts, f.categories)
             val paidOn = java.time.Instant.parse("2026-11-05T15:00:00Z")
-            com.dev.julian09.financeapp.domain.usecase.PayLoanInstallment(f.observeLoans, f.loans, validator, scheduler, f.clock)(
+            com.dev.julian09.financeapp.domain.usecase
+                .PayLoanInstallment(f.observeLoans, f.loans, validator, scheduler, f.clock)(
                 id,
                 cash,
                 Money.ZERO,
                 paidOn,
             )
-            val payment = f.db.transactions().observeByAccount(id).first().single { it.paymentKind != null }
-            assertEquals(paidOn, f.db.cards().getInstallment(payment.installmentId!!)!!.paidAt)
+            val payment =
+                f.db
+                    .transactions()
+                    .observeByAccount(id)
+                    .first()
+                    .single { it.paymentKind != null }
+            assertEquals(
+                paidOn,
+                f.db
+                    .cards()
+                    .getInstallment(payment.installmentId!!)!!
+                    .paidAt,
+            )
 
             val newDate = java.time.Instant.parse("2026-11-03T15:00:00Z")
-            assertTrue(com.dev.julian09.financeapp.domain.usecase.ChangePaymentDate(f.transactions, scheduler)(payment.id, newDate))
-            assertEquals(newDate, f.db.transactions().get(payment.id)!!.occurredAt)
-            assertEquals(newDate, f.db.cards().getInstallment(payment.installmentId!!)!!.paidAt)
+            assertTrue(
+                com.dev.julian09.financeapp.domain.usecase
+                    .ChangePaymentDate(f.transactions, scheduler)(payment.id, newDate),
+            )
+            assertEquals(
+                newDate,
+                f.db
+                    .transactions()
+                    .get(payment.id)!!
+                    .occurredAt,
+            )
+            assertEquals(
+                newDate,
+                f.db
+                    .cards()
+                    .getInstallment(payment.installmentId!!)!!
+                    .paidAt,
+            )
             // The amount stays, and an ordinary movement is not a payment
-            assertEquals(payment.amount, f.db.transactions().get(payment.id)!!.amount)
+            assertEquals(
+                payment.amount,
+                f.db
+                    .transactions()
+                    .get(payment.id)!!
+                    .amount,
+            )
             val other = f.tx("EXPENSE", 5, cash)
-            assertFalse(com.dev.julian09.financeapp.domain.usecase.ChangePaymentDate(f.transactions, scheduler)(other, newDate))
+            assertFalse(
+                com.dev.julian09.financeapp.domain.usecase
+                    .ChangePaymentDate(f.transactions, scheduler)(other, newDate),
+            )
         }
 }
