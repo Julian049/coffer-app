@@ -55,6 +55,7 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.BubbleRow
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.CATEGORY_ICONS
 import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
@@ -62,7 +63,6 @@ import com.dev.julian09.financeapp.ui.components.IconBubble
 import com.dev.julian09.financeapp.ui.components.IconPickerSheet
 import com.dev.julian09.financeapp.ui.components.IconRow
 import com.dev.julian09.financeapp.ui.components.MoneyText
-import com.dev.julian09.financeapp.ui.components.MoreBubble
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.message
@@ -371,14 +371,18 @@ private fun NewCategorySheet(
         )
         Text("Ubicación · dentro de qué categoría va", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         val chosen = ofKind.firstOrNull { it.id == sheet.parentId }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            IconBubble("Principal", Icons.Outlined.Category, selected = sheet.parentId == null) { onEdit { it.copy(parentId = null) } }
-            (listOfNotNull(chosen) + ofKind).distinctBy { it.id }.take(3).forEach { parent ->
-                IconBubble(parent.name, categoryIcon(parent.icon), selected = sheet.parentId == parent.id) {
+        val parents = (listOfNotNull(chosen) + ofKind).distinctBy { it.id }.take(3)
+        BubbleRow(parents.size + 1, onMore = { morePlaces = true }) { i, cell ->
+            if (i == 0) {
+                IconBubble("Principal", Icons.Outlined.Category, selected = sheet.parentId == null, modifier = cell) {
+                    onEdit { it.copy(parentId = null) }
+                }
+            } else {
+                val parent = parents[i - 1]
+                IconBubble(parent.name, categoryIcon(parent.icon), selected = sheet.parentId == parent.id, modifier = cell) {
                     onEdit { it.copy(parentId = parent.id) }
                 }
             }
-            MoreBubble { morePlaces = true }
         }
         Text("Ícono", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         IconRow(sheet.icon, CATEGORY_ICONS.map { it.first }, onPick = { key -> onEdit { it.copy(icon = key) } })

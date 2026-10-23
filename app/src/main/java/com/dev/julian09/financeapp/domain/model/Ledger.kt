@@ -13,6 +13,9 @@ enum class AccountType {
 
     /** Credit cards and loans hold a debt: their balance shows negative (REQ-TC-04). */
     val isDebt: Boolean get() = this == CREDIT_CARD || this == LOAN
+
+    /** S15-DOM02: loans are only seen in Gestión de cuentas; movements, transfers and Home never offer one. */
+    val isPickable: Boolean get() = this != LOAN
 }
 
 data class Account(

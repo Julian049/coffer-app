@@ -28,6 +28,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.outlined.NorthWest
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SouthEast
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.AlertDialog
@@ -61,6 +64,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -86,10 +91,10 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.BubbleRow
 import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.IconBubble
-import com.dev.julian09.financeapp.ui.components.MoreBubble
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.accountIcon
@@ -239,8 +244,10 @@ fun TransactionFormContent(
                 selectedIndex = TYPES.indexOf(state.type),
                 onSelect = { actions.onType(TYPES[it]) },
                 modifier = Modifier.fillMaxWidth(),
+                // S15-UI03: the same icons as Home's quick actions
+                icons = listOf(Icons.Outlined.ArrowDownward, Icons.Outlined.ArrowUpward, Icons.Outlined.SwapHoriz),
             )
-            AmountCard(state, actions.onAmount)
+            AmountCard(state, actions.onAmount, focusOnOpen = state.editingId == null)
             // Figma «Título» (S12-UI01): the name, with the titles used before (M5)
             TitleCard(state, choices, actions)
             if (transfer) {
@@ -326,9 +333,13 @@ fun TransactionFormContent(
 private fun AmountCard(
     state: TransactionFormState,
     onAmount: (String) -> Unit,
+    focusOnOpen: Boolean,
 ) {
     val colors = CofferTheme.colors
     val error = state.errors[TransactionField.AMOUNT]
+    // S15-UI02: a new movement opens on the amount with the keyboard up; editing one does not
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(focusOnOpen) { if (focusOnOpen) focus.requestFocus() }
     AppCard(Modifier.fillMaxWidth()) {
         Text(
             if (state.type == TransactionType.TRANSFER) "Monto a transferir" else "Monto de la transacción",
@@ -343,7 +354,7 @@ private fun AmountCard(
                 value = state.amountDigits,
                 visualTransformation = PesosTransformation(symbol = false),
                 onValueChange = onAmount,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).focusRequester(focus),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 textStyle =
@@ -464,11 +475,9 @@ private fun CategoryCard(
     val quick = (listOfNotNull(selected) + ranked).distinctBy { it.id }.take(QUICK_CATEGORIES)
     AppCard {
         Text("Categoría", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            quick.forEach { c ->
-                IconBubble(c.name, iconOf(c, choices.categories), selected = c.id == state.categoryId) { onCategory(c.id) }
-            }
-            MoreBubble { picking = true }
+        BubbleRow(quick.size, onMore = { picking = true }) { i, cell ->
+            val c = quick[i]
+            IconBubble(c.name, iconOf(c, choices.categories), selected = c.id == state.categoryId, modifier = cell) { onCategory(c.id) }
         }
         state.errors[TransactionField.CATEGORY]?.let {
             Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense)

@@ -80,7 +80,14 @@ class RecurringFormViewModel
 
         val choices: StateFlow<RecurringChoices> =
             combine(accounts.observeBalances(), categories.observeAll(), settings.observe()) { accs, cats, s ->
-                RecurringChoices(accs.filter { it.account.active }, cats.filter { it.kind == CategoryKind.EXPENSE }, s.reminderLeadDays)
+                RecurringChoices(
+                    accs.filter { it.account.active && it.account.type.isPickable },
+                    cats.filter {
+                        it.kind ==
+                            CategoryKind.EXPENSE
+                    },
+                    s.reminderLeadDays,
+                )
             }.stateIn(viewModelScope, SharingStarted.Eagerly, RecurringChoices())
 
         init {
@@ -107,7 +114,7 @@ class RecurringFormViewModel
                         transactions.lastUsedAccountId() ?: accounts
                             .observeActive()
                             .first()
-                            .firstOrNull()
+                            .firstOrNull { it.type.isPickable }
                             ?.id
                     _state.update { it.copy(accountId = account) }
                 }

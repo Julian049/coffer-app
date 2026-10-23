@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Loans are only seen in Gestión de cuentas: the movement, transfer, recurring and pending-payment pickers, the Home carousel and Personalizar inicio no longer offer them, and the default account is never a loan (S15-H02, #159)
+- Nueva transacción: the amount takes the focus with the keyboard up, the tabs carry the Home quick-action icons, and the category row is five equal cells with «Más» in the fifth (also in Filtros and Nueva categoría)
+
 ### Fixed
 
 - The History summary leaves out categories excluded from reports and the opening balance, like Home (S15-H01, #158)

@@ -127,9 +127,14 @@ class TransactionFormViewModel
             )
         val state: StateFlow<TransactionFormState> = _state.asStateFlow()
 
+        // S15-DOM02: a loan is never offered, except to the movement being edited that already uses it
+        private val keptAccounts = MutableStateFlow(emptySet<UUID>())
+
         val choices: StateFlow<TransactionChoices> =
             combine(
-                accounts.observeBalances(),
+                combine(accounts.observeBalances(), keptAccounts) { accs, kept ->
+                    accs.filter { it.account.type.isPickable || it.account.id in kept }
+                },
                 categories.observeAll(),
                 tags.observeAll(),
                 observeCards(),
@@ -150,6 +155,7 @@ class TransactionFormViewModel
                 if (id != null) {
                     transactions.observe(id).first()?.let { t ->
                         original = t
+                        keptAccounts.value = setOfNotNull(t.accountId, t.destinationAccountId)
                         _state.update {
                             it.copy(
                                 type = t.type,
@@ -170,7 +176,7 @@ class TransactionFormViewModel
                         transactions.lastUsedAccountId() ?: accounts
                             .observeActive()
                             .first()
-                            .firstOrNull()
+                            .firstOrNull { it.type.isPickable }
                             ?.id
                     _state.update { it.copy(accountId = account) }
                 }

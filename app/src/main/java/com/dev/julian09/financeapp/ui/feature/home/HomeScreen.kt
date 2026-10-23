@@ -239,7 +239,7 @@ fun HomeContent(
                         }
                     HomeSection.QUICK_ACTIONS -> QuickActions(onNewTransaction)
                     HomeSection.ACCOUNTS -> {
-                        val active = dashboard.accounts.filter { it.account.active }
+                        val active = dashboard.accounts.filter { it.account.active && it.account.type.isPickable }
                         SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
                         LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(active, key = { it.account.id }) { AccountChipCard(it, onClick = { onOpenAccount(it.account.id) }) }

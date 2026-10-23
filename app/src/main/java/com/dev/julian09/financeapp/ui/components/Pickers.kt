@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -56,7 +57,7 @@ fun IconBubble(
     label: String,
     icon: ImageVector,
     selected: Boolean,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.width(72.dp),
     outlined: Boolean = false,
     checked: Boolean = false,
     multiple: Boolean = false,
@@ -71,7 +72,6 @@ fun IconBubble(
         }
     Column(
         modifier
-            .width(72.dp)
             .clip(CofferShapes.card)
             .then(choose)
             .padding(vertical = 4.dp),
@@ -126,7 +126,28 @@ fun IconBubble(
 
 /** «Más» of every picker row. */
 @Composable
-fun MoreBubble(onClick: () -> Unit) = IconBubble("Más", Icons.Outlined.GridView, selected = false, outlined = true, onClick = onClick)
+fun MoreBubble(
+    modifier: Modifier = Modifier.width(72.dp),
+    onClick: () -> Unit,
+) = IconBubble("Más", Icons.Outlined.GridView, selected = false, outlined = true, modifier = modifier, onClick = onClick)
+
+/**
+ * S15-UI04: the quick row of a picker, five equal cells that share the width (a phone is 360 to 412 dp wide), with «Más»
+ * always in the fifth whatever the number of [count] categories before it.
+ */
+@Composable
+fun BubbleRow(
+    count: Int,
+    onMore: () -> Unit,
+    cell: @Composable (index: Int, modifier: Modifier) -> Unit,
+) {
+    Row(Modifier.fillMaxWidth()) {
+        repeat(QUICK_CELLS - 1) { i -> if (i < count) cell(i, Modifier.weight(1f)) else Spacer(Modifier.weight(1f)) }
+        MoreBubble(Modifier.weight(1f), onMore)
+    }
+}
+
+private const val QUICK_CELLS = 5
 
 /** Rows of [columns] cells, the last one padded so every cell keeps its place. */
 @Composable

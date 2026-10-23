@@ -342,7 +342,7 @@ interface TransactionDao {
     /** REQ-TRX-05 / SEQ-04: the account of the last movement registered, if it is still active. */
     @Query(
         "SELECT t.accountId FROM transactions t JOIN accounts a ON a.id = t.accountId " +
-            "WHERE t.deletedAt IS NULL AND a.deletedAt IS NULL AND a.active = 1 ORDER BY t.createdAt DESC LIMIT 1",
+            "WHERE t.deletedAt IS NULL AND a.deletedAt IS NULL AND a.active = 1 AND a.type <> 'LOAN' ORDER BY t.createdAt DESC LIMIT 1",
     )
     suspend fun lastUsedAccountId(): UUID?
 
