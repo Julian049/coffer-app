@@ -7,6 +7,7 @@ import com.dev.julian09.financeapp.data.local.dao.CardDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
 import com.dev.julian09.financeapp.data.local.dao.ChangeLogDao
 import com.dev.julian09.financeapp.data.local.dao.LoanDao
+import com.dev.julian09.financeapp.data.local.dao.NoteRow
 import com.dev.julian09.financeapp.data.local.dao.RecurringDao
 import com.dev.julian09.financeapp.data.local.dao.SettingsDao
 import com.dev.julian09.financeapp.data.local.dao.SyncMetaDao
@@ -452,7 +453,8 @@ class TransactionRepositoryImpl
             limit: Int,
         ): List<NoteSuggestion> {
             val pattern = like(text).ifEmpty { return emptyList() }
-            return dao.notes(type.name, pattern, limit).map { NoteSuggestion(it.note, it.categoryId, it.accountId) }
+            // More rows than [limit]: the ranking can bring a later row up
+            return rankNotes(text, dao.notes(type.name, pattern, NOTE_CANDIDATES)).take(limit)
         }
 
         override fun observeSince(from: Instant): Flow<List<Transaction>> =
@@ -1034,3 +1036,32 @@ internal fun homeCards(text: String): List<HomeCard> =
         .map { HomeCard(it.key, it.visible) }
 
 internal fun homeCardsJson(cards: List<HomeCard>): String = cardsJson.encodeToString(cards.map { HomeCardJson(it.key, it.visible) })
+
+private const val NOTE_CANDIDATES = 100
+
+/**
+ * S15-DOM01: exact, then prefix, then start of a word, then contains; ties by use and then by date (the rows come latest
+ * first). Notes that differ only in case are one suggestion, the most recent.
+ */
+internal fun rankNotes(
+    text: String,
+    rows: List<NoteRow>,
+): List<NoteSuggestion> {
+    val query = text.trim().lowercase()
+
+    fun rank(note: String): Int {
+        val n = note.lowercase()
+        return when {
+            n == query -> 0
+            n.startsWith(query) -> 1
+            n.split(' ', '-', '/').any { it.startsWith(query) } -> 2
+            else -> 3
+        }
+    }
+    return rows
+        .groupBy { it.note.lowercase() }
+        .values
+        .map { group -> group.first() to group.sumOf { it.uses } }
+        .sortedWith(compareBy({ rank(it.first.note) }, { -it.second }))
+        .map { (row, _) -> NoteSuggestion(row.note, row.categoryId, row.accountId) }
+}

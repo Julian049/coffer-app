@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The History summary leaves out categories excluded from reports and the opening balance, like Home (S15-H01, #158)
+- Reportes: in «Ahorro por mes» each month sits under its bar
+- The title suggestion shows the best match first (exact, prefix, start of a word, contains), also when it is the exact one, and merges notes that differ only in case
+
 ### Changed
 
 - Links to `coffer-docs` removed from the README and the issue template, because it is now private; a Gitleaks workflow scans every PR and push for secrets

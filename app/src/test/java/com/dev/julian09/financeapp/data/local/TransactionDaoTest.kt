@@ -108,4 +108,27 @@ class TransactionDaoTest {
             assertTrue(first.hasMore)
             assertFalse(search(october, 6).first().hasMore)
         }
+
+    @Test
+    fun theSummaryLeavesOutCategoriesExcludedFromReportsUnlessTheFilterNamesThem() =
+        runBlocking {
+            val cash = f.account("Efectivo")
+            val savings = f.category("Ahorros", excluded = true)
+            val fund = f.category("Fondo", parent = savings)
+            val opening = f.category("Saldo inicial", "INCOME", systemKey = "OPENING_BALANCE", excluded = true)
+            val food = f.category("Comida")
+            val at = Instant.parse("2026-10-10T12:00:00Z")
+            f.tx("EXPENSE", 10, cash, at = at, category = food)
+            f.tx("EXPENSE", 50, cash, at = at, category = savings)
+            f.tx("EXPENSE", 7, cash, at = at, category = fund)
+            f.tx("INCOME", 1_000, cash, at = at, category = opening)
+
+            val all = search(october, 100).first().totals
+            assertEquals(Money.ofPesos(10), all.expense)
+            assertEquals(Money.ofPesos(0), all.income)
+            // The list and the pagination still see the four rows
+            assertEquals(4, all.count)
+            // An explicit filter counts the category, and its subcategories through the parent
+            assertEquals(Money.ofPesos(57), search(october.copy(categoryIds = setOf(savings)), 100).first().totals.expense)
+        }
 }

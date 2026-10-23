@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -179,7 +180,7 @@ fun ReportsContent(
                 Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textSecondary,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -468,44 +469,47 @@ private fun SavingsByPeriod(state: ReportsState) {
                 else -> "Ahorro por mes"
             },
         ) { report.averageSavings?.let { Reference("Promedio ${formatMoney(it)}") } }
-        Row(Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
+        // S15-UI01: the label lives in the bar's own column, so each month sits under its bar whatever the label's width
+        Row(Modifier.fillMaxWidth()) {
             report.evolution.forEachIndexed { i, sums ->
                 val value = savings[i]
                 val running = i == savings.lastIndex && !report.closed
                 val fraction = (value.scaled.coerceAtLeast(0) / top).coerceIn(0.02f, 1f)
                 Column(
-                    Modifier.fillMaxHeight().semantics { contentDescription = "${barLabel(state.span, sums)}: ${formatMoney(value)}" },
+                    Modifier.weight(1f).semantics { contentDescription = "${barLabel(state.span, sums)}: ${formatMoney(value)}" },
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom,
                 ) {
-                    Text(shortMoney(value), style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
-                    Box(
-                        Modifier
-                            .padding(top = 4.dp)
-                            .width(32.dp)
-                            .fillMaxHeight(fraction * 0.8f)
-                            .then(
-                                if (running) {
-                                    Modifier.dashedBorder(colors.textSecondary)
-                                } else {
-                                    Modifier.background(
-                                        if (value == best) colors.primary else colors.borderHighlight,
-                                        RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
-                                    )
-                                },
-                            ),
+                    Column(
+                        Modifier.fillMaxWidth().height(150.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                    ) {
+                        Text(shortMoney(value), style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+                        Box(
+                            Modifier
+                                .padding(top = 4.dp)
+                                .width(32.dp)
+                                .fillMaxHeight(fraction * 0.8f)
+                                .then(
+                                    if (running) {
+                                        Modifier.dashedBorder(colors.textSecondary)
+                                    } else {
+                                        Modifier.background(
+                                            if (value == best) colors.primary else colors.borderHighlight,
+                                            RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
+                                        )
+                                    },
+                                ),
+                        )
+                    }
+                    Text(
+                        barLabel(state.span, sums) + if (running) "\nen curso" else "",
+                        Modifier.padding(top = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        textAlign = TextAlign.Center,
                     )
                 }
-            }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            report.evolution.forEachIndexed { i, sums ->
-                val running = i == report.evolution.lastIndex && !report.closed
-                Text(
-                    barLabel(state.span, sums) + if (running) " · en curso" else "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textSecondary,
-                )
             }
         }
     }

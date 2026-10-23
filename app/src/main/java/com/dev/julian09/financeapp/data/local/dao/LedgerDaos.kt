@@ -54,6 +54,7 @@ data class NoteRow(
     val note: String,
     val categoryId: UUID?,
     val accountId: UUID?,
+    val uses: Int,
 )
 
 data class SearchTotalsRow(
@@ -88,6 +89,8 @@ private const val SEARCH_FROM =
       AND (:like = '' OR t.note LIKE :like ESCAPE '\' OR c.name LIKE :like ESCAPE '\' OR p.name LIKE :like ESCAPE '\'
            OR a.name LIKE :like ESCAPE '\' OR d.name LIKE :like ESCAPE '\' OR g.name LIKE :like ESCAPE '\')
     """
+
+private const val COUNTED = "(NOT :anyCategory OR COALESCE(p.excludeFromReports, c.excludeFromReports, 0) = 0)"
 
 @Dao
 interface AccountDao {
@@ -324,7 +327,7 @@ interface TransactionDao {
 
     // SQLite takes the bare categoryId from the row that holds MAX(occurredAt): the latest use of each note
     @Query(
-        "SELECT note, categoryId, accountId FROM transactions WHERE deletedAt IS NULL AND type = :type AND note LIKE :like ESCAPE '\\' " +
+        "SELECT note, categoryId, accountId, COUNT(*) AS uses FROM transactions WHERE deletedAt IS NULL AND type = :type AND note LIKE :like ESCAPE '\\' " +
             "GROUP BY note ORDER BY MAX(occurredAt) DESC LIMIT :limit",
     )
     suspend fun notes(
@@ -398,10 +401,14 @@ interface TransactionDao {
         limit: Int,
     ): Flow<List<TransactionEntity>>
 
-    /** The same filters, summed for the summary card; transfers are neither (REQ-TRX-03). */
+    /**
+     * The same filters, summed for the summary card; transfers are neither (REQ-TRX-03). Like Home, the sums skip categories
+     * excluded from reports (and so the opening balance) unless the filter names a category; COUNT(*) stays whole because it
+     * drives the pagination.
+     */
     @Query(
-        "SELECT COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS income, " +
-            "COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount END), 0) AS expense, COUNT(*) AS count $SEARCH_FROM",
+        "SELECT COALESCE(SUM(CASE WHEN t.type = 'INCOME' AND $COUNTED THEN t.amount END), 0) AS income, " +
+            "COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' AND $COUNTED THEN t.amount END), 0) AS expense, COUNT(*) AS count $SEARCH_FROM",
     )
     fun searchTotals(
         from: Instant,

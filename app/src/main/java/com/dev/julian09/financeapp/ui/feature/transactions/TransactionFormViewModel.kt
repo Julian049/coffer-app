@@ -207,7 +207,7 @@ class TransactionFormViewModel
 
         private var suggesting: Job? = null
 
-        /** M5: from 2 letters on, earlier notes of the same type that contain the text. */
+        /** M5: from 2 letters on, earlier notes of the same type that contain the text, the most relevant first. */
         fun setNote(value: String) {
             edit { it.copy(note = value) }
             suggesting?.cancel()
@@ -218,12 +218,8 @@ class TransactionFormViewModel
             }
             suggesting =
                 viewModelScope.launch {
-                    // Figma `114:268`: one row, the most recent match, never a list
-                    val found =
-                        transactions
-                            .suggestNotes(_state.value.type, text)
-                            .filterNot { it.note.equals(text, ignoreCase = true) }
-                            .take(1)
+                    // Figma `114:268`: one row, the best match (also the exact one: it fills the category and the account)
+                    val found = transactions.suggestNotes(_state.value.type, text).take(1)
                     _state.update { it.copy(suggestions = found) }
                 }
         }

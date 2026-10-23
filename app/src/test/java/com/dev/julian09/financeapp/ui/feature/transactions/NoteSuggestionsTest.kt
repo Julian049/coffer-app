@@ -106,4 +106,23 @@ class NoteSuggestionsTest {
             assertEquals(restaurants, vm.state.value.categoryId)
             assertEquals(emptyList<Any>(), vm.state.value.suggestions)
         }
+
+    @Test
+    fun theBestMatchComesFirstAndNotesDifferingInCaseAreOne() =
+        runBlocking {
+            val cash = f.account("Efectivo")
+            val transport = f.category("Transporte")
+            val food = f.category("Comida")
+            spend("Hamburguer", food, cash, daysAgo = 1)
+            spend("Hamburguer", food, cash, daysAgo = 2)
+            spend("Pasaje en bus", transport, cash, daysAgo = 3)
+            spend("Bus", transport, cash, daysAgo = 8)
+            spend("bus", transport, cash, daysAgo = 9)
+            spend("Busetón", transport, cash, daysAgo = 4)
+
+            // Exact first (it is shown: it fills the category and the account), then prefix, then start of a word
+            assertEquals(listOf("Bus", "Busetón", "Pasaje en bus"), f.transactions.suggestNotes(TransactionType.EXPENSE, "Bus").map { it.note })
+            // "bu" no longer brings "Hamburguer" before the notes that start with it
+            assertEquals("Hamburguer", f.transactions.suggestNotes(TransactionType.EXPENSE, "bu").last().note)
+        }
 }
