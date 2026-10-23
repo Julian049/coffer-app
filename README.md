@@ -37,7 +37,7 @@
 
 **Coffer** es una app Android de finanzas personales **offline-first**: todo funciona sin conexión sobre una base de datos cifrada en el teléfono y se respalda en la nube cuando hay red. El nombre viene de *coffer*, el cofre donde se guarda el dinero, y suena a *coffee*: un guiño a Colombia. Por eso la mascota es un zorro con un grano de café.
 
-Este repositorio es el cliente Android. El servicio en la nube está en [coffer-server](https://github.com/Julian049/coffer-server) y toda la documentación (requisitos, arquitectura, diseño, pruebas) en [coffer-docs](https://github.com/Julian049/coffer-docs).
+Este repositorio es el cliente Android. El servicio en la nube está en [coffer-server](https://github.com/Julian049/coffer-server). La documentación del proyecto (requisitos, arquitectura, diseño, pruebas) está en un repositorio privado.
 
 ## Funciones
 
@@ -107,7 +107,7 @@ La app sigue una arquitectura por capas:
 - `domain/`: modelos, casos de uso y los cálculos financieros (cuotas, tasas EA↔MV, saldos, reportes, el zorro). No depende de Android.
 - `data/`: Room, sincronización, red e importación.
 
-La sincronización empuja los cambios pendientes y trae los del servidor por lotes, con un cursor de versión, y gana el último cambio. El detalle está en `CLAUDE.md` y en el [diseño detallado](https://github.com/Julian049/coffer-docs/blob/main/03-design/detailed-design.md).
+La sincronización empuja los cambios pendientes y trae los del servidor por lotes, con un cursor de versión, y gana el último cambio. El detalle está en `CLAUDE.md`.
 
 ## Desarrollo
 
@@ -127,18 +127,18 @@ La sincronización empuja los cambios pendientes y trae los del servidor por lot
 | `staging` | `coffer-server-staging` | Probar cada PR |
 | `release` | `coffer-server` | Versión publicada, firmada en CI |
 
-La CI corre lint, ktlint, las pruebas, la verificación de capturas y el APK de staging en cada PR. Un tag `vX.Y.Z` en `main` dispara `release.yml`: pruebas instrumentadas en API 31, APK y AAB firmados y la GitHub Release. Ramas, versiones y releases siguen la [gestión de la configuración](https://github.com/Julian049/coffer-docs/blob/main/06-settings/manage-config.md). El `applicationId` (`com.dev.julian09.financeapp`) no cambia nunca.
+La CI corre lint, ktlint, las pruebas, la verificación de capturas y el APK de staging en cada PR. Un tag `vX.Y.Z` en `main` dispara `release.yml`: pruebas instrumentadas en API 31, APK y AAB firmados y la GitHub Release. Ramas, versiones y releases siguen la gestión de la configuración del proyecto (documentación privada). El `applicationId` (`com.dev.julian09.financeapp`) no cambia nunca.
 
 ## Documentación
 
+La documentación del proyecto (requisitos, arquitectura, diseño, contrato de la API, plan de pruebas) está en un repositorio privado.
+
 | Necesitas… | Documento |
 | --- | --- |
-| Qué hace Coffer | [Requisitos (SRS)](https://github.com/Julian049/coffer-docs/blob/main/01-requirements/srs.md) |
-| Por qué está diseñada así | [Arquitectura y ADR](https://github.com/Julian049/coffer-docs/tree/main/02-architecture) |
-| Cómo funciona cada pieza | [Diseño detallado](https://github.com/Julian049/coffer-docs/blob/main/03-design/detailed-design.md) |
-| El contrato con el servidor | [OpenAPI](https://github.com/Julian049/coffer-docs/blob/main/04-api/openapi.yml) |
-| Cómo se prueba | [Plan de pruebas y reportes](https://github.com/Julian049/coffer-docs/tree/main/05-test) |
 | Qué cambió en cada versión | [CHANGELOG](CHANGELOG.md) |
+| Cómo se trata tu información | [Política de privacidad](https://julian049.github.io/coffer-app/privacy-policy.html) |
+| Reglas de uso | [Términos de uso](https://julian049.github.io/coffer-app/terms.html) |
+| Bibliotecas de terceros | [Avisos de terceros](https://julian049.github.io/coffer-app/third-party-notices.html) |
 
 ## Licencia
 
