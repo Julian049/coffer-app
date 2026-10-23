@@ -371,6 +371,8 @@ class TagRepositoryImpl
             pinned: Boolean,
         ) = dao.setPinned(id, pinned, clock.now())
 
+        override suspend fun movementCount(id: UUID): Int = dao.movementCount(id)
+
         override suspend fun delete(id: UUID) {
             val now = clock.now()
             db.withTransaction {
@@ -422,6 +424,29 @@ class TransactionRepositoryImpl
                 val after = transaction.toEntity(createdAt = before.createdAt, updatedAt = now)
                 dao.upsert(listOf(after))
                 history.log("UPDATE", before, after, now)
+            }
+
+        override suspend fun changePaymentDate(
+            id: UUID,
+            occurredAt: Instant,
+        ): Boolean =
+            db.withTransaction {
+                val before = dao.get(id)?.takeIf { it.deletedAt == null && it.paymentKind != null } ?: return@withTransaction false
+                val now = clock.now()
+                val after = before.copy(occurredAt = occurredAt, updatedAt = now, syncState = SyncState.PENDING, syncError = null)
+                dao.upsert(listOf(after))
+                history.log("UPDATE", before, after, now)
+                // A loan payment settled one installment; a card payment, those stamped with its date (payments from before 1.6.0
+                // were stamped with the day they were registered and stay as they were)
+                val settled =
+                    before.installmentId?.let { listOfNotNull(cards.getInstallment(it)) }
+                        ?: before.destinationAccountId?.let { cards.installmentsPaidOn(it, before.occurredAt) }.orEmpty()
+                cards.upsertInstallments(
+                    settled.filter { it.status == "PAID" }.map {
+                        it.copy(paidAt = occurredAt, updatedAt = now, syncState = SyncState.PENDING, syncError = null)
+                    },
+                )
+                true
             }
 
         override suspend fun delete(id: UUID) =

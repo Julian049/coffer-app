@@ -291,7 +291,13 @@ class TransactionFormViewModel
                     categoryId = s.categoryId,
                     tagId = s.tagId.takeIf { s.type != TransactionType.TRANSFER },
                     // Without a title the movement is saved under its category's name (PO, 2026-10-23)
-                    note = s.note.ifBlank { choices.value.categories.firstOrNull { it.id == s.categoryId }?.name.orEmpty() },
+                    note =
+                        s.note.ifBlank {
+                            choices.value.categories
+                                .firstOrNull { it.id == s.categoryId }
+                                ?.name
+                                .orEmpty()
+                        },
                     concept =
                         s.concept
                             .trim()

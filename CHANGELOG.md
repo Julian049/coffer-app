@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A registered payment (loan installment, extra payment, card payment) can change its date from its detail, and the installments it settled follow; paying an installment or a card asks for the date and time (S15-H05, #162)
+- Gastos recurrentes: tapping a row opens Hoja · Pendiente, and Editar gasto recurrente has «Finalizar recurrencia»
+- Detalle de etiqueta: a trash beside the pencil deletes the tag after telling how many movements lose it
 - Historial: the search also finds the movements of an exact amount typed as `45000`, `45.000`, `$45.000` or `45.000,50` (S15-H03, #160)
 
 ### Changed
@@ -19,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Editar préstamo: a payment day earlier than today no longer leaves the next installment overdue
 - The History summary leaves out categories excluded from reports and the opening balance, like Home (S15-H01, #158)
 - Reportes: in «Ahorro por mes» each month sits under its bar
 - The title suggestion shows the best match first (exact, prefix, start of a word, contains), also when it is the exact one, and merges notes that differ only in case

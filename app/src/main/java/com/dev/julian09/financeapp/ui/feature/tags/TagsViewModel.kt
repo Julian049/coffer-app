@@ -244,12 +244,27 @@ class TagDetailViewModel
             val s = _sheet.value ?: return
             viewModelScope.launch {
                 val error = renameTag(id, s.name)
+                if (error == null && s.editing != null && s.pinned != s.editing.pinned) pinTag(id, s.pinned)
                 _sheet.value = if (error == null) null else s.copy(error = error)
             }
         }
 
+        private val _deleting = MutableStateFlow<Int?>(null)
+
+        /** S15-UI08: the movements that lose the tag, while the delete is being confirmed; null otherwise. */
+        val deleting: StateFlow<Int?> = _deleting.asStateFlow()
+
+        fun askDelete() {
+            viewModelScope.launch { _deleting.value = tags.movementCount(id) }
+        }
+
+        fun cancelDelete() {
+            _deleting.value = null
+        }
+
         fun delete(onDeleted: () -> Unit) {
             viewModelScope.launch {
+                _deleting.value = null
                 _sheet.value = null
                 deleteTag(id)
                 onDeleted()

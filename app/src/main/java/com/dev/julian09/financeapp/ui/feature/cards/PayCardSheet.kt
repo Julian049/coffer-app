@@ -36,8 +36,12 @@ import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
 import com.dev.julian09.financeapp.ui.feature.transactions.AccountPicker
+import com.dev.julian09.financeapp.ui.feature.transactions.DateTimeCard
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 
 /** Hoja · Pagar tarjeta, shown while [cardId] is set. */
@@ -57,7 +61,15 @@ fun PayCardSheet(
         }
     }
     if (cardId == null || state.overview?.card?.accountId != cardId) return
-    val actions = PayCardActions(viewModel::setKind, viewModel::setAmount, viewModel::setSource, viewModel::confirm, onDismiss)
+    val actions =
+        PayCardActions(
+            viewModel::setKind,
+            viewModel::setAmount,
+            viewModel::setSource,
+            viewModel::confirm,
+            onDismiss,
+            viewModel::setOccurredAt,
+        )
     AppBottomSheet(onDismiss = onDismiss, actions = { PayCardButtons(actions) }) {
         PayCardContent(state, sources, actions, withButtons = false)
     }
@@ -69,6 +81,7 @@ class PayCardActions(
     val onSource: (UUID) -> Unit = {},
     val onConfirm: () -> Unit = {},
     val onCancel: () -> Unit = {},
+    val onOccurredAt: (Instant) -> Unit = {},
 )
 
 /** SEQ-07: mínimo or total, the source account, an editable amount and how it splits (REQ-TC-10, 11). */
@@ -105,6 +118,8 @@ fun PayCardContent(
             state.kind == CardPaymentKind.TOTAL,
         ) { actions.onKind(CardPaymentKind.TOTAL) }
         AccountPicker("Cuenta de origen", sources, state.sourceId, state.errors[TransactionField.ACCOUNT], actions.onSource)
+        // S15-UI10: the date and time of the payment
+        DateTimeCard(state.occurredAt, actions.onOccurredAt, LocalDate.now(), ZoneId.systemDefault())
         AppTextField(
             value = state.amountDigits,
             visualTransformation = PesosTransformation(),

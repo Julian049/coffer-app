@@ -253,6 +253,10 @@ interface TagDao {
     @Query("SELECT * FROM tags WHERE deletedAt IS NULL ORDER BY pinned DESC, name")
     fun observeAll(): Flow<List<TagEntity>>
 
+    /** S15-UI08: how many movements lose the tag if it is deleted. */
+    @Query("SELECT COUNT(*) FROM transactions WHERE tagId = :id AND deletedAt IS NULL")
+    suspend fun movementCount(id: UUID): Int
+
     @Query("UPDATE tags SET name = :name, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
     suspend fun rename(
         id: UUID,
@@ -689,6 +693,16 @@ interface CardDao {
 
     @Query("SELECT * FROM installments WHERE id = :id")
     suspend fun getInstallment(id: UUID): InstallmentEntity?
+
+    /** S15-DOM04: the installments of a card that a payment settled, stamped with its date. */
+    @Query(
+        "SELECT i.* FROM installments i JOIN deferred_purchases d ON d.id = i.deferredPurchaseId " +
+            "WHERE d.cardAccountId = :cardId AND i.status = 'PAID' AND i.paidAt = :paidAt AND i.deletedAt IS NULL",
+    )
+    suspend fun installmentsPaidOn(
+        cardId: UUID,
+        paidAt: Instant,
+    ): List<InstallmentEntity>
 
     @Query(
         "SELECT t.* FROM transactions t WHERE t.deletedAt IS NULL AND (" +
