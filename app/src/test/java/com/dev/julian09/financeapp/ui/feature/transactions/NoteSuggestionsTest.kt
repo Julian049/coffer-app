@@ -125,4 +125,33 @@ class NoteSuggestionsTest {
             // "bu" no longer brings "Hamburguer" before the notes that start with it
             assertEquals("Hamburguer", f.transactions.suggestNotes(TransactionType.EXPENSE, "bu").last().note)
         }
+
+    @Test
+    fun withoutATitleTheMovementIsSavedUnderItsCategoryName() =
+        runBlocking {
+            f.account("Efectivo", 500_000)
+            val food = f.category("Supermercado")
+            val vm =
+                TransactionFormViewModel(
+                    SavedStateHandle(mapOf("type" to "EXPENSE")),
+                    f.accounts,
+                    f.categories,
+                    f.tags,
+                    f.transactions,
+                    register,
+                    UpdateTransaction(f.transactions, validator, sync),
+                    CreateTag(f.tags, sync),
+                    DeferCardPurchase(f.cards, register, validator, sync, f.clock),
+                    DeleteTransaction(f.transactions, sync),
+                    f.observeCards,
+                    f.clock,
+                )
+            vm.choices.first { it.categories.isNotEmpty() }
+            vm.state.first { it.accountId != null }
+            vm.setAmount("12000")
+            vm.setCategory(food)
+            vm.save()
+            vm.state.first { it.saved }
+            assertEquals("Supermercado", f.transactions.observeRecent(1).first().single().note)
+        }
 }
