@@ -45,6 +45,12 @@ interface AccountRepository {
      */
     suspend fun moveOpeningBalances(): Boolean
 
+    /**
+     * S15-DAT03: creates the expense category «Deudas» (a normal one, with an id that depends on the user) and makes it the
+     * category of loan installments, when none is set yet and it was never created. False when nothing changed.
+     */
+    suspend fun ensureLoanCategory(): Boolean
+
     /** M9: the carousel and the lists follow [ids], first to last. */
     suspend fun reorder(ids: List<UUID>)
 

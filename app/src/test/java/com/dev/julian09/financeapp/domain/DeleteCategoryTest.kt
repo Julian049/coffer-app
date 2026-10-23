@@ -27,7 +27,7 @@ import java.util.UUID
 class DeleteCategoryTest {
     private val f = LedgerFixture()
     private val scheduler = FakeSyncScheduler()
-    private val delete = DeleteCategory(f.categories, f.accounts, scheduler)
+    private val delete = DeleteCategory(f.categories, f.accounts, f.settings, scheduler)
 
     @After
     fun close() = f.db.close()

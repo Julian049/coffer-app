@@ -83,6 +83,7 @@ class SyncTables
                             put("amountDecimals", s.amountDecimals)
                             put("homeCards", homeCards(s.homeCards))
                             put("netBalanceMode", s.netBalanceMode)
+                            s.loanPaymentCategoryId?.let { put("loanPaymentCategoryId", it.toString()) }
                         },
                     )
                 },
@@ -96,6 +97,7 @@ class SyncTables
                         amountDecimals = d.int("amountDecimals"),
                         homeCards = d["homeCards"]?.jsonArray?.toString() ?: "[]",
                         netBalanceMode = d.text("netBalanceMode") ?: "PERIOD",
+                        loanPaymentCategoryId = d.text("loanPaymentCategoryId")?.let(UUID::fromString),
                         createdAt = Instant.parse(c.createdAt),
                         updatedAt = Instant.parse(c.updatedAt),
                         deletedAt = c.deletedAt?.let(Instant::parse),
@@ -132,6 +134,7 @@ class SyncTables
                             put("icon", a.icon)
                             put("color", a.color)
                             put("sortOrder", a.sortOrder)
+                            put("includeInNet", a.includeInNet)
                         },
                     )
                 },
@@ -149,6 +152,7 @@ class SyncTables
                         icon = d.text("icon"),
                         color = d.text("color"),
                         sortOrder = d.int("sortOrder"),
+                        includeInNet = d.boolOr("includeInNet", true),
                         createdAt = Instant.parse(c.createdAt),
                         updatedAt = Instant.parse(c.updatedAt),
                         deletedAt = c.deletedAt?.let(Instant::parse),
@@ -650,6 +654,11 @@ internal fun scaled(amount: String): Long = Money.of(BigDecimal(amount)).scaled
 private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content
 
 private fun JsonObject.bool(key: String): Boolean = this[key]?.jsonPrimitive?.boolean ?: false
+
+private fun JsonObject.boolOr(
+    key: String,
+    default: Boolean,
+): Boolean = (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.boolean ?: default
 
 private fun JsonObject.int(key: String): Int = this[key]?.jsonPrimitive?.int ?: 0
 

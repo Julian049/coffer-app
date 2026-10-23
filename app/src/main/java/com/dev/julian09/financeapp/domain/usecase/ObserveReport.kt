@@ -7,6 +7,7 @@ import com.dev.julian09.financeapp.domain.finance.ReportSpan
 import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -19,6 +20,7 @@ class ObserveReport
         private val transactions: TransactionRepository,
         private val categories: CategoryRepository,
         private val cards: CardRepository,
+        private val settings: SettingsRepository,
         private val clock: Clock,
     ) {
         operator fun invoke(
@@ -32,10 +34,10 @@ class ObserveReport
                 transactions.observeBetween(first.atStartOfDay(zone).toInstant(), end.atStartOfDay(zone).toInstant()),
                 categories.observeAll(),
                 cards.observeDeferred(),
-                cards.observeInstallments(),
+                combine(cards.observeInstallments(), settings.observe()) { installments, s -> installments to s.loanPaymentCategoryId },
                 transactions.observeDeferredPurchases(),
-            ) { rows, all, deferred, installments, purchases ->
-                ReportAggregator.aggregate(span, period, clock.today(), zone, rows, all, deferred, installments, purchases)
+            ) { rows, all, deferred, (installments, loanCategory), purchases ->
+                ReportAggregator.aggregate(span, period, clock.today(), zone, rows, all, deferred, installments, purchases, loanCategory)
             }
         }
     }

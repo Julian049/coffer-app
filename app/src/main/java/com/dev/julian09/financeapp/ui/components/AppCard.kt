@@ -18,12 +18,19 @@ fun AppCard(
     modifier: Modifier = Modifier,
     highlight: Boolean = false,
     onClick: (() -> Unit)? = null,
+    selected: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = CofferTheme.colors
     val shape = if (highlight) CofferShapes.highlight else CofferShapes.card
     val color = if (highlight) colors.surfaceHighlight else colors.surface
-    val border = BorderStroke(1.dp, if (highlight) colors.borderHighlight else colors.border)
+    // A chosen card carries a 1.5 dp border in the selection color (design-system §selection)
+    val border =
+        if (selected) {
+            BorderStroke(1.5.dp, colors.onPrimaryContainer)
+        } else {
+            BorderStroke(1.dp, if (highlight) colors.borderHighlight else colors.border)
+        }
     val body: @Composable () -> Unit = {
         Column(
             modifier = Modifier.padding(if (highlight) 20.dp else 16.dp),

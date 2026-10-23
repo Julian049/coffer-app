@@ -234,7 +234,7 @@ private fun CategoryCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(Modifier.size(48.dp).background(colors.primary, CofferShapes.card), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(48.dp).background(colors.primary, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(categoryIcon(main.icon), contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(24.dp))
             }
             Column(Modifier.weight(1f)) {
@@ -258,20 +258,23 @@ private fun CategoryCard(
                 drawStopIndicator = {},
             )
         }
-        if (node.children.isEmpty()) {
-            Row(Modifier.fillMaxWidth()) {
-                SubTile(Modifier.weight(1f), onClick = { onAddSub(main.id) }) {
-                    Box(Modifier.size(32.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Add, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(18.dp))
-                    }
-                    Text("Primera subcategoría", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-                }
-                Spacer(Modifier.weight(2f))
-            }
-        } else {
-            node.children.chunked(3).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { child ->
+        // S15-UI07: the subcategories in tiles of three, «Añadir» being the last one
+        (node.children + listOf(null)).chunked(3).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { child ->
+                    if (child == null) {
+                        SubTile(Modifier.weight(1f), onClick = { onAddSub(main.id) }) {
+                            Box(Modifier.size(32.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Outlined.Add,
+                                    contentDescription = null,
+                                    tint = colors.iconOnContainer,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                            Text("Añadir", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                        }
+                    } else {
                         SubTile(Modifier.weight(1f), onClick = { onOpen(child.category) }) {
                             Box(
                                 Modifier.size(32.dp).background(colors.iconContainer, CofferShapes.card),
@@ -299,16 +302,8 @@ private fun CategoryCard(
                             )
                         }
                     }
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
-            }
-            Row(
-                Modifier.clip(CofferShapes.pill).clickable { onAddSub(main.id) }.padding(vertical = 6.dp, horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(Icons.Outlined.Add, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(16.dp))
-                Text("Añadir subcategoría", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
@@ -414,7 +409,7 @@ private fun DeleteCategorySheet(
     onConfirm: () -> Unit,
 ) {
     val colors = CofferTheme.colors
-    val needsTarget = sheet.movements > 0
+    val needsTarget = sheet.movements > 0 || sheet.receivesLoans
     AppBottomSheet(onDismiss = onDismiss, title = "Eliminar «${sheet.category.name}»") {
         val parts =
             buildList {
@@ -435,6 +430,7 @@ private fun DeleteCategorySheet(
                 } else {
                     add("No tiene movimientos.")
                 }
+                if (sheet.receivesLoans) add("Es la categoría de las cuotas de tus préstamos: la que elijas las recibirá desde ahora.")
             }
         Text(parts.joinToString(" "), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         if (needsTarget) {

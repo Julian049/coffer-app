@@ -69,6 +69,13 @@ data class CategoryTotalRow(
     val count: Int,
 )
 
+/** S15-DOM05: the principal of a loan payment counts as an expense of the loans' category (Deudas), a transfer otherwise. */
+private const val LOAN_KINDS = "('LOAN_INSTALL', 'LOAN_EXTRA')"
+private const val LOAN_EXPENSE = "(t.type = 'TRANSFER' AND t.paymentKind IN $LOAN_KINDS)"
+
+/** The category a movement counts under: its own, or the loans' category for a loan payment. */
+private const val EFFECTIVE_CATEGORY = "COALESCE(t.categoryId, CASE WHEN t.paymentKind IN $LOAN_KINDS THEN ls.loanPaymentCategoryId END)"
+
 /**
  * The combinable filters of the history (REQ-TRX-09, 10). An empty list means "any"; the flags say so because
  * SQLite cannot tell an empty IN list from a missing one. [like] is "" or "%text%" with % and _ escaped by a backslash.
@@ -76,14 +83,15 @@ data class CategoryTotalRow(
 private const val SEARCH_FROM =
     """
     FROM transactions t
-    LEFT JOIN categories c ON c.id = t.categoryId
+    LEFT JOIN settings ls ON ls.deletedAt IS NULL
+    LEFT JOIN categories c ON c.id = $EFFECTIVE_CATEGORY
     LEFT JOIN categories p ON p.id = c.parentId
     LEFT JOIN accounts a ON a.id = t.accountId
     LEFT JOIN accounts d ON d.id = t.destinationAccountId
     LEFT JOIN tags g ON g.id = t.tagId
     WHERE t.deletedAt IS NULL AND t.occurredAt >= :from AND t.occurredAt < :to
       AND (:anyType OR t.type IN (:types))
-      AND (:anyCategory OR t.categoryId IN (:categoryIds))
+      AND (:anyCategory OR $EFFECTIVE_CATEGORY IN (:categoryIds))
       AND (:anyAccount OR t.accountId IN (:accountIds) OR t.destinationAccountId IN (:accountIds))
       AND (:anyTag OR t.tagId IN (:tagIds))
       AND (:like = '' OR t.note LIKE :like ESCAPE '\' OR c.name LIKE :like ESCAPE '\' OR p.name LIKE :like ESCAPE '\'
@@ -373,9 +381,11 @@ interface TransactionDao {
     @Query(
         """
         SELECT COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS income,
-               COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount END), 0) AS expense
+               COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount
+                                 WHEN $LOAN_EXPENSE THEN COALESCE(t.principal, t.amount) END), 0) AS expense
         FROM transactions t JOIN accounts a ON a.id = t.accountId
-          LEFT JOIN categories c ON c.id = t.categoryId LEFT JOIN categories p ON p.id = c.parentId
+          LEFT JOIN settings ls ON ls.deletedAt IS NULL
+          LEFT JOIN categories c ON c.id = $EFFECTIVE_CATEGORY LEFT JOIN categories p ON p.id = c.parentId
         WHERE t.deletedAt IS NULL AND a.deletedAt IS NULL AND a.active = 1 AND a.includeInTotal = 1
           AND t.occurredAt >= :from AND t.occurredAt < :to
           AND COALESCE(p.excludeFromReports, c.excludeFromReports, 0) = 0
@@ -414,7 +424,8 @@ interface TransactionDao {
      */
     @Query(
         "SELECT COALESCE(SUM(CASE WHEN t.type = 'INCOME' AND $COUNTED THEN t.amount END), 0) AS income, " +
-            "COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' AND $COUNTED THEN t.amount END), 0) AS expense, COUNT(*) AS count $SEARCH_FROM",
+            "COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' AND $COUNTED THEN t.amount " +
+            "WHEN $LOAN_EXPENSE AND $COUNTED THEN COALESCE(t.principal, t.amount) END), 0) AS expense, COUNT(*) AS count $SEARCH_FROM",
     )
     fun searchTotals(
         from: Instant,
@@ -444,8 +455,9 @@ interface TransactionDao {
     ): Flow<List<TransactionEntity>>
 
     @Query(
-        "SELECT categoryId, SUM(amount) AS total, COUNT(*) AS count FROM transactions WHERE deletedAt IS NULL " +
-            "AND categoryId IS NOT NULL AND occurredAt >= :from AND occurredAt < :to GROUP BY categoryId",
+        "SELECT $EFFECTIVE_CATEGORY AS categoryId, SUM(CASE WHEN t.type = 'TRANSFER' THEN COALESCE(t.principal, t.amount) ELSE t.amount END) " +
+            "AS total, COUNT(*) AS count FROM transactions t LEFT JOIN settings ls ON ls.deletedAt IS NULL WHERE t.deletedAt IS NULL " +
+            "AND $EFFECTIVE_CATEGORY IS NOT NULL AND t.occurredAt >= :from AND t.occurredAt < :to GROUP BY $EFFECTIVE_CATEGORY",
     )
     fun observeCategoryTotals(
         from: Instant,

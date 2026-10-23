@@ -164,6 +164,36 @@ class AccountRepositoryImpl
             return true
         }
 
+        override suspend fun ensureLoanCategory(): Boolean {
+            val owner = db.syncMeta().get(SyncMeta.OWNER) ?: return false
+            // The settings row arrives with the first download
+            val stored = db.settings().observe().first() ?: return false
+            if (stored.loanPaymentCategoryId != null) return false
+            val categoryId = UUID.nameUUIDFromBytes("$owner:LOAN_PAYMENTS".toByteArray())
+            // Created once: if the user deleted it, the next payment asks for another category instead
+            if (db.categories().get(categoryId) != null) return false
+            db.withTransaction {
+                val now = clock.now()
+                db.categories().upsert(
+                    listOf(
+                        CategoryEntity(
+                            id = categoryId,
+                            name = "Deudas",
+                            kind = CategoryKind.EXPENSE.name,
+                            icon = "money",
+                            sortOrder = Int.MAX_VALUE - 1,
+                            createdAt = now,
+                            updatedAt = now,
+                        ),
+                    ),
+                )
+                db.settings().upsert(
+                    stored.copy(loanPaymentCategoryId = categoryId, updatedAt = now, syncState = SyncState.PENDING, syncError = null),
+                )
+            }
+            return true
+        }
+
         override suspend fun reorder(ids: List<UUID>) =
             db.withTransaction {
                 val now = clock.now()
@@ -906,7 +936,8 @@ class SettingsRepositoryImpl
                         it.homeBalanceView,
                         it.amountDecimals,
                         homeCards(it.homeCards),
-                        NetBalanceMode.valueOf(it.netBalanceMode),
+                        netBalanceModeOf(it.netBalanceMode),
+                        it.loanPaymentCategoryId,
                     )
                 } ?: Settings()
             }
@@ -921,12 +952,20 @@ class SettingsRepositoryImpl
                     amountDecimals = settings.amountDecimals,
                     homeCards = homeCardsJson(settings.homeCards),
                     netBalanceMode = settings.netBalanceMode.name,
+                    loanPaymentCategoryId = settings.loanPaymentCategoryId,
                     updatedAt = clock.now(),
                     syncState = SyncState.PENDING,
                     syncError = null,
                 ),
             )
         }
+    }
+
+/** An unknown mode reads as PERIOD; TOTAL_DEBT, from before 1.6.0, is CUSTOM. */
+internal fun netBalanceModeOf(name: String): NetBalanceMode =
+    when (name) {
+        "CUSTOM", "TOTAL_DEBT" -> NetBalanceMode.CUSTOM
+        else -> NetBalanceMode.PERIOD
     }
 
 internal fun Recurring.toEntity(
@@ -1007,6 +1046,7 @@ internal fun Account.toEntity(
     icon = icon,
     color = color,
     sortOrder = sortOrder,
+    includeInNet = includeInNet,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -1025,6 +1065,7 @@ internal fun AccountEntity.toDomain() =
         color,
         sortOrder,
         createdAt,
+        includeInNet,
     )
 
 internal fun CategoryEntity.toDomain() =

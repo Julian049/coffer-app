@@ -158,6 +158,7 @@ fun HomeScreen(
         onOpenTag = onOpenTag,
         onBalanceView = viewModel::setBalanceView,
         onNetMode = viewModel::setNetMode,
+        onIncludeInNet = viewModel::setIncludeInNet,
         onCustomize = onCustomize,
         onOpenPending = { p ->
             when (p) {
@@ -188,6 +189,7 @@ fun HomeContent(
     onOpenPending: (DuePayment) -> Unit = {},
     onBalanceView: (BalanceView) -> Unit = {},
     onNetMode: (NetBalanceMode) -> Unit = {},
+    onIncludeInNet: (UUID, Boolean) -> Unit = { _, _ -> },
     onCustomize: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
@@ -277,6 +279,7 @@ fun HomeContent(
                     state.settings.netBalanceMode,
                     onBalanceView,
                     onNetMode,
+                    onIncludeInNet,
                     onDismiss = { balanceSheet = false },
                 )
             }

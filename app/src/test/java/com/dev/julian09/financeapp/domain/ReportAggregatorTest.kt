@@ -270,4 +270,31 @@ class ReportAggregatorTest {
         assertEquals(30, r.averageRate)
         assertEquals(false, r.closed)
     }
+
+    @Test
+    fun theCapitalOfLoanPaymentsIsAnExpenseOfTheLoansCategoryAndTheDisbursementIsNot() {
+        val debts = Category(UUID.randomUUID(), "Deudas", CategoryKind.EXPENSE)
+        val installment =
+            tx(TransactionType.TRANSFER, 120_000, "2026-10-05", destination = card, interest = 20_000)
+                .copy(principal = Money.ofPesos(100_000), paymentKind = "LOAN_INSTALL")
+        val extra = tx(TransactionType.TRANSFER, 50_000, "2026-10-06", destination = card).copy(paymentKind = "LOAN_EXTRA")
+        val disbursement = tx(TransactionType.TRANSFER, 5_000_000, "2026-10-01", account = card, destination = cash)
+        val r =
+            ReportAggregator.aggregate(
+                ReportSpan.MONTH,
+                october,
+                today,
+                zone,
+                listOf(installment, extra, disbursement),
+                categories + debts,
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                loanCategoryId = debts.id,
+            )
+        // 100 + 50 of capital, plus 20 of interest in «Intereses y cargos»; the disbursement counts for nothing
+        assertEquals(Money.ofPesos(170_000), r.expense)
+        assertEquals(Money.ofPesos(150_000), r.expenseByCategory.single { it.category == debts }.total)
+        assertEquals(Money.ofPesos(20_000), r.interest)
+    }
 }

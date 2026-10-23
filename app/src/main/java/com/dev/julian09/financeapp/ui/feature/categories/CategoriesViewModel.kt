@@ -9,6 +9,7 @@ import com.dev.julian09.financeapp.domain.model.LedgerError
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.usecase.CreateCategory
 import com.dev.julian09.financeapp.domain.usecase.DeleteCategory
 import com.dev.julian09.financeapp.domain.usecase.RenameCategory
@@ -87,6 +88,8 @@ sealed interface CategorySheet {
         val subcategories: Int,
         val movements: Int,
         val targets: List<Category>,
+        /** S15-DOM06: the category of loan installments is being deleted, so the target takes over that role. */
+        val receivesLoans: Boolean = false,
         val targetId: UUID? = null,
         val error: LedgerError? = null,
     ) : CategorySheet
@@ -98,6 +101,7 @@ class CategoriesViewModel
     @Inject
     constructor(
         private val repository: CategoryRepository,
+        private val settings: SettingsRepository,
         private val createCategory: CreateCategory,
         private val renameCategory: RenameCategory,
         private val deleteCategory: DeleteCategory,
@@ -216,6 +220,10 @@ class CategoriesViewModel
                         subcategories = all.count { it.parentId == category.id },
                         movements = repository.transactionCount(category.id),
                         targets = deleteTargets(all, category.id),
+                        receivesLoans =
+                            settings.observe().first().loanPaymentCategoryId.let { loan ->
+                                loan != null && all.any { it.id == loan && (it.id == category.id || it.parentId == category.id) }
+                            },
                     )
             }
         }
@@ -225,7 +233,7 @@ class CategoriesViewModel
         fun confirmDelete() {
             val s = _sheet.value as? CategorySheet.Delete ?: return
             viewModelScope.launch {
-                val error = deleteCategory(s.category.id, s.targetId.takeIf { s.movements > 0 })
+                val error = deleteCategory(s.category.id, s.targetId.takeIf { s.movements > 0 || s.receivesLoans })
                 _sheet.value = if (error == null) null else s.copy(error = error)
             }
         }
