@@ -131,4 +131,25 @@ class TransactionDaoTest {
             // An explicit filter counts the category, and its subcategories through the parent
             assertEquals(Money.ofPesos(57), search(october.copy(categoryIds = setOf(savings)), 100).first().totals.expense)
         }
+
+    @Test
+    fun anAmountInTheSearchFindsThoseExactMovementsAlongsideTheTextMatches() =
+        runBlocking {
+            val cash = f.account("Efectivo")
+            val at = Instant.parse("2026-10-10T12:00:00Z")
+            f.tx("EXPENSE", 45_000, cash, at = at)
+            f.tx("INCOME", 45_000, cash, at = at.plusSeconds(1))
+            f.tx("EXPENSE", 450_000, cash, at = at.plusSeconds(2))
+            val withText = f.tx("EXPENSE", 7, cash, at = at.plusSeconds(3))
+            f.db.transactions().upsert(listOf(f.db.transactions().get(withText)!!.copy(note = "Cuenta 45.000 pesos")))
+
+            for (text in listOf("45000", "$45.000")) assertEquals(text, setOf(45_000L), amounts(october.copy(query = text)).toSet())
+            // «45.000» is also text in the note of the last one
+            assertEquals(setOf(45_000L, 7L), amounts(october.copy(query = "45.000")).toSet())
+            // The summary uses the same match
+            val totals = search(october.copy(query = "45.000"), 100).first().totals
+            assertEquals(Money.ofPesos(45_007), totals.expense)
+            assertEquals(Money.ofPesos(45_000), totals.income)
+            assertTrue(amounts(october.copy(query = "46.000")).isEmpty())
+        }
 }

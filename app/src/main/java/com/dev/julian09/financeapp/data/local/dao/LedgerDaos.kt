@@ -87,7 +87,8 @@ private const val SEARCH_FROM =
       AND (:anyAccount OR t.accountId IN (:accountIds) OR t.destinationAccountId IN (:accountIds))
       AND (:anyTag OR t.tagId IN (:tagIds))
       AND (:like = '' OR t.note LIKE :like ESCAPE '\' OR c.name LIKE :like ESCAPE '\' OR p.name LIKE :like ESCAPE '\'
-           OR a.name LIKE :like ESCAPE '\' OR d.name LIKE :like ESCAPE '\' OR g.name LIKE :like ESCAPE '\')
+           OR a.name LIKE :like ESCAPE '\' OR d.name LIKE :like ESCAPE '\' OR g.name LIKE :like ESCAPE '\'
+           OR t.amount = :amount)
     """
 
 private const val COUNTED = "(NOT :anyCategory OR COALESCE(p.excludeFromReports, c.excludeFromReports, 0) = 0)"
@@ -398,6 +399,7 @@ interface TransactionDao {
         anyTag: Boolean,
         tagIds: List<UUID>,
         like: String,
+        amount: Long,
         limit: Int,
     ): Flow<List<TransactionEntity>>
 
@@ -422,6 +424,7 @@ interface TransactionDao {
         anyTag: Boolean,
         tagIds: List<UUID>,
         like: String,
+        amount: Long,
     ): Flow<SearchTotalsRow>
 
     @Query("SELECT MIN(occurredAt) FROM transactions WHERE deletedAt IS NULL")

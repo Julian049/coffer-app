@@ -34,6 +34,7 @@ import com.dev.julian09.financeapp.domain.model.AccountFlows
 import com.dev.julian09.financeapp.domain.model.AccountImpact
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.Amortization
+import com.dev.julian09.financeapp.domain.model.AmountQuery
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
@@ -496,6 +497,7 @@ class TransactionRepositoryImpl
                     f.tagIds.isEmpty(),
                     f.tagIds.toList(),
                     like(f.query),
+                    amountOf(f.query),
                     limit,
                 )
             return rows.map { list -> list.map { it.toDomain() } }
@@ -516,6 +518,7 @@ class TransactionRepositoryImpl
                     f.tagIds.isEmpty(),
                     f.tagIds.toList(),
                     like(f.query),
+                    amountOf(f.query),
                 )
             return totals.map { SearchTotals(Money(it.income), Money(it.expense), it.count) }
         }
@@ -528,6 +531,10 @@ class TransactionRepositoryImpl
         ): Flow<List<Transaction>> = dao.observeRecurringPayments(from, to).map { rows -> rows.map { it.toDomain() } }
 
         // shortcut: SQLite LIKE ignores case only for ASCII, so "cafe" misses "Café"; normalize text if the PO asks
+
+        /** S15-DAT02: an amount typed in the search also matches the movements of exactly that value; no amount never matches. */
+        private fun amountOf(query: String): Long = AmountQuery.parse(query)?.scaled ?: -1L
+
         private fun like(query: String): String {
             val text = query.trim()
             if (text.isEmpty()) return ""

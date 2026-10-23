@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Historial: the search also finds the movements of an exact amount typed as `45000`, `45.000`, `$45.000` or `45.000,50` (S15-H03, #160)
+
 ### Changed
 
 - Loans are only seen in Gestión de cuentas: the movement, transfer, recurring and pending-payment pickers, the Home carousel and Personalizar inicio no longer offer them, and the default account is never a loan (S15-H02, #159)
