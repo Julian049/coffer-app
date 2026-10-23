@@ -23,9 +23,11 @@ import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ImportExport
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -61,6 +63,7 @@ import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.SyncBadge
+import com.dev.julian09.financeapp.ui.feature.auth.rememberGoogleIdToken
 import com.dev.julian09.financeapp.ui.feature.recurring.days
 import com.dev.julian09.financeapp.ui.feature.recurring.rememberNotificationPermissionRequest
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
@@ -86,6 +89,13 @@ fun SettingsScreen(
     val reminders by reminderViewModel.settings.collectAsStateWithLifecycle()
     // Turning notices on asks for the permission when it is missing
     val requestPermission = rememberNotificationPermissionRequest()
+    // The Google confirmation of "Eliminar mi cuenta" only exists for accounts linked to Google
+    val googlePicker =
+        rememberGoogleIdToken(
+            onToken = { viewModel.confirmDeleteAccount(idToken = it) },
+            onFailed = viewModel::deleteAccountFailed,
+        )
+    val googleConfirm = googlePicker.takeIf { state.user?.googleLinked == true }
     SettingsContent(
         state = state,
         syncStatus = syncStatus,
@@ -94,6 +104,10 @@ fun SettingsScreen(
         onLogoutRequest = viewModel::requestLogout,
         onLogoutConfirm = viewModel::confirmLogout,
         onLogoutDismiss = viewModel::dismissLogout,
+        onDeleteAccountRequest = viewModel::requestDeleteAccount,
+        onDeleteAccountConfirm = { viewModel.confirmDeleteAccount(password = it) },
+        onDeleteAccountGoogle = googleConfirm,
+        onDeleteAccountDismiss = viewModel::dismissDeleteAccount,
         onOpenCategories = onOpenCategories,
         onOpenDeactivated = onOpenDeactivated,
         onOpenRecurring = onOpenRecurring,
@@ -122,6 +136,10 @@ fun SettingsContent(
     onLogoutRequest: () -> Unit = {},
     onLogoutConfirm: () -> Unit = {},
     onLogoutDismiss: () -> Unit = {},
+    onDeleteAccountRequest: () -> Unit = {},
+    onDeleteAccountConfirm: (String) -> Unit = {},
+    onDeleteAccountGoogle: (() -> Unit)? = null,
+    onDeleteAccountDismiss: () -> Unit = {},
     syncStatus: SyncStatus? = null,
     onOpenCategories: () -> Unit = {},
     onOpenDeactivated: () -> Unit = {},
@@ -137,7 +155,10 @@ fun SettingsContent(
     onOpenCustomizeHome: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
+    var showAbout by rememberSaveable { mutableStateOf(false) }
     LogoutDialogIfNeeded(state.confirmingLogout, onLogoutConfirm, onLogoutDismiss)
+    if (showAbout) AboutSheet(state.appVersion, onDismiss = { showAbout = false })
+    state.deleteAccount?.let { DeleteAccountDialog(it, onDeleteAccountConfirm, onDeleteAccountGoogle, onDeleteAccountDismiss) }
     Column(modifier.fillMaxSize()) {
         AppHeader(title = "Ajustes", onBack = onBack, actions = { syncStatus?.let { SyncBadge(it) } })
         Column(
@@ -212,6 +233,8 @@ fun SettingsContent(
                 LinkRow(Icons.Outlined.ImportExport, "Importar y exportar", onOpenImportExport)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.History, "Historial de cambios", onOpenChangeHistory)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.Info, "Acerca de Coffer", { showAbout = true })
             }
             if (state.user != null) {
                 AppButton(
@@ -219,6 +242,13 @@ fun SettingsContent(
                     onClick = onLogoutRequest,
                     kind = ButtonKind.Danger,
                     icon = Icons.AutoMirrored.Outlined.Logout,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                AppButton(
+                    "Eliminar mi cuenta",
+                    onClick = onDeleteAccountRequest,
+                    kind = ButtonKind.Ghost,
+                    icon = Icons.Outlined.DeleteForever,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

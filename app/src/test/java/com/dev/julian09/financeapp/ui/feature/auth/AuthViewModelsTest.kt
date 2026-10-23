@@ -2,10 +2,14 @@ package com.dev.julian09.financeapp.ui.feature.auth
 
 import com.dev.julian09.financeapp.domain.model.AuthFailure
 import com.dev.julian09.financeapp.domain.model.AuthField
+import com.dev.julian09.financeapp.domain.model.LegalDocs
+import com.dev.julian09.financeapp.domain.usecase.AcceptLegalTerms
 import com.dev.julian09.financeapp.domain.usecase.Login
 import com.dev.julian09.financeapp.domain.usecase.LoginWithGoogle
 import com.dev.julian09.financeapp.domain.usecase.RegisterUser
 import com.dev.julian09.financeapp.ui.FakeAuthRepository
+import com.dev.julian09.financeapp.ui.FakeLegalConsentStore
+import com.dev.julian09.financeapp.ui.PROFILE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -22,6 +26,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthViewModelsTest {
     private val repository = FakeAuthRepository()
+    private val consent = FakeLegalConsentStore()
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -101,7 +106,8 @@ class AuthViewModelsTest {
     @Test
     fun `register puts a taken email next to the email field`() {
         repository.next = Result.failure(AuthFailure.Taken(AuthField.Email, "Ese correo ya está registrado."))
-        val vm = RegisterViewModel(RegisterUser(repository))
+        val vm = RegisterViewModel(RegisterUser(repository), AcceptLegalTerms(consent))
+        vm.onAcceptedLegal(true)
         vm.onChange(AuthField.DisplayName, "Julian")
         vm.onChange(AuthField.Email, "julian@correo.com")
         vm.onChange(AuthField.Username, "JulianB ")
@@ -116,15 +122,40 @@ class AuthViewModelsTest {
     @Test
     fun `no connection is a form message`() {
         repository.next = Result.failure(AuthFailure.NoConnection)
-        val vm = RegisterViewModel(RegisterUser(repository))
+        val vm = RegisterViewModel(RegisterUser(repository), AcceptLegalTerms(consent))
         listOf(
             AuthField.DisplayName to "Julian",
             AuthField.Email to "j@c.co",
             AuthField.Username to "julianb",
             AuthField.Password to "clave-segura",
         ).forEach { (field, value) -> vm.onChange(field, value) }
+        vm.onAcceptedLegal(true)
         vm.submit()
 
         assertEquals("Sin conexión. Revisa tu internet y vuelve a intentarlo.", vm.state.value.formError)
+    }
+
+    @Test
+    fun `register needs the terms accepted and remembers them for the new user`() {
+        val vm = RegisterViewModel(RegisterUser(repository), AcceptLegalTerms(consent))
+        listOf(
+            AuthField.DisplayName to "Julian",
+            AuthField.Email to "j@c.co",
+            AuthField.Username to "julianb",
+            AuthField.Password to "clave-segura",
+        ).forEach { (field, value) -> vm.onChange(field, value) }
+
+        vm.submit()
+        assertEquals(0, repository.calls)
+        assertEquals(
+            true,
+            vm.state.value.formError
+                ?.contains("términos"),
+        )
+
+        vm.onAcceptedLegal(true)
+        vm.submit()
+        assertEquals(1, repository.calls)
+        assertEquals(mapOf(PROFILE.id to LegalDocs.VERSION), consent.versions.value)
     }
 }

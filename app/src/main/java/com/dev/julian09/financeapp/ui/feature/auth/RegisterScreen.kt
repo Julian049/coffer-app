@@ -31,6 +31,7 @@ import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.feature.legal.LegalConsentCheckbox
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 @Composable
@@ -46,6 +47,7 @@ fun RegisterScreen(
         viewModel::onChange,
         viewModel::submit,
         onBack,
+        onAcceptedLegal = viewModel::onAcceptedLegal,
         onGoogle = rememberGoogleSignIn(googleViewModel),
         google = google,
     )
@@ -59,6 +61,7 @@ fun RegisterContent(
     onSubmit: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onAcceptedLegal: (Boolean) -> Unit = {},
     onGoogle: (() -> Unit)? = null,
     google: GoogleSignInState = GoogleSignInState(),
 ) {
@@ -118,11 +121,12 @@ fun RegisterContent(
                 keyboardActions = KeyboardActions(onDone = { onSubmit() }),
                 autofill = ContentType.NewPassword,
             )
+            LegalConsentCheckbox(state.acceptedLegal, onAcceptedLegal, enabled = !state.loading)
             FormError(state.formError)
             AppButton(
                 text = if (state.loading) "Creando tu cuenta…" else "Crear cuenta",
                 onClick = onSubmit,
-                enabled = !state.loading,
+                enabled = !state.loading && state.acceptedLegal,
                 modifier = Modifier.fillMaxWidth(),
             )
             AuthAlternatives(

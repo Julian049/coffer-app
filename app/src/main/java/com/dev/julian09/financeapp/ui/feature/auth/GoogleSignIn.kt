@@ -1,8 +1,10 @@
 package com.dev.julian09.financeapp.ui.feature.auth
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -63,19 +65,31 @@ class GoogleSignInViewModel
         }
     }
 
+/** "Continuar con Google" of Iniciar sesión and Registro (REQ-AUT-03). */
+@Composable
+fun rememberGoogleSignIn(viewModel: GoogleSignInViewModel): (() -> Unit)? =
+    rememberGoogleIdToken(viewModel::signIn, viewModel::failed, viewModel::started)
+
 /**
  * SEQ-01 §1.3 with Credential Manager: the "Sign in with Google" sheet returns an ID token for our web client id.
- * Null when the build has no client id (the button stays disabled).
+ * Null when the build has no client id (the button stays disabled). [onFailed] gets null when the user just closed the picker.
  */
 @Composable
-fun rememberGoogleSignIn(viewModel: GoogleSignInViewModel): (() -> Unit)? {
+fun rememberGoogleIdToken(
+    onToken: (String) -> Unit,
+    onFailed: (String?) -> Unit,
+    onStarted: () -> Unit = {},
+): (() -> Unit)? {
     val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val token by rememberUpdatedState(onToken)
+    val failed by rememberUpdatedState(onFailed)
+    val started by rememberUpdatedState(onStarted)
     if (clientId.isBlank()) return null
-    return remember(viewModel) {
+    return remember {
         {
-            viewModel.started()
+            started()
             scope.launch {
                 try {
                     val request =
@@ -85,16 +99,16 @@ fun rememberGoogleSignIn(viewModel: GoogleSignInViewModel): (() -> Unit)? {
                             .build()
                     val credential = CredentialManager.create(context).getCredential(context, request).credential
                     if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                        viewModel.signIn(GoogleIdTokenCredential.createFrom(credential.data).idToken)
+                        token(GoogleIdTokenCredential.createFrom(credential.data).idToken)
                     } else {
-                        viewModel.failed("No se pudo iniciar con Google. Inténtalo de nuevo.")
+                        failed("No se pudo iniciar con Google. Inténtalo de nuevo.")
                     }
                 } catch (_: GetCredentialCancellationException) {
-                    viewModel.failed(null)
+                    failed(null)
                 } catch (_: NoCredentialException) {
-                    viewModel.failed("Agrega una cuenta de Google en el teléfono para continuar.")
+                    failed("Agrega una cuenta de Google en el teléfono para continuar.")
                 } catch (_: GetCredentialException) {
-                    viewModel.failed("No se pudo iniciar con Google. Inténtalo de nuevo.")
+                    failed("No se pudo iniciar con Google. Inténtalo de nuevo.")
                 }
             }
         }

@@ -3,12 +3,15 @@ package com.dev.julian09.financeapp.ui.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.BuildConfig
+import com.dev.julian09.financeapp.domain.model.AuthFailure
 import com.dev.julian09.financeapp.domain.model.SessionState
 import com.dev.julian09.financeapp.domain.model.UserProfile
 import com.dev.julian09.financeapp.domain.usecase.CheckServerStatus
+import com.dev.julian09.financeapp.domain.usecase.DeleteAccount
 import com.dev.julian09.financeapp.domain.usecase.Logout
 import com.dev.julian09.financeapp.domain.usecase.ObserveSession
 import com.dev.julian09.financeapp.domain.usecase.RefreshProfile
+import com.dev.julian09.financeapp.ui.feature.auth.formMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +27,13 @@ data class SettingsUiState(
     val server: ServerState = ServerState.Checking,
     val user: UserProfile? = null,
     val confirmingLogout: Boolean = false,
+    /** Null while the "Eliminar mi cuenta" dialog is closed. */
+    val deleteAccount: DeleteAccountUi? = null,
+)
+
+data class DeleteAccountUi(
+    val working: Boolean = false,
+    val error: String? = null,
 )
 
 @HiltViewModel
@@ -34,6 +44,7 @@ class SettingsViewModel
         observeSession: ObserveSession,
         private val refreshProfile: RefreshProfile,
         private val logout: Logout,
+        private val deleteAccount: DeleteAccount,
     ) : ViewModel() {
         private val _state = MutableStateFlow(SettingsUiState(appVersion = BuildConfig.VERSION_NAME))
         val state: StateFlow<SettingsUiState> = _state.asStateFlow()
@@ -66,5 +77,24 @@ class SettingsViewModel
         fun confirmLogout() {
             _state.update { it.copy(confirmingLogout = false) }
             viewModelScope.launch { logout() }
+        }
+
+        fun requestDeleteAccount() = _state.update { it.copy(deleteAccount = DeleteAccountUi()) }
+
+        fun dismissDeleteAccount() = _state.update { if (it.deleteAccount?.working == true) it else it.copy(deleteAccount = null) }
+
+        /** A closed Google picker ([message] null) is not an error. */
+        fun deleteAccountFailed(message: String?) = _state.update { it.copy(deleteAccount = DeleteAccountUi(error = message)) }
+
+        /** Needs the network; on success the session disappears and the root goes back to the start. */
+        fun confirmDeleteAccount(
+            password: String? = null,
+            idToken: String? = null,
+        ) {
+            _state.update { it.copy(deleteAccount = DeleteAccountUi(working = true)) }
+            viewModelScope.launch {
+                val failure = deleteAccount(password?.takeIf { it.isNotEmpty() }, idToken).exceptionOrNull() as? AuthFailure
+                _state.update { it.copy(deleteAccount = failure?.let { f -> DeleteAccountUi(error = f.formMessage()) }) }
+            }
         }
     }

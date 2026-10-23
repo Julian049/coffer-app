@@ -20,6 +20,9 @@ sealed class AuthFailure : Exception() {
         val retryAfterSeconds: Long,
     ) : AuthFailure()
 
+    /** The password or Google token asked for before a destructive action did not match (FIN-CONFIRMATION); the session is fine. */
+    data object ConfirmationFailed : AuthFailure()
+
     data object SessionExpired : AuthFailure()
 
     data object NoConnection : AuthFailure()

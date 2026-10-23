@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The privacy policy, terms and third-party notices are published from `docs/` of this repository with GitHub Pages (`https://julian049.github.io/coffer-app/`), because `coffer-docs` goes private; `LegalDocs` points there
+
+## [1.5.0] - 2026-10-22
+
+### Added
+
+- Ajustes → Eliminar mi cuenta (S14-H01, #146): asks for the password again (or a Google confirmation) and, once the server (`DELETE /api/v1/me`) has erased the account, wipes the local encrypted database, stops the sync and the reminders and returns to the start. Needs a connection; a wrong proof keeps the session (`FIN-CONFIRMATION`, 403)
+
 ## [1.4.0] - 2026-10-22
 
 ### Added
