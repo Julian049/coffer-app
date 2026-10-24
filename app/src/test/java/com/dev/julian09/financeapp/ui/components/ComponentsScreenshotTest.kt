@@ -799,6 +799,9 @@ class ComponentsScreenshotTest {
                 LoanPaymentState(loanOverview(), LoanSheet.EXTRA, amountDigits = "1000000", sourceId = BALANCES[1].account.id),
                 BALANCES.filter { !it.account.type.isDebt },
                 LoanPaymentActions(),
+                // The same date and zone on every machine
+                today = LocalDate.of(2026, 10, 7),
+                zone = ZoneOffset.UTC,
             )
         }
     }
@@ -876,6 +879,9 @@ class ComponentsScreenshotTest {
                 PayCardState(CARD_OVERVIEW, amountDigits = "250000", sourceId = BALANCES[1].account.id),
                 BALANCES,
                 PayCardActions(),
+                // The same date and zone on every machine
+                today = LocalDate.of(2026, 10, 7),
+                zone = ZoneOffset.UTC,
             )
         }
     }

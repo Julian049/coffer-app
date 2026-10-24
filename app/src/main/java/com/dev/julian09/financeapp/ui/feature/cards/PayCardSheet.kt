@@ -92,6 +92,8 @@ fun PayCardContent(
     actions: PayCardActions,
     /** False inside the sheet, which shows them fixed under the content (S12-UI09). */
     withButtons: Boolean = true,
+    today: LocalDate = LocalDate.now(),
+    zone: ZoneId = ZoneId.systemDefault(),
 ) {
     val colors = CofferTheme.colors
     val overview = state.overview ?: return
@@ -119,7 +121,7 @@ fun PayCardContent(
         ) { actions.onKind(CardPaymentKind.TOTAL) }
         AccountPicker("Cuenta de origen", sources, state.sourceId, state.errors[TransactionField.ACCOUNT], actions.onSource)
         // S15-UI10: the date and time of the payment
-        DateTimeCard(state.occurredAt, actions.onOccurredAt, LocalDate.now(), ZoneId.systemDefault())
+        DateTimeCard(state.occurredAt, actions.onOccurredAt, today, zone)
         AppTextField(
             value = state.amountDigits,
             visualTransformation = PesosTransformation(),
