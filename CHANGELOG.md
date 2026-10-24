@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Inicio: the fox is 92 dp and stands 12 dp over the balance card, and the quick actions are a 48 dp strip (S16-H08, #165)
+- Nuevo gasto recurrente: the category is the same row of four categories and «Más» as Nueva transacción (S16-H09, #166)
+- Editar transacción: «Eliminar» is a red trash icon (S16-H10, #167)
 - A movement saved without a title takes its category's name as the title (S15-H02)
 - Loans are only seen in Gestión de cuentas: the movement, transfer, recurring and pending-payment pickers, the Home carousel and Personalizar inicio no longer offer them, and the default account is never a loan (S15-H02, #159)
 - Nueva transacción: the amount takes the focus with the keyboard up, the tabs carry the Home quick-action icons, and the category row is five equal cells with «Más» in the fifth (also in Filtros and Nueva categoría)

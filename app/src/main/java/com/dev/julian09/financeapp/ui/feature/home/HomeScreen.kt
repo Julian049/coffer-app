@@ -461,11 +461,12 @@ fun FoxCard(
             Text(title, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary)
             Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         }
-        Image(painterResource(image), contentDescription = null, modifier = Modifier.size(104.dp).offset(y = FOX_OVERLAP))
+        Image(painterResource(image), contentDescription = null, modifier = Modifier.size(92.dp).offset(y = FOX_OVERLAP))
     }
 }
 
-private val FOX_OVERLAP = 24.dp
+// Figma «Estado del zorro»: 92 dp, 12 dp over the top edge of the balance card
+private val FOX_OVERLAP = 12.dp
 
 /** The image of each state, also used by Historial's monthly summary (M14). */
 @DrawableRes
