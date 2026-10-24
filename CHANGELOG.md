@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-23
+
 ### Added
 
 - A registered payment (loan installment, extra payment, card payment) can change its date from its detail, and the installments it settled follow; paying an installment or a card asks for the date and time (S15-H05, #162)
