@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.NorthEast
@@ -214,7 +215,10 @@ fun TransactionFormContent(
             onBack = actions.onBack,
             actions = {
                 if (state.editingId != null) {
-                    TextButton(onClick = { confirming = true }) { Text("Eliminar", color = CofferTheme.colors.expense) }
+                    // Figma `70:250`: a red trash, a 44 dp target
+                    IconButton(onClick = { confirming = true }) {
+                        Icon(Icons.Outlined.DeleteOutline, contentDescription = "Eliminar transacción", tint = CofferTheme.colors.expense)
+                    }
                 }
             },
         )

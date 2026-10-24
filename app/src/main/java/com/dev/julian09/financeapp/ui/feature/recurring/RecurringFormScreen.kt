@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.DatePicker
@@ -42,16 +41,18 @@ import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.IntervalUnit
 import com.dev.julian09.financeapp.domain.model.LedgerError
 import com.dev.julian09.financeapp.domain.usecase.RecurringField
-import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.BubbleRow
+import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
+import com.dev.julian09.financeapp.ui.components.IconBubble
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
+import com.dev.julian09.financeapp.ui.components.iconOf
 import com.dev.julian09.financeapp.ui.components.message
-import com.dev.julian09.financeapp.ui.feature.transactions.categoryLabel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -277,7 +278,7 @@ private fun Section(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** S16-H09: the same row as Nueva transacción, four categories and «Más» (Figma `20:1138`). */
 @Composable
 private fun CategoryRow(
     selectedId: UUID?,
@@ -285,44 +286,32 @@ private fun CategoryRow(
     error: LedgerError?,
     onCategory: (UUID) -> Unit,
 ) {
-    val colors = CofferTheme.colors
     var picking by rememberSaveable { mutableStateOf(false) }
     val selected = categories.firstOrNull { it.id == selectedId }
+    val quick = (listOfNotNull(selected) + categories).distinctBy { it.id }.take(QUICK_CATEGORIES)
     Section("Categoría", error) {
-        AppCard(Modifier.fillMaxWidth(), onClick = { picking = true }) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    selected?.let { categoryLabel(it, categories) } ?: "Elige una categoría",
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (selected == null) colors.textSecondary else colors.textPrimary,
-                )
-                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.textSecondary)
+        AppCard {
+            BubbleRow(quick.size, onMore = { picking = true }) { i, cell ->
+                val c = quick[i]
+                IconBubble(c.name, iconOf(c, categories), selected = c.id == selectedId, modifier = cell) { onCategory(c.id) }
             }
         }
     }
     if (picking) {
-        AppBottomSheet(onDismiss = { picking = false }, title = "Categoría") {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                categories.filter { it.parentId == null }.forEach { main ->
-                    Text(main.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        (listOf(main) + categories.filter { it.parentId == main.id }).forEach { c ->
-                            AppChip(
-                                if (c.id == main.id) "Solo ${c.name}" else c.name,
-                                selected = c.id == selectedId,
-                                onClick = {
-                                    onCategory(c.id)
-                                    picking = false
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        CategoryGridSheet(
+            categories,
+            categories,
+            selected = setOfNotNull(selectedId),
+            onPick = {
+                onCategory(it)
+                picking = false
+            },
+            onDismiss = { picking = false },
+        )
     }
 }
+
+private const val QUICK_CATEGORIES = 4
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
