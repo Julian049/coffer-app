@@ -1,5 +1,10 @@
 package com.dev.julian09.financeapp.ui.components
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -9,6 +14,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Account
@@ -53,6 +59,46 @@ import java.util.UUID
 class ComponentsBehaviorTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Test
+    fun `the transaction type tabs keep every label on one line at 360 dp`() {
+        // BUG-01: «Transferencia» with its icon wrapped its last letter
+        compose.setContent {
+            CofferTheme {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier
+                        .width(328.dp),
+                ) {
+                    SegmentedSelector(
+                        listOf("Gasto", "Ingreso", "Transferencia"),
+                        selectedIndex = 2,
+                        onSelect = {},
+                        modifier =
+                            androidx.compose.ui.Modifier
+                                .fillMaxWidth(),
+                        icons =
+                            listOf(
+                                androidx.compose.material.icons.Icons.Outlined.ArrowDownward,
+                                androidx.compose.material.icons.Icons.Outlined.ArrowUpward,
+                                androidx.compose.material.icons.Icons.Outlined.SwapHoriz,
+                            ),
+                    )
+                }
+            }
+        }
+        val one =
+            compose
+                .onNodeWithText("Gasto")
+                .fetchSemanticsNode()
+                .size.height
+        assertEquals(
+            one,
+            compose
+                .onNodeWithText("Transferencia")
+                .fetchSemanticsNode()
+                .size.height,
+        )
+    }
 
     @Test
     fun `bottom bar marks the active tab and reports taps`() {

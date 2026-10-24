@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Nueva transacción: «Transferencia» fits on one line in the type tabs, the amount shows no «0» next to the cursor while it has the focus, and the title suggestion scrolls into view above the keyboard (S17-H12, #169)
+
 ## [1.6.0] - 2026-10-23
 
 ### Added
