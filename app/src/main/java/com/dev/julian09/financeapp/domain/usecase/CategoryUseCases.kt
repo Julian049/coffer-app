@@ -1,6 +1,7 @@
 package com.dev.julian09.financeapp.domain.usecase
 
 import com.dev.julian09.financeapp.domain.model.Category
+import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.LedgerError
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
@@ -35,14 +36,18 @@ private fun nameError(
 
 private fun List<Category>.siblingsOf(category: Category) = filter { it.kind == category.kind && it.parentId == category.parentId }
 
-/** Where the movements of a deleted category can go: same kind, outside what is deleted; a main category only to main ones. */
+/**
+ * Where the movements of a deleted category can go: same kind, outside what is deleted; a main category only to main ones,
+ * unless it is the category of loan installments ([anyLevel], S17-H13): that role may land on a subcategory.
+ */
 fun deleteTargets(
     categories: List<Category>,
     id: UUID,
+    anyLevel: Boolean = false,
 ): List<Category> {
     val deleted = categories.first { it.id == id }
     return categories.filter {
-        it.kind == deleted.kind && it.id != id && it.parentId != id && (deleted.parentId != null || it.parentId == null)
+        it.kind == deleted.kind && it.id != id && it.parentId != id && (anyLevel || deleted.parentId != null || it.parentId == null)
     }
 }
 
@@ -111,7 +116,7 @@ class DeleteCategory
             val receivesLoans = stored.loanPaymentCategoryId != null && subtree.any { it.id == stored.loanPaymentCategoryId }
             if (targetId == null) {
                 if (receivesLoans || repository.transactionCount(id) > 0) return LedgerError.TARGET_REQUIRED
-            } else if (deleteTargets(all, id).none { it.id == targetId }) {
+            } else if (deleteTargets(all, id, anyLevel = receivesLoans).none { it.id == targetId }) {
                 return LedgerError.TARGET_INVALID
             }
             repository.delete(id, targetId)
@@ -121,4 +126,23 @@ class DeleteCategory
         }
 
         private suspend fun hasDebtAccounts() = accounts.observeBalances().first().any { it.account.type.isDebt }
+    }
+
+/** S17-H13 (MEJORA-01): the expense category, main or sub, that receives the principal of loan installments. */
+class SetLoanPaymentCategory
+    @Inject
+    constructor(
+        private val categories: CategoryRepository,
+        private val settings: SettingsRepository,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke(id: UUID): LedgerError? {
+            val category = categories.observeAll().first().firstOrNull { it.id == id } ?: return LedgerError.TARGET_INVALID
+            if (category.kind != CategoryKind.EXPENSE) return LedgerError.KIND_MISMATCH
+            val stored = settings.observe().first()
+            if (stored.loanPaymentCategoryId == id) return null
+            settings.update(stored.copy(loanPaymentCategoryId = id))
+            scheduler.requestSync()
+            return null
+        }
     }

@@ -107,4 +107,70 @@ class DeleteCategoryTest {
             assertNull(rename(restaurants, "Restaurantes y cafés"))
             assertEquals(setOf("Comida", "Restaurantes y cafés", "Domicilios", "Salario"), names())
         }
+
+    private suspend fun settingsWith(loanCategory: UUID?) {
+        val at = java.time.Instant.parse("2026-10-01T00:00:00Z")
+        f.db.settings().upsert(
+            com.dev.julian09.financeapp.data.local.entity.SettingsEntity(
+                id = UUID.randomUUID(),
+                reminderLeadDays = 5,
+                notificationsEnabled = true,
+                homeBalanceView = "AVAILABLE",
+                amountDecimals = 0,
+                homeCards = "[]",
+                createdAt = at,
+                updatedAt = at,
+                loanPaymentCategoryId = loanCategory,
+            ),
+        )
+    }
+
+    @Test
+    fun theCategoryOfLoanInstallmentsCanBeAnyExpenseCategoryAndItsDeleteOffersSubcategories() =
+        runBlocking {
+            val debts = f.category("Deudas")
+            val finance = f.category("Finanzas")
+            val payoffs = f.category("Pagos", parent = finance)
+            val salary = f.category("Salario", kind = "INCOME")
+            settingsWith(debts)
+            val setLoanCategory =
+                com.dev.julian09.financeapp.domain.usecase
+                    .SetLoanPaymentCategory(f.categories, f.settings, scheduler)
+
+            // A subcategory is valid; an income category and an unknown one are not
+            assertEquals(LedgerError.KIND_MISMATCH, setLoanCategory(salary))
+            assertEquals(LedgerError.TARGET_INVALID, setLoanCategory(UUID.randomUUID()))
+            assertEquals(
+                debts,
+                f.settings
+                    .observe()
+                    .first()
+                    .loanPaymentCategoryId,
+            )
+
+            // Deleting the main category that receives the installments may land on a subcategory
+            assertEquals(
+                listOf("Finanzas", "Pagos"),
+                deleteTargets(f.categories.observeAll().first(), debts, anyLevel = true).map { it.name },
+            )
+            assertEquals(listOf("Finanzas"), deleteTargets(f.categories.observeAll().first(), debts).map { it.name })
+            assertNull(delete(debts, payoffs))
+            assertEquals(
+                payoffs,
+                f.settings
+                    .observe()
+                    .first()
+                    .loanPaymentCategoryId,
+            )
+
+            // And it can be set without deleting anything
+            assertNull(setLoanCategory(finance))
+            assertEquals(
+                finance,
+                f.settings
+                    .observe()
+                    .first()
+                    .loanPaymentCategoryId,
+            )
+        }
 }

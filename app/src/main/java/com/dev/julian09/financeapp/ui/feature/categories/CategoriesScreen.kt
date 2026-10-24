@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -108,6 +109,16 @@ fun CategoriesScreen(
                 if (s.category.parentId == null) ExcludeRow(s.category.excludeFromReports, viewModel::setExcluded)
                 OptionRow(Icons.Outlined.Edit, "Renombrar", null, danger = false, onClick = viewModel::startRename)
                 OptionRow(Icons.Outlined.Palette, "Cambiar ícono", null, danger = false, onClick = viewModel::startIcon)
+                // S17-H13 (MEJORA-01): any expense category, main or sub, can receive the installments of loans
+                if (s.category.kind == CategoryKind.EXPENSE) {
+                    OptionRow(
+                        Icons.Outlined.Payments,
+                        "Usar para cuotas de préstamos",
+                        if (s.usedForLoans) "Es la categoría de las cuotas ahora" else "El capital de tus cuotas contará aquí",
+                        danger = false,
+                        onClick = { if (!s.usedForLoans) viewModel.useForLoans() },
+                    )
+                }
                 OptionRow(Icons.Outlined.DeleteOutline, "Eliminar", null, danger = true, onClick = viewModel::startDelete)
                 AppButton("Cancelar", onClick = viewModel::dismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
             }

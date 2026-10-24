@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Categorías: «Usar para cuotas de préstamos» in the options of any expense category, main or sub, sets where the principal of loan installments counts without deleting anything; deleting that category now also offers subcategories as the new place (S17-H13, #170)
+
 ### Fixed
 
 - Nueva transacción: «Transferencia» fits on one line in the type tabs, the amount shows no «0» next to the cursor while it has the focus, and the title suggestion scrolls into view above the keyboard (S17-H12, #169)
