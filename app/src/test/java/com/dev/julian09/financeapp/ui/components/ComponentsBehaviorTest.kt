@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -59,6 +60,25 @@ import java.util.UUID
 class ComponentsBehaviorTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Test
+    fun `the eye hides and shows the balance of Home`() {
+        val dashboard =
+            HomeDashboard(
+                available = Money.ofPesos(1_000_000),
+                monthlyChange = null,
+                previousMonth = YearMonth.of(2026, 9),
+                accounts = emptyList(),
+                recent = emptyList(),
+                fox = FoxMood(FoxState.NORMAL),
+            )
+        compose.setContent { CofferTheme { HomeContent(HomeUiState(dashboard, emptyList()), {}, {}, {}) } }
+        compose.onNodeWithText("$1.000.000").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Ocultar el saldo").performClick()
+        compose.onNodeWithText("$ ••••••").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Mostrar el saldo").performClick()
+        compose.onNodeWithText("$1.000.000").assertIsDisplayed()
+    }
 
     @Test
     fun `the transaction type tabs keep every label on one line at 360 dp`() {

@@ -646,7 +646,11 @@ internal fun AccountPicker(
 ) {
     val colors = CofferTheme.colors
     AppCard {
-        Text(title, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            // Figma `1:844`: the hint that the accounts slide sideways
+            if (accounts.size > 1) Text("Deslizar", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        }
         if (accounts.isEmpty()) {
             Text(
                 "Crea una cuenta en Cuentas para registrar movimientos.",
@@ -673,10 +677,12 @@ internal fun AccountPicker(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         CircleIcon(accountIcon(item.account.icon, item.account.type))
-                        Column {
+                        Column(Modifier.weight(1f, fill = false)) {
                             Text(item.account.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
                             subtitle?.let { Text(it(item), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary) }
                         }
+                        // Figma `1:844`: the chosen account carries a dot
+                        if (selected) Box(Modifier.size(10.dp).background(colors.onPrimaryContainer, CircleShape))
                     }
                 }
             }
