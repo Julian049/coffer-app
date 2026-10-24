@@ -55,13 +55,21 @@ fun SegmentedSelector(
                         .clip(optionShape)
                         .background(if (selected) colors.primaryContainer else Color.Transparent)
                         .selectable(selected = selected, onClick = { onSelect(index) }, role = Role.RadioButton)
-                        .padding(8.dp),
+                        .padding(horizontal = if (icons.isEmpty()) 8.dp else 4.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 val tint = if (selected) colors.onPrimaryContainer else colors.textSecondary
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    icons.getOrNull(index)?.let { Icon(it, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp)) }
-                    Text(text = option, style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp), color = tint)
+                val icon = icons.getOrNull(index)
+                // BUG-01: with an icon the label shrinks a little and never wraps, so «Transferencia» fits at 360 dp
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    icon?.let { Icon(it, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp)) }
+                    Text(
+                        text = option,
+                        style = MaterialTheme.typography.labelLarge.copy(fontSize = if (icon == null) 13.sp else 12.sp),
+                        color = tint,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
                 }
             }
         }

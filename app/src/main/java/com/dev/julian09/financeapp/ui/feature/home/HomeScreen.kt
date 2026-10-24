@@ -29,7 +29,10 @@ import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -194,6 +197,7 @@ fun HomeContent(
 ) {
     val colors = CofferTheme.colors
     var balanceSheet by rememberSaveable { mutableStateOf(false) }
+    var balanceHidden by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         AppHeader(
             title = "Inicio",
@@ -231,13 +235,32 @@ fun HomeContent(
                         // REQ-CTA-09: the chosen view; a tap shows both
                         AppCard(Modifier.fillMaxWidth(), highlight = true, onClick = { balanceSheet = true }) {
                             val net = state.balanceView == BalanceView.NET
-                            Text(
-                                if (net) "Saldo neto" else "Saldo total disponible",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = colors.textSecondary,
-                            )
-                            MoneyText(if (net) state.net else dashboard.available, style = MaterialTheme.typography.displaySmall)
-                            if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    if (net) "Saldo neto" else "Saldo total disponible",
+                                    Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.textSecondary,
+                                )
+                                // Figma `1:997`: the eye hides the balance on the screen (a 44 dp target)
+                                IconButton(
+                                    onClick = { balanceHidden = !balanceHidden },
+                                    Modifier.size(44.dp).offset(x = 12.dp, y = (-8).dp),
+                                ) {
+                                    Icon(
+                                        if (balanceHidden) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                        contentDescription = if (balanceHidden) "Mostrar el saldo" else "Ocultar el saldo",
+                                        tint = colors.textSecondary,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
+                            if (balanceHidden) {
+                                Text("$ ••••••", style = MaterialTheme.typography.displaySmall, color = colors.textPrimary)
+                            } else {
+                                MoneyText(if (net) state.net else dashboard.available, style = MaterialTheme.typography.displaySmall)
+                                if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
+                            }
                         }
                     HomeSection.QUICK_ACTIONS -> QuickActions(onNewTransaction)
                     HomeSection.ACCOUNTS -> {
@@ -465,8 +488,8 @@ fun FoxCard(
     }
 }
 
-// Figma «Estado del zorro»: 92 dp, 12 dp over the top edge of the balance card
-private val FOX_OVERLAP = 12.dp
+// Figma «Estado del zorro»: 92 dp, 12 dp over the top edge of the balance card: the 16 dp gap between blocks plus those 12 dp
+private val FOX_OVERLAP = 28.dp
 
 /** The image of each state, also used by Historial's monthly summary (M14). */
 @DrawableRes
@@ -495,17 +518,17 @@ private fun QuickActions(onNew: (TransactionType) -> Unit) {
             "Gasto",
             Icons.Outlined.ArrowDownward,
             colors.expense,
-            Modifier.weight(1f, fill = false),
+            Modifier,
         ) { onNew(TransactionType.EXPENSE) }
         VerticalDivider(Modifier.padding(vertical = 10.dp), thickness = 1.dp, color = colors.border)
         QuickAction(
             "Ingreso",
             Icons.Outlined.ArrowUpward,
             colors.income,
-            Modifier.weight(1f, fill = false),
+            Modifier,
         ) { onNew(TransactionType.INCOME) }
         VerticalDivider(Modifier.padding(vertical = 10.dp), thickness = 1.dp, color = colors.border)
-        QuickAction("Transferencia", Icons.Outlined.SwapHoriz, colors.textSecondary, Modifier.weight(1f, fill = false)) {
+        QuickAction("Transferencia", Icons.Outlined.SwapHoriz, colors.textSecondary, Modifier) {
             onNew(TransactionType.TRANSFER)
         }
     }
