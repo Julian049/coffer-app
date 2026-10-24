@@ -17,6 +17,10 @@ data object AccountsRoute
 @Serializable
 data object SettingsRoute
 
+/** Bienvenida (S15-UI06): where a signed-out user starts. */
+@Serializable
+data object WelcomeRoute
+
 @Serializable
 data object LoginRoute
 

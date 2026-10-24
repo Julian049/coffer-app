@@ -1,16 +1,28 @@
 package com.dev.julian09.financeapp.ui.feature.home
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.DuePayment
@@ -18,16 +30,20 @@ import com.dev.julian09.financeapp.domain.model.LoanDue
 import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
-import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
+import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import java.util.UUID
 
-/** Hoja · Detalle del saldo (S11-UI02, REQ-CTA-08, 09): both views, and which one Home shows. */
+/**
+ * Hoja · Detalle del saldo (Figma `20:168`, `156:149`, `156:256`): both views as cards; a tap picks the one Home shows and
+ * saves at once. Inside the net, «Cuotas del periodo» or «Elegir deudas» (S15-UI11).
+ */
 @Composable
 fun BalanceSheet(
     dashboard: HomeDashboard,
@@ -35,19 +51,11 @@ fun BalanceSheet(
     mode: NetBalanceMode,
     onView: (BalanceView) -> Unit,
     onMode: (NetBalanceMode) -> Unit,
+    onIncludeInNet: (UUID, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AppBottomSheet(onDismiss = onDismiss, title = "Detalle del saldo", subtitle = "Elige qué vista ves en inicio; la otra queda aquí.") {
-        BalanceViews(dashboard, view, mode, onMode)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Mostrar en inicio", style = MaterialTheme.typography.labelMedium, color = CofferTheme.colors.textSecondary)
-            SegmentedSelector(
-                listOf("Disponible", "Neto"),
-                selectedIndex = view.ordinal,
-                onSelect = { onView(BalanceView.entries[it]) },
-            )
-        }
-        AppButton("Listo", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
+    AppBottomSheet(onDismiss = onDismiss, title = "Detalle del saldo", subtitle = "Toca la tarjeta que quieres ver en inicio.") {
+        BalanceViews(dashboard, view, mode, onView, onMode, onIncludeInNet)
     }
 }
 
@@ -56,10 +64,16 @@ private fun BalanceViews(
     dashboard: HomeDashboard,
     view: BalanceView,
     mode: NetBalanceMode,
+    onView: (BalanceView) -> Unit,
     onMode: (NetBalanceMode) -> Unit,
+    onIncludeInNet: (UUID, Boolean) -> Unit,
 ) {
     val colors = CofferTheme.colors
-    AppCard(Modifier.fillMaxWidth(), highlight = view == BalanceView.AVAILABLE) {
+    AppCard(
+        Modifier.fillMaxWidth().animateContentSize(tween(250)),
+        selected = view == BalanceView.AVAILABLE,
+        onClick = { onView(BalanceView.AVAILABLE) },
+    ) {
         ViewTitle("Saldo disponible", view == BalanceView.AVAILABLE)
         MoneyText(dashboard.available, style = MaterialTheme.typography.headlineMedium)
         Text(
@@ -68,11 +82,14 @@ private fun BalanceViews(
             color = colors.textSecondary,
         )
     }
-    AppCard(Modifier.fillMaxWidth(), highlight = view == BalanceView.NET) {
+    AppCard(
+        Modifier.fillMaxWidth().animateContentSize(tween(250)),
+        selected = view == BalanceView.NET,
+        onClick = { onView(BalanceView.NET) },
+    ) {
         ViewTitle("Saldo neto", view == BalanceView.NET)
-        // S12-H03: what the net subtracts, the period's dues or the whole debt
         SegmentedSelector(
-            listOf("Cuotas del periodo", "Deuda total"),
+            listOf("Cuotas del periodo", "Elegir deudas"),
             selectedIndex = mode.ordinal,
             onSelect = { onMode(NetBalanceMode.entries[it]) },
         )
@@ -83,22 +100,63 @@ private fun BalanceViews(
                 dashboard.dues.forEach { due ->
                     Line(dueLabel(due)) { MoneyText(due.amount, kind = MoneyKind.Expense, style = MaterialTheme.typography.bodyMedium) }
                 }
-            NetBalanceMode.TOTAL_DEBT ->
+            NetBalanceMode.CUSTOM ->
                 dashboard.debts.forEach { debt ->
+                    val marked = debt.account.includeInNet
                     val label = if (debt.account.type == AccountType.LOAN) "deuda pendiente" else "deuda total"
-                    Line("${debt.account.name} · $label") {
-                        MoneyText(-debt.balance, kind = MoneyKind.Expense, style = MaterialTheme.typography.bodyMedium)
+                    DebtLine("${debt.account.name} · $label", marked, { onIncludeInNet(debt.account.id, !marked) }) {
+                        if (marked) {
+                            MoneyText(-debt.balance, kind = MoneyKind.Expense, style = MaterialTheme.typography.bodyMedium)
+                        } else {
+                            Text(formatMoney(-debt.balance), style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                        }
                     }
                 }
         }
         Text(
             when (mode) {
                 NetBalanceMode.PERIOD -> "Resta lo que pagas este periodo: el pago de la tarjeta y la cuota del préstamo."
-                NetBalanceMode.TOTAL_DEBT -> "Resta todo lo que debes, como si lo pagaras hoy."
+                NetBalanceMode.CUSTOM -> "Marca las deudas que quieres restar del disponible."
             },
             style = MaterialTheme.typography.bodySmall,
             color = colors.textSecondary,
         )
+    }
+}
+
+/** A debt of «Elegir deudas»: a round mark (espresso with a check when subtracted, a ring when not) and its amount. */
+@Composable
+private fun DebtLine(
+    label: String,
+    marked: Boolean,
+    onToggle: () -> Unit,
+    amount: @Composable () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .toggleable(marked, role = Role.Checkbox, onValueChange = { onToggle() }),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            Modifier
+                .size(18.dp)
+                .then(
+                    if (marked) {
+                        Modifier.background(colors.primary, CircleShape)
+                    } else {
+                        Modifier.border(1.5.dp, colors.borderHighlight, CircleShape)
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (marked) Icon(Icons.Outlined.Check, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(12.dp))
+        }
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        amount()
     }
 }
 

@@ -41,7 +41,7 @@ class CreateAccount
         }
     }
 
-/** S12-DAT02: on every start, asset accounts that still keep their opening balance as a field move it to a movement. */
+/** S12-DAT02, S15-DAT03: on every start, asset accounts that still keep their opening balance as a field move it to a movement. */
 class MoveOpeningBalances
     @Inject
     constructor(
@@ -49,7 +49,10 @@ class MoveOpeningBalances
         private val scheduler: SyncScheduler,
     ) {
         suspend operator fun invoke() {
-            if (repository.moveOpeningBalances()) scheduler.requestSync()
+            val moved = repository.moveOpeningBalances()
+            // S15-DAT03: and «Deudas» for the installments of loans
+            val ensured = repository.ensureLoanCategory()
+            if (moved || ensured) scheduler.requestSync()
         }
     }
 
@@ -122,6 +125,29 @@ class ReactivateAccount
     ) {
         suspend operator fun invoke(id: UUID) {
             repository.setActive(id, true)
+            scheduler.requestSync()
+        }
+    }
+
+/** S15-DOM07: marks or unmarks a card or loan in the custom net balance («Elegir deudas»). */
+class SetIncludeInNet
+    @Inject
+    constructor(
+        private val accounts: AccountRepository,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke(
+            accountId: UUID,
+            include: Boolean,
+        ) {
+            val account =
+                accounts
+                    .observeBalances()
+                    .first()
+                    .firstOrNull { it.account.id == accountId }
+                    ?.account ?: return
+            if (account.includeInNet == include) return
+            accounts.update(account.copy(includeInNet = include))
             scheduler.requestSync()
         }
     }

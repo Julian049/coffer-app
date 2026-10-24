@@ -45,6 +45,12 @@ interface AccountRepository {
      */
     suspend fun moveOpeningBalances(): Boolean
 
+    /**
+     * S15-DAT03: creates the expense category «Deudas» (a normal one, with an id that depends on the user) and makes it the
+     * category of loan installments, when none is set yet and it was never created. False when nothing changed.
+     */
+    suspend fun ensureLoanCategory(): Boolean
+
     /** M9: the carousel and the lists follow [ids], first to last. */
     suspend fun reorder(ids: List<UUID>)
 
@@ -121,6 +127,9 @@ interface TagRepository {
     /** The tag and, in the same database transaction, the tag of its movements (S9-DOM02). */
     suspend fun delete(id: UUID)
 
+    /** How many movements carry the tag (what the delete confirmation tells). */
+    suspend fun movementCount(id: UUID): Int
+
     /** Income and expenses per tag in [from, to), transfers apart (REQ-ETQ-03). */
     fun observeTotals(
         from: Instant,
@@ -138,6 +147,15 @@ interface TransactionRepository {
     suspend fun insert(transaction: Transaction)
 
     suspend fun update(transaction: Transaction)
+
+    /**
+     * S15-DOM04: moves a registered payment (installment, extra payment or card payment) to another date, with the
+     * installments it settled, and logs UPDATE; false when it is not a live payment.
+     */
+    suspend fun changePaymentDate(
+        id: UUID,
+        occurredAt: Instant,
+    ): Boolean
 
     /** An import batch (S8-DAT02): every movement and its CREATE history in one database transaction. */
     suspend fun insertAll(transactions: List<Transaction>)

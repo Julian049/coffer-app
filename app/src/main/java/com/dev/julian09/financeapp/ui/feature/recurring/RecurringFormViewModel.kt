@@ -17,6 +17,7 @@ import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import com.dev.julian09.financeapp.domain.usecase.CreateRecurring
+import com.dev.julian09.financeapp.domain.usecase.EndRecurrence
 import com.dev.julian09.financeapp.domain.usecase.RecurringErrors
 import com.dev.julian09.financeapp.domain.usecase.UpdateRecurring
 import com.dev.julian09.financeapp.ui.feature.accounts.digitsOnly
@@ -70,6 +71,7 @@ class RecurringFormViewModel
         private val transactions: TransactionRepository,
         private val create: CreateRecurring,
         private val update: UpdateRecurring,
+        private val endRecurrence: EndRecurrence,
         clock: Clock,
     ) : ViewModel() {
         private val _state =
@@ -80,7 +82,14 @@ class RecurringFormViewModel
 
         val choices: StateFlow<RecurringChoices> =
             combine(accounts.observeBalances(), categories.observeAll(), settings.observe()) { accs, cats, s ->
-                RecurringChoices(accs.filter { it.account.active }, cats.filter { it.kind == CategoryKind.EXPENSE }, s.reminderLeadDays)
+                RecurringChoices(
+                    accs.filter { it.account.active && it.account.type.isPickable },
+                    cats.filter {
+                        it.kind ==
+                            CategoryKind.EXPENSE
+                    },
+                    s.reminderLeadDays,
+                )
             }.stateIn(viewModelScope, SharingStarted.Eagerly, RecurringChoices())
 
         init {
@@ -107,7 +116,7 @@ class RecurringFormViewModel
                         transactions.lastUsedAccountId() ?: accounts
                             .observeActive()
                             .first()
-                            .firstOrNull()
+                            .firstOrNull { it.type.isPickable }
                             ?.id
                     _state.update { it.copy(accountId = account) }
                 }
@@ -131,6 +140,15 @@ class RecurringFormViewModel
         fun setInterval(text: String) = edit { it.copy(intervalDigits = text.filter(Char::isDigit).take(3)) }
 
         fun setIntervalUnit(value: IntervalUnit) = edit { it.copy(intervalUnit = value) }
+
+        /** S15-UI09: «Finalizar recurrencia» from the edit too; the confirmation is asked by the screen. */
+        fun end() {
+            val id = _state.value.editingId ?: return
+            viewModelScope.launch {
+                endRecurrence(id)
+                _state.update { it.copy(saved = true) }
+            }
+        }
 
         fun save() {
             val s = _state.value

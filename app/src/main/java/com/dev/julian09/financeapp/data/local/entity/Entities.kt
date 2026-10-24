@@ -30,9 +30,12 @@ data class SettingsEntity(
     val deletedAt: Instant? = null,
     val syncState: SyncState = SyncState.PENDING,
     val syncError: String? = null,
-    /** PERIOD or TOTAL_DEBT (V13, Room 7). */
+    /** PERIOD or CUSTOM (V13, Room 7; V14, Room 8 renames TOTAL_DEBT to CUSTOM). */
     @ColumnInfo(defaultValue = "PERIOD")
     val netBalanceMode: String = "PERIOD",
+    /** The expense category that receives the principal of loan installments (V14, Room 8); null until the first one. */
+    @ColumnInfo(defaultValue = "NULL")
+    val loanPaymentCategoryId: UUID? = null,
 )
 
 @Entity(tableName = "accounts", indices = [Index("syncState")])
@@ -53,6 +56,9 @@ data class AccountEntity(
     val deletedAt: Instant? = null,
     val syncState: SyncState = SyncState.PENDING,
     val syncError: String? = null,
+    /** Whether the debt is subtracted in the custom net balance (V14, Room 8). */
+    @ColumnInfo(defaultValue = "1")
+    val includeInNet: Boolean = true,
 )
 
 @Entity(tableName = "categories", indices = [Index("syncState"), Index("parentId")])

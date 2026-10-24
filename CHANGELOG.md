@@ -7,13 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A registered payment (loan installment, extra payment, card payment) can change its date from its detail, and the installments it settled follow; paying an installment or a card asks for the date and time (S15-H05, #162)
+- Gastos recurrentes: tapping a row opens Hoja · Pendiente, and Editar gasto recurrente has «Finalizar recurrencia»
+- Detalle de etiqueta: a trash beside the pencil deletes the tag after telling how many movements lose it
+- Historial: the search also finds the movements of an exact amount typed as `45000`, `45.000`, `$45.000` or `45.000,50` (S15-H03, #160)
+- Bienvenida is the first screen without a session (brand, mascot, «Comenzar», Google, «Inicia sesión»); an expired session still goes to Iniciar sesión (S15-H04, #161)
+- Hoja · Detalle del saldo: «Elegir deudas» marks the cards and loans the net balance subtracts (Room 8 `accounts.includeInNet`, server V14); the net balance mode `TOTAL_DEBT` is now `CUSTOM` (S15-H07, #164)
+- «Deudas», an expense category the system creates, receives the principal of loan installments and extra payments, which count as expenses in Reportes, Inicio, the fox and Historial; deleting it asks for another category that takes over (Room 8 `settings.loanPaymentCategoryId`, server V14; S15-H06, #163)
+
 ### Changed
 
+- A movement saved without a title takes its category's name as the title (S15-H02)
+- Loans are only seen in Gestión de cuentas: the movement, transfer, recurring and pending-payment pickers, the Home carousel and Personalizar inicio no longer offer them, and the default account is never a loan (S15-H02, #159)
+- Nueva transacción: the amount takes the focus with the keyboard up, the tabs carry the Home quick-action icons, and the category row is five equal cells with «Más» in the fifth (also in Filtros and Nueva categoría)
 - Links to `coffer-docs` removed from the README and the issue template, because it is now private; a Gitleaks workflow scans every PR and push for secrets
-
-### Changed
-
 - The privacy policy, terms and third-party notices are published from `docs/` of this repository with GitHub Pages (`https://julian049.github.io/coffer-app/`), because `coffer-docs` goes private; `LegalDocs` points there
+- Categorías: the main icon is round and «Añadir» is the last tile of the subcategories (S15-H04)
+- Hoja · Detalle del saldo: the cards are tapped to choose what Home shows, with no «Mostrar en inicio» and no «Listo» (S15-H07)
+
+### Fixed
+
+- Editar préstamo: a payment day earlier than today no longer leaves the next installment overdue
+- The History summary leaves out categories excluded from reports and the opening balance, like Home (S15-H01, #158)
+- Reportes: in «Ahorro por mes» each month sits under its bar
+- The title suggestion shows the best match first (exact, prefix, start of a word, contains), also when it is the exact one, and merges notes that differ only in case
 
 ## [1.5.0] - 2026-10-22
 

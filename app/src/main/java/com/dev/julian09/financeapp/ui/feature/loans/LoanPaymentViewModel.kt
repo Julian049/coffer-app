@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 
@@ -37,6 +38,8 @@ data class LoanPaymentState(
     val amountDigits: String = "",
     val mode: ExtraPaymentMode = ExtraPaymentMode.REDUCE_TERM,
     val sourceId: UUID? = null,
+    /** S15-UI10: when it was paid, today by default. */
+    val occurredAt: Instant = Instant.EPOCH,
     val errors: TransactionErrors = emptyMap(),
     val done: Boolean = false,
 ) {
@@ -85,6 +88,7 @@ class LoanPaymentViewModel
                         overview = overview,
                         sheet = sheet,
                         amountDigits = suggested.takeIf { it > Money.ZERO }?.wholePesosText().orEmpty(),
+                        occurredAt = clock.now(),
                         sourceId =
                             accounts
                                 .observeBalances()
@@ -104,14 +108,16 @@ class LoanPaymentViewModel
 
         fun setSource(id: UUID) = edit { it.copy(sourceId = id) }
 
+        fun setOccurredAt(value: Instant) = edit { it.copy(occurredAt = value) }
+
         fun confirm() {
             val s = _state.value
             val loanId = s.overview?.loan?.accountId ?: return
             viewModelScope.launch {
                 val errors =
                     when (s.sheet) {
-                        LoanSheet.PAY -> pay(loanId, s.sourceId, s.amount, clock.now())
-                        LoanSheet.EXTRA -> extra(loanId, s.sourceId, s.amount, s.mode, clock.now())
+                        LoanSheet.PAY -> pay(loanId, s.sourceId, s.amount, s.occurredAt)
+                        LoanSheet.EXTRA -> extra(loanId, s.sourceId, s.amount, s.mode, s.occurredAt)
                     }
                 _state.update { if (errors.isEmpty()) it.copy(done = true) else it.copy(errors = errors) }
             }

@@ -10,6 +10,7 @@ import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
 import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
+import com.dev.julian09.financeapp.domain.usecase.SetIncludeInNet
 import com.dev.julian09.financeapp.domain.usecase.UpdateSettings
 import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
 import com.dev.julian09.financeapp.ui.feature.history.buildDays
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.YearMonth
+import java.util.UUID
 import javax.inject.Inject
 
 /** user_settings.home_balance_view (REQ-CTA-09). */
@@ -50,6 +52,7 @@ class HomeViewModel
         clock: Clock,
         settings: SettingsRepository,
         private val updateSettings: UpdateSettings,
+        private val setIncludeInNet: SetIncludeInNet,
     ) : ViewModel() {
         val state: StateFlow<HomeUiState?> =
             combine(
@@ -69,6 +72,14 @@ class HomeViewModel
         /** Hoja · Detalle del saldo: which view Home shows (REQ-CTA-09). */
         fun setBalanceView(view: BalanceView) {
             viewModelScope.launch { updateSettings { it.copy(homeBalanceView = view.name) } }
+        }
+
+        /** Hoja · Detalle del saldo, «Elegir deudas»: marks or unmarks a debt (S15-UI11). */
+        fun setIncludeInNet(
+            accountId: UUID,
+            include: Boolean,
+        ) {
+            viewModelScope.launch { setIncludeInNet.invoke(accountId, include) }
         }
 
         /** Hoja · Detalle del saldo: what the net balance subtracts (S12-H03). */

@@ -7,6 +7,7 @@ import com.dev.julian09.financeapp.data.local.dao.CardDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
 import com.dev.julian09.financeapp.data.local.dao.ChangeLogDao
 import com.dev.julian09.financeapp.data.local.dao.LoanDao
+import com.dev.julian09.financeapp.data.local.dao.NoteRow
 import com.dev.julian09.financeapp.data.local.dao.RecurringDao
 import com.dev.julian09.financeapp.data.local.dao.SettingsDao
 import com.dev.julian09.financeapp.data.local.dao.SyncMetaDao
@@ -33,6 +34,7 @@ import com.dev.julian09.financeapp.domain.model.AccountFlows
 import com.dev.julian09.financeapp.domain.model.AccountImpact
 import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.Amortization
+import com.dev.julian09.financeapp.domain.model.AmountQuery
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.CategoryTotal
@@ -158,6 +160,36 @@ class AccountRepositoryImpl
                     )
                     dao.upsert(listOf(a.copy(initialBalance = 0, updatedAt = now, syncState = SyncState.PENDING, syncError = null)))
                 }
+            }
+            return true
+        }
+
+        override suspend fun ensureLoanCategory(): Boolean {
+            val owner = db.syncMeta().get(SyncMeta.OWNER) ?: return false
+            // The settings row arrives with the first download
+            val stored = db.settings().observe().first() ?: return false
+            if (stored.loanPaymentCategoryId != null) return false
+            val categoryId = UUID.nameUUIDFromBytes("$owner:LOAN_PAYMENTS".toByteArray())
+            // Created once: if the user deleted it, the next payment asks for another category instead
+            if (db.categories().get(categoryId) != null) return false
+            db.withTransaction {
+                val now = clock.now()
+                db.categories().upsert(
+                    listOf(
+                        CategoryEntity(
+                            id = categoryId,
+                            name = "Deudas",
+                            kind = CategoryKind.EXPENSE.name,
+                            icon = "money",
+                            sortOrder = Int.MAX_VALUE - 1,
+                            createdAt = now,
+                            updatedAt = now,
+                        ),
+                    ),
+                )
+                db.settings().upsert(
+                    stored.copy(loanPaymentCategoryId = categoryId, updatedAt = now, syncState = SyncState.PENDING, syncError = null),
+                )
             }
             return true
         }
@@ -369,6 +401,8 @@ class TagRepositoryImpl
             pinned: Boolean,
         ) = dao.setPinned(id, pinned, clock.now())
 
+        override suspend fun movementCount(id: UUID): Int = dao.movementCount(id)
+
         override suspend fun delete(id: UUID) {
             val now = clock.now()
             db.withTransaction {
@@ -422,6 +456,29 @@ class TransactionRepositoryImpl
                 history.log("UPDATE", before, after, now)
             }
 
+        override suspend fun changePaymentDate(
+            id: UUID,
+            occurredAt: Instant,
+        ): Boolean =
+            db.withTransaction {
+                val before = dao.get(id)?.takeIf { it.deletedAt == null && it.paymentKind != null } ?: return@withTransaction false
+                val now = clock.now()
+                val after = before.copy(occurredAt = occurredAt, updatedAt = now, syncState = SyncState.PENDING, syncError = null)
+                dao.upsert(listOf(after))
+                history.log("UPDATE", before, after, now)
+                // A loan payment settled one installment; a card payment, those stamped with its date (payments from before 1.6.0
+                // were stamped with the day they were registered and stay as they were)
+                val settled =
+                    before.installmentId?.let { listOfNotNull(cards.getInstallment(it)) }
+                        ?: before.destinationAccountId?.let { cards.installmentsPaidOn(it, before.occurredAt) }.orEmpty()
+                cards.upsertInstallments(
+                    settled.filter { it.status == "PAID" }.map {
+                        it.copy(paidAt = occurredAt, updatedAt = now, syncState = SyncState.PENDING, syncError = null)
+                    },
+                )
+                true
+            }
+
         override suspend fun delete(id: UUID) =
             db.withTransaction {
                 val before = dao.get(id)?.takeIf { it.deletedAt == null } ?: return@withTransaction
@@ -452,7 +509,8 @@ class TransactionRepositoryImpl
             limit: Int,
         ): List<NoteSuggestion> {
             val pattern = like(text).ifEmpty { return emptyList() }
-            return dao.notes(type.name, pattern, limit).map { NoteSuggestion(it.note, it.categoryId, it.accountId) }
+            // More rows than [limit]: the ranking can bring a later row up
+            return rankNotes(text, dao.notes(type.name, pattern, NOTE_CANDIDATES)).take(limit)
         }
 
         override fun observeSince(from: Instant): Flow<List<Transaction>> =
@@ -494,6 +552,7 @@ class TransactionRepositoryImpl
                     f.tagIds.isEmpty(),
                     f.tagIds.toList(),
                     like(f.query),
+                    amountOf(f.query),
                     limit,
                 )
             return rows.map { list -> list.map { it.toDomain() } }
@@ -514,6 +573,7 @@ class TransactionRepositoryImpl
                     f.tagIds.isEmpty(),
                     f.tagIds.toList(),
                     like(f.query),
+                    amountOf(f.query),
                 )
             return totals.map { SearchTotals(Money(it.income), Money(it.expense), it.count) }
         }
@@ -526,6 +586,10 @@ class TransactionRepositoryImpl
         ): Flow<List<Transaction>> = dao.observeRecurringPayments(from, to).map { rows -> rows.map { it.toDomain() } }
 
         // shortcut: SQLite LIKE ignores case only for ASCII, so "cafe" misses "Café"; normalize text if the PO asks
+
+        /** S15-DAT02: an amount typed in the search also matches the movements of exactly that value; no amount never matches. */
+        private fun amountOf(query: String): Long = AmountQuery.parse(query)?.scaled ?: -1L
+
         private fun like(query: String): String {
             val text = query.trim()
             if (text.isEmpty()) return ""
@@ -872,7 +936,8 @@ class SettingsRepositoryImpl
                         it.homeBalanceView,
                         it.amountDecimals,
                         homeCards(it.homeCards),
-                        NetBalanceMode.valueOf(it.netBalanceMode),
+                        netBalanceModeOf(it.netBalanceMode),
+                        it.loanPaymentCategoryId,
                     )
                 } ?: Settings()
             }
@@ -887,12 +952,20 @@ class SettingsRepositoryImpl
                     amountDecimals = settings.amountDecimals,
                     homeCards = homeCardsJson(settings.homeCards),
                     netBalanceMode = settings.netBalanceMode.name,
+                    loanPaymentCategoryId = settings.loanPaymentCategoryId,
                     updatedAt = clock.now(),
                     syncState = SyncState.PENDING,
                     syncError = null,
                 ),
             )
         }
+    }
+
+/** An unknown mode reads as PERIOD; TOTAL_DEBT, from before 1.6.0, is CUSTOM. */
+internal fun netBalanceModeOf(name: String): NetBalanceMode =
+    when (name) {
+        "CUSTOM", "TOTAL_DEBT" -> NetBalanceMode.CUSTOM
+        else -> NetBalanceMode.PERIOD
     }
 
 internal fun Recurring.toEntity(
@@ -973,6 +1046,7 @@ internal fun Account.toEntity(
     icon = icon,
     color = color,
     sortOrder = sortOrder,
+    includeInNet = includeInNet,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -991,6 +1065,7 @@ internal fun AccountEntity.toDomain() =
         color,
         sortOrder,
         createdAt,
+        includeInNet,
     )
 
 internal fun CategoryEntity.toDomain() =
@@ -1034,3 +1109,32 @@ internal fun homeCards(text: String): List<HomeCard> =
         .map { HomeCard(it.key, it.visible) }
 
 internal fun homeCardsJson(cards: List<HomeCard>): String = cardsJson.encodeToString(cards.map { HomeCardJson(it.key, it.visible) })
+
+private const val NOTE_CANDIDATES = 100
+
+/**
+ * S15-DOM01: exact, then prefix, then start of a word, then contains; ties by use and then by date (the rows come latest
+ * first). Notes that differ only in case are one suggestion, the most recent.
+ */
+internal fun rankNotes(
+    text: String,
+    rows: List<NoteRow>,
+): List<NoteSuggestion> {
+    val query = text.trim().lowercase()
+
+    fun rank(note: String): Int {
+        val n = note.lowercase()
+        return when {
+            n == query -> 0
+            n.startsWith(query) -> 1
+            n.split(' ', '-', '/').any { it.startsWith(query) } -> 2
+            else -> 3
+        }
+    }
+    return rows
+        .groupBy { it.note.lowercase() }
+        .values
+        .map { group -> group.first() to group.sumOf { it.uses } }
+        .sortedWith(compareBy({ rank(it.first.note) }, { -it.second }))
+        .map { (row, _) -> NoteSuggestion(row.note, row.categoryId, row.accountId) }
+}

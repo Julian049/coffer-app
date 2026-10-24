@@ -35,14 +35,14 @@ data class HomeDashboard(
     val net: Money = available,
     /** What the cards and loans ask for this period: each card's statement and each loan's next installment. */
     val dues: List<DuePayment> = emptyList(),
-    /** Active cards and loans with a debt, for [NetBalanceMode.TOTAL_DEBT]. */
+    /** Active cards and loans with a debt, for [NetBalanceMode.CUSTOM]. */
     val debts: List<AccountBalance> = emptyList(),
 ) {
     /** REQ-CTA-08 (S12-H03): the available total minus this period's [dues] or the whole debt of [debts]. */
     fun net(mode: NetBalanceMode): Money =
         when (mode) {
             NetBalanceMode.PERIOD -> net
-            NetBalanceMode.TOTAL_DEBT -> BalanceCalculator.net(available, debts.map { -it.balance })
+            NetBalanceMode.CUSTOM -> BalanceCalculator.net(available, debts.filter { it.account.includeInNet }.map { -it.balance })
         }
 }
 

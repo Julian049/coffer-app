@@ -12,6 +12,7 @@ import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
 import com.dev.julian09.financeapp.domain.usecase.ObservePendingPayments
 import com.dev.julian09.financeapp.domain.usecase.PinTag
 import com.dev.julian09.financeapp.domain.usecase.RenameTag
+import com.dev.julian09.financeapp.domain.usecase.SetIncludeInNet
 import com.dev.julian09.financeapp.domain.usecase.UpdateSettings
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.feature.home.HomeViewModel
@@ -125,6 +126,7 @@ class TagSummaryTest {
                     f.clock,
                     f.settings,
                     UpdateSettings(f.settings, FakeSyncScheduler()),
+                    SetIncludeInNet(f.accounts, FakeSyncScheduler()),
                 ).state.filterNotNull().first()
             val line = home.pinned.single()
             assertEquals("Salidas", line.tag.name)

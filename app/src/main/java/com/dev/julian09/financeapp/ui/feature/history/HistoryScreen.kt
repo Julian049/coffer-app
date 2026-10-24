@@ -55,6 +55,7 @@ import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.Avatar
+import com.dev.julian09.financeapp.ui.components.BubbleRow
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
 import com.dev.julian09.financeapp.ui.components.EmptyState
@@ -62,7 +63,6 @@ import com.dev.julian09.financeapp.ui.components.FabClearance
 import com.dev.julian09.financeapp.ui.components.IconBubble
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
-import com.dev.julian09.financeapp.ui.components.MoreBubble
 import com.dev.julian09.financeapp.ui.components.iconOf
 import com.dev.julian09.financeapp.ui.feature.home.mascot
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -333,14 +333,12 @@ private fun FiltersSheet(
             Text("Categorías", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
             val ranked = mostUsedAll(choices.categories, choices.usage)
             val quick = (ranked.filter { it.id in f.categoryIds } + ranked).distinctBy { it.id }.take(4)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                quick.forEach { c ->
-                    val on = c.id in f.categoryIds
-                    IconBubble(c.name, iconOf(c, choices.categories), selected = on, checked = on, multiple = true) {
-                        f = f.copy(categoryIds = f.categoryIds.toggle(c.id))
-                    }
+            BubbleRow(quick.size, onMore = { pickingCategories = true }) { i, cell ->
+                val c = quick[i]
+                val on = c.id in f.categoryIds
+                IconBubble(c.name, iconOf(c, choices.categories), selected = on, checked = on, multiple = true, modifier = cell) {
+                    f = f.copy(categoryIds = f.categoryIds.toggle(c.id))
                 }
-                MoreBubble { pickingCategories = true }
             }
             Section("Cuenta") {
                 choices.accounts.forEach { a ->

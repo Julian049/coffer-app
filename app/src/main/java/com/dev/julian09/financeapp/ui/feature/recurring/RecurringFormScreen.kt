@@ -48,6 +48,7 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.transactions.categoryLabel
@@ -115,6 +116,7 @@ fun RecurringFormScreen(
                 onInterval = viewModel::setInterval,
                 onIntervalUnit = viewModel::setIntervalUnit,
                 onSave = viewModel::save,
+                onEnd = viewModel::end,
             ),
     )
 }
@@ -130,6 +132,7 @@ class RecurringFormActions(
     val onInterval: (String) -> Unit = {},
     val onIntervalUnit: (IntervalUnit) -> Unit = {},
     val onSave: () -> Unit = {},
+    val onEnd: () -> Unit = {},
 )
 
 /** Nuevo gasto recurrente (S6-UI01): Figma "6 · Pagos recurrentes". */
@@ -144,7 +147,29 @@ fun RecurringFormContent(
     val colors = CofferTheme.colors
     // S12-UI09: the bottom button rides on the keyboard
     Column(modifier.fillMaxSize().imePadding()) {
-        AppHeader(title = if (state.editingId == null) "Nuevo gasto recurrente" else "Editar gasto recurrente", onBack = actions.onBack)
+        var ending by rememberSaveable { mutableStateOf(false) }
+        AppHeader(
+            title = if (state.editingId == null) "Nuevo gasto recurrente" else "Editar gasto recurrente",
+            onBack = actions.onBack,
+            actions = {
+                if (state.editingId != null) {
+                    TextButton(onClick = { ending = true }) { Text("Finalizar recurrencia", color = colors.expense) }
+                }
+            },
+        )
+        if (ending) {
+            ConfirmDialog(
+                title = "¿Finalizar ${state.name.ifBlank { "este gasto" }}?",
+                message = "No se generarán más pendientes y desaparecerá de tus gastos recurrentes. Los pagos ya registrados se quedan.",
+                confirmText = "Finalizar",
+                onConfirm = {
+                    ending = false
+                    actions.onEnd()
+                },
+                onDismiss = { ending = false },
+                destructive = true,
+            )
+        }
         Column(
             Modifier
                 .fillMaxWidth()

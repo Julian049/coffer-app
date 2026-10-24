@@ -51,7 +51,7 @@ class CustomizeHomeViewModel
         init {
             viewModelScope.launch {
                 val cards = homeLayout(settings.observe().first().homeCards)
-                _state.value = CustomizeHomeState(cards, accounts.observeActive().first(), loaded = true)
+                _state.value = CustomizeHomeState(cards, accounts.observeActive().first().filter { it.type.isPickable }, loaded = true)
             }
         }
 

@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Sell
@@ -30,8 +31,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -167,51 +166,26 @@ internal fun TagRow(
     }
 }
 
-/** Hoja · Nueva etiqueta, and its edit with "Eliminar" (S9-UI02). */
+/** Hoja · Nueva etiqueta and Hoja · Editar etiqueta (S9-UI02); deleting is in Detalle de etiqueta (S15-UI08). */
 @Composable
 internal fun TagSheetContent(
     sheet: TagSheet,
     onDismiss: () -> Unit,
     onEdit: ((TagSheet) -> TagSheet) -> Unit,
     onSave: () -> Unit,
-    onDelete: (() -> Unit)? = null,
 ) {
-    val colors = CofferTheme.colors
     val editing = sheet.editing != null
-    var confirming by rememberSaveable { mutableStateOf(false) }
     AppBottomSheet(
         onDismiss = onDismiss,
         title = if (editing) "Editar etiqueta" else "Nueva etiqueta",
         actions = {
             AppButton(if (editing) "Guardar cambios" else "Crear etiqueta", onClick = onSave, modifier = Modifier.fillMaxWidth())
-            onDelete?.let {
-                AppButton(
-                    "Eliminar etiqueta",
-                    onClick = { confirming = true },
-                    kind = ButtonKind.Danger,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
         },
     ) {
         AppTextField(value = sheet.name, onValueChange = { name ->
             onEdit { it.copy(name = name) }
         }, label = "Nombre", error = sheet.error?.message())
-        if (!editing) PinCard(sheet.pinned) { pinned -> onEdit { it.copy(pinned = pinned) } }
-    }
-    // S12-UI12: what deleting a tag does to its movements, before it happens
-    if (confirming && onDelete != null) {
-        ConfirmDialog(
-            title = "¿Eliminar «${sheet.name.trim()}»?",
-            message = "Los movimientos conservan sus datos, pero pierden la asociación con esta etiqueta.",
-            confirmText = "Eliminar",
-            onConfirm = {
-                confirming = false
-                onDelete()
-            },
-            onDismiss = { confirming = false },
-            destructive = true,
-        )
+        PinCard(sheet.pinned) { pinned -> onEdit { it.copy(pinned = pinned) } }
     }
 }
 
@@ -253,6 +227,7 @@ fun TagDetailScreen(
         TagDetailActions(
             onBack = onBack,
             onEdit = viewModel::startEdit,
+            onDelete = viewModel::askDelete,
             onRange = viewModel::selectRange,
             onFrom = viewModel::setFrom,
             onTo = viewModel::setTo,
@@ -260,12 +235,27 @@ fun TagDetailScreen(
             onOpenTransaction = onOpenTransaction,
         ),
     )
-    sheet?.let { TagSheetContent(it, viewModel::dismiss, viewModel::edit, viewModel::save, onDelete = { viewModel.delete(onBack) }) }
+    sheet?.let { TagSheetContent(it, viewModel::dismiss, viewModel::edit, viewModel::save) }
+    val deleting by viewModel.deleting.collectAsStateWithLifecycle()
+    // Diálogo · Eliminar etiqueta (Figma `154:352`): what happens to its movements, before it happens
+    deleting?.let { count ->
+        ConfirmDialog(
+            title = "¿Eliminar la etiqueta «${state?.tag?.name.orEmpty()}»?",
+            message =
+                (if (count == 1) "Su movimiento no se borra" else "Sus $count movimientos no se borran") +
+                    "; solo dejan de tener esta etiqueta.",
+            confirmText = "Eliminar",
+            onConfirm = { viewModel.delete(onBack) },
+            onDismiss = viewModel::cancelDelete,
+            destructive = true,
+        )
+    }
 }
 
 data class TagDetailActions(
     val onBack: () -> Unit = {},
     val onEdit: () -> Unit = {},
+    val onDelete: () -> Unit = {},
     val onRange: (TagRange) -> Unit = {},
     val onFrom: (LocalDate) -> Unit = {},
     val onTo: (LocalDate) -> Unit = {},
@@ -287,6 +277,10 @@ fun TagDetailContent(
             IconButton(
                 onClick = actions.onEdit,
             ) { Icon(Icons.Outlined.Edit, contentDescription = "Editar etiqueta", tint = colors.textPrimary) }
+            // S15-UI08: the trash sits beside the pencil, in the same red as Editar transacción
+            IconButton(
+                onClick = actions.onDelete,
+            ) { Icon(Icons.Outlined.DeleteOutline, contentDescription = "Eliminar etiqueta", tint = colors.expense) }
         })
         if (state == null) return@Column
         Column(

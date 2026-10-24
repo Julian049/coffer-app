@@ -4,6 +4,7 @@ import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.LedgerError
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
+import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import kotlinx.coroutines.flow.first
 import java.util.UUID
@@ -95,6 +96,7 @@ class DeleteCategory
     constructor(
         private val repository: CategoryRepository,
         private val accounts: AccountRepository,
+        private val settings: SettingsRepository,
         private val scheduler: SyncScheduler,
     ) {
         suspend operator fun invoke(
@@ -104,12 +106,16 @@ class DeleteCategory
             val all = repository.observeAll().first()
             val subtree = all.filter { it.id == id || it.parentId == id }
             if (subtree.any { it.systemKey == FINANCIAL_CHARGES } && hasDebtAccounts()) return LedgerError.SYSTEM_CATEGORY_IN_USE
+            // S15-DOM06: the category of loan installments is replaced by the target, so one has to be chosen
+            val stored = settings.observe().first()
+            val receivesLoans = stored.loanPaymentCategoryId != null && subtree.any { it.id == stored.loanPaymentCategoryId }
             if (targetId == null) {
-                if (repository.transactionCount(id) > 0) return LedgerError.TARGET_REQUIRED
+                if (receivesLoans || repository.transactionCount(id) > 0) return LedgerError.TARGET_REQUIRED
             } else if (deleteTargets(all, id).none { it.id == targetId }) {
                 return LedgerError.TARGET_INVALID
             }
             repository.delete(id, targetId)
+            if (receivesLoans) settings.update(stored.copy(loanPaymentCategoryId = targetId))
             scheduler.requestSync()
             return null
         }

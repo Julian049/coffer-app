@@ -9,6 +9,7 @@ import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
+import com.dev.julian09.financeapp.domain.usecase.ChangePaymentDate
 import com.dev.julian09.financeapp.domain.usecase.DeleteTransaction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 
@@ -42,6 +44,7 @@ class TransactionDetailViewModel
         categories: CategoryRepository,
         tags: TagRepository,
         private val delete: DeleteTransaction,
+        private val changePaymentDate: ChangePaymentDate,
     ) : ViewModel() {
         private val id: UUID = UUID.fromString(savedState.get<String>("id"))
 
@@ -69,6 +72,11 @@ class TransactionDetailViewModel
 
         private val _deleted = MutableStateFlow(false)
         val deleted: StateFlow<Boolean> = _deleted.asStateFlow()
+
+        /** S15-DOM04: the date of a registered payment, with the installments it settled. */
+        fun changeDate(value: Instant) {
+            viewModelScope.launch { changePaymentDate(id, value) }
+        }
 
         fun confirmDelete() {
             viewModelScope.launch {

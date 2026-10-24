@@ -182,7 +182,8 @@ object ReportAggregator {
 
     /**
      * [transactions] must cover the whole evolution; [purchases] are the deferred purchases' expenses, whenever they
-     * happened, because their installments count on each due date (REQ-TC-09).
+     * happened, because their installments count on each due date (REQ-TC-09). [loanCategoryId] receives the principal of loan
+     * payments (S15-H06).
      */
     fun aggregate(
         span: ReportSpan,
@@ -194,6 +195,7 @@ object ReportAggregator {
         deferred: List<DeferredPurchase>,
         installments: List<Installment>,
         purchases: List<Transaction>,
+        loanCategoryId: UUID? = null,
     ): Report {
         val byId = categories.associateBy { it.id }
         val financialCharges = categories.firstOrNull { it.systemKey == FINANCIAL_CHARGES }?.id
@@ -202,6 +204,12 @@ object ReportAggregator {
             val date = t.occurredAt.atZone(zone).toLocalDate()
             when {
                 t.type == TransactionType.TRANSFER -> {
+                    // S15-DOM05: the principal of an installment and an extra payment is an expense of the loans' category
+                    if (t.paymentKind in
+                        LOAN_KINDS
+                    ) {
+                        entries += Entry(date, TransactionType.EXPENSE, t.principal ?: t.amount, loanCategoryId)
+                    }
                     val charges = (t.interest ?: Money.ZERO) + (t.fees ?: Money.ZERO)
                     if (charges > Money.ZERO) {
                         entries += Entry(date, TransactionType.EXPENSE, charges, financialCharges, card = t.destinationAccountId)
@@ -346,4 +354,5 @@ object ReportAggregator {
     private fun List<Entry>.sumAll() = fold(Money.ZERO) { s, e -> s + e.amount }
 
     private const val FINANCIAL_CHARGES = "FINANCIAL_CHARGES"
+    private val LOAN_KINDS = setOf("LOAN_INSTALL", "LOAN_EXTRA")
 }
