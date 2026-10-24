@@ -46,9 +46,13 @@ import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.cards.rateLabel
 import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
 import com.dev.julian09.financeapp.ui.feature.transactions.AccountPicker
+import com.dev.julian09.financeapp.ui.feature.transactions.DateTimeCard
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
@@ -222,7 +226,15 @@ fun LoanPaymentSheet(
         }
     }
     if (loanId == null || state.overview?.loan?.accountId != loanId) return
-    val actions = LoanPaymentActions(viewModel::setAmount, viewModel::setMode, viewModel::setSource, viewModel::confirm, onDismiss)
+    val actions =
+        LoanPaymentActions(
+            viewModel::setAmount,
+            viewModel::setMode,
+            viewModel::setSource,
+            viewModel::confirm,
+            onDismiss,
+            viewModel::setOccurredAt,
+        )
     AppBottomSheet(onDismiss = onDismiss, actions = { LoanPaymentButtons(state.sheet, actions) }) {
         LoanPaymentContent(state, sources, actions, withButtons = false)
     }
@@ -234,6 +246,7 @@ class LoanPaymentActions(
     val onSource: (UUID) -> Unit = {},
     val onConfirm: () -> Unit = {},
     val onCancel: () -> Unit = {},
+    val onOccurredAt: (Instant) -> Unit = {},
 )
 
 /** SEQ-11: the installment with its split (REQ-PRE-05), or the extra payment with both options simulated (REQ-PRE-06). */
@@ -244,6 +257,8 @@ fun LoanPaymentContent(
     actions: LoanPaymentActions,
     /** False inside the sheet, which shows them fixed under the content (S12-UI09). */
     withButtons: Boolean = true,
+    today: LocalDate = LocalDate.now(),
+    zone: ZoneId = ZoneId.systemDefault(),
 ) {
     val colors = CofferTheme.colors
     val overview = state.overview ?: return
@@ -306,6 +321,8 @@ fun LoanPaymentContent(
             }
         }
         AccountPicker("Cuenta de origen", sources, state.sourceId, state.errors[TransactionField.ACCOUNT], actions.onSource)
+        // S15-UI10: the date and time of the payment
+        DateTimeCard(state.occurredAt, actions.onOccurredAt, today, zone)
         state.errors[TransactionField.DESTINATION]?.let {
             Text(
                 it.message(),

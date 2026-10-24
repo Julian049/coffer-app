@@ -108,4 +108,55 @@ class TransactionDaoTest {
             assertTrue(first.hasMore)
             assertFalse(search(october, 6).first().hasMore)
         }
+
+    @Test
+    fun theSummaryLeavesOutCategoriesExcludedFromReportsUnlessTheFilterNamesThem() =
+        runBlocking {
+            val cash = f.account("Efectivo")
+            val savings = f.category("Ahorros", excluded = true)
+            val fund = f.category("Fondo", parent = savings)
+            val opening = f.category("Saldo inicial", "INCOME", systemKey = "OPENING_BALANCE", excluded = true)
+            val food = f.category("Comida")
+            val at = Instant.parse("2026-10-10T12:00:00Z")
+            f.tx("EXPENSE", 10, cash, at = at, category = food)
+            f.tx("EXPENSE", 50, cash, at = at, category = savings)
+            f.tx("EXPENSE", 7, cash, at = at, category = fund)
+            f.tx("INCOME", 1_000, cash, at = at, category = opening)
+
+            val all = search(october, 100).first().totals
+            assertEquals(Money.ofPesos(10), all.expense)
+            assertEquals(Money.ofPesos(0), all.income)
+            // The list and the pagination still see the four rows
+            assertEquals(4, all.count)
+            // An explicit filter counts the category, and its subcategories through the parent
+            assertEquals(Money.ofPesos(57), search(october.copy(categoryIds = setOf(savings)), 100).first().totals.expense)
+        }
+
+    @Test
+    fun anAmountInTheSearchFindsThoseExactMovementsAlongsideTheTextMatches() =
+        runBlocking {
+            val cash = f.account("Efectivo")
+            val at = Instant.parse("2026-10-10T12:00:00Z")
+            f.tx("EXPENSE", 45_000, cash, at = at)
+            f.tx("INCOME", 45_000, cash, at = at.plusSeconds(1))
+            f.tx("EXPENSE", 450_000, cash, at = at.plusSeconds(2))
+            val withText = f.tx("EXPENSE", 7, cash, at = at.plusSeconds(3))
+            f.db.transactions().upsert(
+                listOf(
+                    f.db
+                        .transactions()
+                        .get(withText)!!
+                        .copy(note = "Cuenta 45.000 pesos"),
+                ),
+            )
+
+            for (text in listOf("45000", "$45.000")) assertEquals(text, setOf(45_000L), amounts(october.copy(query = text)).toSet())
+            // «45.000» is also text in the note of the last one
+            assertEquals(setOf(45_000L, 7L), amounts(october.copy(query = "45.000")).toSet())
+            // The summary uses the same match
+            val totals = search(october.copy(query = "45.000"), 100).first().totals
+            assertEquals(Money.ofPesos(45_007), totals.expense)
+            assertEquals(Money.ofPesos(45_000), totals.income)
+            assertTrue(amounts(october.copy(query = "46.000")).isEmpty())
+        }
 }

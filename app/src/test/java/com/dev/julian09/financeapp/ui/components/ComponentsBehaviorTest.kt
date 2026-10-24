@@ -144,7 +144,8 @@ class ComponentsBehaviorTest {
         compose.onNodeWithText("Saldo total disponible").performClick()
         compose.onNodeWithText("Saldo neto").assertIsDisplayed()
         compose.onNodeWithText("$200.000").assertIsDisplayed()
-        compose.onNodeWithText("Neto").performScrollTo().performClick()
+        // Hoja · Detalle del saldo (S15-UI11): a tap on the card picks it, with no «Listo»
+        compose.onNodeWithText("Saldo neto").performScrollTo().performClick()
         assertEquals(BalanceView.NET, chosen)
     }
 

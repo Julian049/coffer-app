@@ -13,6 +13,9 @@ enum class AccountType {
 
     /** Credit cards and loans hold a debt: their balance shows negative (REQ-TC-04). */
     val isDebt: Boolean get() = this == CREDIT_CARD || this == LOAN
+
+    /** S15-DOM02: loans are only seen in Gestión de cuentas; movements, transfers and Home never offer one. */
+    val isPickable: Boolean get() = this != LOAN
 }
 
 data class Account(
@@ -29,6 +32,8 @@ data class Account(
     val sortOrder: Int = 0,
     /** Null until stored. */
     val createdAt: Instant? = null,
+    /** S15-H07: a card or loan whose debt the custom net balance subtracts. */
+    val includeInNet: Boolean = true,
 )
 
 enum class CategoryKind { EXPENSE, INCOME }
@@ -130,6 +135,8 @@ data class Settings(
     val amountDecimals: Int = 0,
     val homeCards: List<HomeCard> = emptyList(),
     val netBalanceMode: NetBalanceMode = NetBalanceMode.PERIOD,
+    /** S15-H06: where the principal of loan installments counts as an expense; null until the first payment asks. */
+    val loanPaymentCategoryId: UUID? = null,
 )
 
 /** REQ-CTA-08 (S12-H03): what the net balance subtracts from the available one. */
@@ -137,8 +144,8 @@ enum class NetBalanceMode {
     /** What falls due this period: each card's statement and each loan's next installment. */
     PERIOD,
 
-    /** Everything owed on cards and loans, as if paid today. */
-    TOTAL_DEBT,
+    /** The debts of cards and loans the user marks (Account.includeInNet), as if paid today. */
+    CUSTOM,
 }
 
 /** Sums of what moved through an account, all positive (detailed-design §6.9.5). */

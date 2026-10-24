@@ -12,6 +12,7 @@ import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import kotlinx.coroutines.flow.first
+import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 
@@ -104,6 +105,22 @@ class DeleteTransaction
             repository.delete(id)
             scheduler.requestSync()
         }
+    }
+
+/**
+ * S15-DOM04: the date of a payment already registered (installment, extra payment, card payment) and of the installments it
+ * settled. The amount and its split stay; the change is logged and synced.
+ */
+class ChangePaymentDate
+    @Inject
+    constructor(
+        private val repository: TransactionRepository,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke(
+            id: UUID,
+            occurredAt: Instant,
+        ): Boolean = repository.changePaymentDate(id, occurredAt).also { if (it) scheduler.requestSync() }
     }
 
 /** Inline "Nueva etiqueta" of the form (REQ-ETQ-01): unique name ignoring case, like the server's uq_tag_name. */

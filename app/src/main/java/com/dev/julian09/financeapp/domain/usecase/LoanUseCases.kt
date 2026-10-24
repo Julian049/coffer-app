@@ -297,7 +297,7 @@ class PayLoanInstallment
                     paymentKind = LoanPaymentKind.INSTALLMENT.code,
                 )
             validator.check(payment).takeIf { it.isNotEmpty() }?.let { return it }
-            loans.pay(payment, listOfNotNull(next?.copy(status = InstallmentStatus.PAID, paidAt = clock.now())))
+            loans.pay(payment, listOfNotNull(next?.copy(status = InstallmentStatus.PAID, paidAt = occurredAt)))
             scheduler.requestSync()
             return emptyMap()
         }
@@ -396,6 +396,7 @@ class EditLoan
         private val accounts: AccountRepository,
         private val loans: LoanRepository,
         private val scheduler: SyncScheduler,
+        private val clock: Clock,
     ) {
         suspend operator fun invoke(
             loanId: UUID,
@@ -422,7 +423,10 @@ class EditLoan
                 if (!detailed || first == null) {
                     emptyList()
                 } else {
-                    val due = first.dueDate.withDayOfMonth(minOf(edit.paymentDay, first.dueDate.lengthOfMonth()))
+                    // S15-UI10: the new day can fall before today; the next installment never starts overdue
+                    var due = first.dueDate.withDayOfMonth(minOf(edit.paymentDay, first.dueDate.lengthOfMonth()))
+                    val today = clock.today()
+                    while (due.isBefore(today)) due = CardPeriodCalculator.dayIn(YearMonth.from(due).plusMonths(1), edit.paymentDay)
                     overview.scheduled.map { it.copy(status = InstallmentStatus.CANCELLED) } +
                         LoanScheduler
                             .plan(

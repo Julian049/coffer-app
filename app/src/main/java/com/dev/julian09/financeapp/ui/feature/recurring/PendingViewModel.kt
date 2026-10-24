@@ -70,7 +70,7 @@ class PendingViewModel
         val accounts: StateFlow<List<AccountBalance>> =
             accounts
                 .observeBalances()
-                .map { list -> list.filter { it.account.active } }
+                .map { list -> list.filter { it.account.active && it.account.type.isPickable } }
                 .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
         /** [payNow] opens straight on the payment (Registrar pago of the list). */

@@ -47,6 +47,7 @@ import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -65,7 +66,7 @@ fun TransactionDetailScreen(
     val editable = detail?.transaction?.isEditable()
     LaunchedEffect(editable) { if (editable == true) onEdit(detail!!) }
     if (editable == true) return
-    TransactionDetailContent(detail, onBack, onEdit, viewModel::confirmDelete)
+    TransactionDetailContent(detail, onBack, onEdit, viewModel::confirmDelete, onChangeDate = viewModel::changeDate)
 }
 
 private val CREATED = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es-CO"))
@@ -94,6 +95,7 @@ fun TransactionDetailContent(
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
     zone: ZoneId = ZoneId.systemDefault(),
+    onChangeDate: (Instant) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     var confirming by rememberSaveable { mutableStateOf(false) }
@@ -145,6 +147,8 @@ fun TransactionDetailContent(
                 d.tagName?.let { Line("Etiqueta", "#$it") }
                 t.note?.let { Line("Nota", it) }
             }
+            // S15-DOM04: the date of a registered payment can be corrected; the amount and its split stay
+            if (t.paymentKind != null) DateTimeCard(t.occurredAt, onChangeDate, today, zone)
             if (t.principal != null) PaymentBreakdownCard(t)
             val created =
                 t.createdAt
@@ -214,6 +218,8 @@ private fun paymentKindLabel(kind: String?) =
     when (kind) {
         "CARD_MIN" -> "Pago mínimo"
         "CARD_TOTAL" -> "Pago total"
+        "LOAN_INSTALL" -> "Cuota de préstamo"
+        "LOAN_EXTRA" -> "Abono a capital"
         else -> null
     }
 

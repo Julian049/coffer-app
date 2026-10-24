@@ -158,6 +158,7 @@ fun HomeScreen(
         onOpenTag = onOpenTag,
         onBalanceView = viewModel::setBalanceView,
         onNetMode = viewModel::setNetMode,
+        onIncludeInNet = viewModel::setIncludeInNet,
         onCustomize = onCustomize,
         onOpenPending = { p ->
             when (p) {
@@ -188,6 +189,7 @@ fun HomeContent(
     onOpenPending: (DuePayment) -> Unit = {},
     onBalanceView: (BalanceView) -> Unit = {},
     onNetMode: (NetBalanceMode) -> Unit = {},
+    onIncludeInNet: (UUID, Boolean) -> Unit = { _, _ -> },
     onCustomize: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
@@ -239,7 +241,7 @@ fun HomeContent(
                         }
                     HomeSection.QUICK_ACTIONS -> QuickActions(onNewTransaction)
                     HomeSection.ACCOUNTS -> {
-                        val active = dashboard.accounts.filter { it.account.active }
+                        val active = dashboard.accounts.filter { it.account.active && it.account.type.isPickable }
                         SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
                         LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(active, key = { it.account.id }) { AccountChipCard(it, onClick = { onOpenAccount(it.account.id) }) }
@@ -277,6 +279,7 @@ fun HomeContent(
                     state.settings.netBalanceMode,
                     onBalanceView,
                     onNetMode,
+                    onIncludeInNet,
                     onDismiss = { balanceSheet = false },
                 )
             }
@@ -458,11 +461,12 @@ fun FoxCard(
             Text(title, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary)
             Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         }
-        Image(painterResource(image), contentDescription = null, modifier = Modifier.size(104.dp).offset(y = FOX_OVERLAP))
+        Image(painterResource(image), contentDescription = null, modifier = Modifier.size(92.dp).offset(y = FOX_OVERLAP))
     }
 }
 
-private val FOX_OVERLAP = 24.dp
+// Figma «Estado del zorro»: 92 dp, 12 dp over the top edge of the balance card
+private val FOX_OVERLAP = 12.dp
 
 /** The image of each state, also used by Historial's monthly summary (M14). */
 @DrawableRes

@@ -100,9 +100,18 @@ fun RecurringScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var paying by rememberSaveable { mutableStateOf<String?>(null) }
+    var opening by rememberSaveable { mutableStateOf<String?>(null) }
     var payingCard by rememberSaveable { mutableStateOf<String?>(null) }
     var payingLoan by rememberSaveable { mutableStateOf<String?>(null) }
-    PendingSheets(paying?.let(UUID::fromString), onDismiss = { paying = null }, payNow = true)
+    // S15-UI09: a tap on the row opens Hoja · Pendiente (Pagar, Omitir, Finalizar), as in Figma; one sheet at a time
+    PendingSheets(
+        (paying ?: opening)?.let(UUID::fromString),
+        onDismiss = {
+            paying = null
+            opening = null
+        },
+        payNow = paying != null,
+    )
     PayCardSheet(payingCard?.let(UUID::fromString), onDismiss = { payingCard = null })
     LoanPaymentSheet(payingLoan?.let(UUID::fromString), LoanSheet.PAY, onDismiss = { payingLoan = null })
     RecurringContent(
@@ -114,6 +123,7 @@ fun RecurringScreen(
             onOpenTransaction,
             viewModel::setFilter,
             viewModel::skip,
+            onOpen = { opening = it.toString() },
             onPay = { paying = it.toString() },
             onPayCard = { payingCard = it.toString() },
             onPayLoan = { payingLoan = it.toString() },
@@ -128,6 +138,7 @@ class RecurringActions(
     val onOpenTransaction: (UUID) -> Unit = {},
     val onFilter: (RecurringFilter) -> Unit = {},
     val onSkip: (UUID) -> Unit = {},
+    val onOpen: (UUID) -> Unit = {},
     val onPay: (UUID) -> Unit = {},
     val onPayCard: (UUID) -> Unit = {},
     val onPayLoan: (UUID) -> Unit = {},
@@ -290,7 +301,7 @@ private fun UpcomingRow(
 ) {
     val colors = CofferTheme.colors
     val r = pending.recurring
-    AppCard(Modifier.fillMaxWidth()) {
+    AppCard(Modifier.fillMaxWidth(), onClick = { actions.onOpen(r.id) }) {
         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.width(4.dp).fillMaxHeight().background(urgencyTint(pending), CofferShapes.pill))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

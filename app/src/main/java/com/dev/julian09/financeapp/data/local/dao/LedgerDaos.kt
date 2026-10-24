@@ -54,6 +54,7 @@ data class NoteRow(
     val note: String,
     val categoryId: UUID?,
     val accountId: UUID?,
+    val uses: Int,
 )
 
 data class SearchTotalsRow(
@@ -68,6 +69,13 @@ data class CategoryTotalRow(
     val count: Int,
 )
 
+/** S15-DOM05: the principal of a loan payment counts as an expense of the loans' category (Deudas), a transfer otherwise. */
+private const val LOAN_KINDS = "('LOAN_INSTALL', 'LOAN_EXTRA')"
+private const val LOAN_EXPENSE = "(t.type = 'TRANSFER' AND t.paymentKind IN $LOAN_KINDS)"
+
+/** The category a movement counts under: its own, or the loans' category for a loan payment. */
+private const val EFFECTIVE_CATEGORY = "COALESCE(t.categoryId, CASE WHEN t.paymentKind IN $LOAN_KINDS THEN ls.loanPaymentCategoryId END)"
+
 /**
  * The combinable filters of the history (REQ-TRX-09, 10). An empty list means "any"; the flags say so because
  * SQLite cannot tell an empty IN list from a missing one. [like] is "" or "%text%" with % and _ escaped by a backslash.
@@ -75,19 +83,23 @@ data class CategoryTotalRow(
 private const val SEARCH_FROM =
     """
     FROM transactions t
-    LEFT JOIN categories c ON c.id = t.categoryId
+    LEFT JOIN settings ls ON ls.deletedAt IS NULL
+    LEFT JOIN categories c ON c.id = $EFFECTIVE_CATEGORY
     LEFT JOIN categories p ON p.id = c.parentId
     LEFT JOIN accounts a ON a.id = t.accountId
     LEFT JOIN accounts d ON d.id = t.destinationAccountId
     LEFT JOIN tags g ON g.id = t.tagId
     WHERE t.deletedAt IS NULL AND t.occurredAt >= :from AND t.occurredAt < :to
       AND (:anyType OR t.type IN (:types))
-      AND (:anyCategory OR t.categoryId IN (:categoryIds))
+      AND (:anyCategory OR $EFFECTIVE_CATEGORY IN (:categoryIds))
       AND (:anyAccount OR t.accountId IN (:accountIds) OR t.destinationAccountId IN (:accountIds))
       AND (:anyTag OR t.tagId IN (:tagIds))
       AND (:like = '' OR t.note LIKE :like ESCAPE '\' OR c.name LIKE :like ESCAPE '\' OR p.name LIKE :like ESCAPE '\'
-           OR a.name LIKE :like ESCAPE '\' OR d.name LIKE :like ESCAPE '\' OR g.name LIKE :like ESCAPE '\')
+           OR a.name LIKE :like ESCAPE '\' OR d.name LIKE :like ESCAPE '\' OR g.name LIKE :like ESCAPE '\'
+           OR t.amount = :amount)
     """
+
+private const val COUNTED = "(NOT :anyCategory OR COALESCE(p.excludeFromReports, c.excludeFromReports, 0) = 0)"
 
 @Dao
 interface AccountDao {
@@ -249,6 +261,10 @@ interface TagDao {
     @Query("SELECT * FROM tags WHERE deletedAt IS NULL ORDER BY pinned DESC, name")
     fun observeAll(): Flow<List<TagEntity>>
 
+    /** S15-UI08: how many movements lose the tag if it is deleted. */
+    @Query("SELECT COUNT(*) FROM transactions WHERE tagId = :id AND deletedAt IS NULL")
+    suspend fun movementCount(id: UUID): Int
+
     @Query("UPDATE tags SET name = :name, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
     suspend fun rename(
         id: UUID,
@@ -324,7 +340,8 @@ interface TransactionDao {
 
     // SQLite takes the bare categoryId from the row that holds MAX(occurredAt): the latest use of each note
     @Query(
-        "SELECT note, categoryId, accountId FROM transactions WHERE deletedAt IS NULL AND type = :type AND note LIKE :like ESCAPE '\\' " +
+        "SELECT note, categoryId, accountId, COUNT(*) AS uses FROM transactions WHERE deletedAt IS NULL AND type = :type " +
+            "AND note LIKE :like ESCAPE '\\' " +
             "GROUP BY note ORDER BY MAX(occurredAt) DESC LIMIT :limit",
     )
     suspend fun notes(
@@ -339,7 +356,7 @@ interface TransactionDao {
     /** REQ-TRX-05 / SEQ-04: the account of the last movement registered, if it is still active. */
     @Query(
         "SELECT t.accountId FROM transactions t JOIN accounts a ON a.id = t.accountId " +
-            "WHERE t.deletedAt IS NULL AND a.deletedAt IS NULL AND a.active = 1 ORDER BY t.createdAt DESC LIMIT 1",
+            "WHERE t.deletedAt IS NULL AND a.deletedAt IS NULL AND a.active = 1 AND a.type <> 'LOAN' ORDER BY t.createdAt DESC LIMIT 1",
     )
     suspend fun lastUsedAccountId(): UUID?
 
@@ -365,9 +382,11 @@ interface TransactionDao {
     @Query(
         """
         SELECT COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS income,
-               COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount END), 0) AS expense
+               COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount
+                                 WHEN $LOAN_EXPENSE THEN COALESCE(t.principal, t.amount) END), 0) AS expense
         FROM transactions t JOIN accounts a ON a.id = t.accountId
-          LEFT JOIN categories c ON c.id = t.categoryId LEFT JOIN categories p ON p.id = c.parentId
+          LEFT JOIN settings ls ON ls.deletedAt IS NULL
+          LEFT JOIN categories c ON c.id = $EFFECTIVE_CATEGORY LEFT JOIN categories p ON p.id = c.parentId
         WHERE t.deletedAt IS NULL AND a.deletedAt IS NULL AND a.active = 1 AND a.includeInTotal = 1
           AND t.occurredAt >= :from AND t.occurredAt < :to
           AND COALESCE(p.excludeFromReports, c.excludeFromReports, 0) = 0
@@ -395,13 +414,19 @@ interface TransactionDao {
         anyTag: Boolean,
         tagIds: List<UUID>,
         like: String,
+        amount: Long,
         limit: Int,
     ): Flow<List<TransactionEntity>>
 
-    /** The same filters, summed for the summary card; transfers are neither (REQ-TRX-03). */
+    /**
+     * The same filters, summed for the summary card; transfers are neither (REQ-TRX-03). Like Home, the sums skip categories
+     * excluded from reports (and so the opening balance) unless the filter names a category; COUNT(*) stays whole because it
+     * drives the pagination.
+     */
     @Query(
-        "SELECT COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS income, " +
-            "COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount END), 0) AS expense, COUNT(*) AS count $SEARCH_FROM",
+        "SELECT COALESCE(SUM(CASE WHEN t.type = 'INCOME' AND $COUNTED THEN t.amount END), 0) AS income, " +
+            "COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' AND $COUNTED THEN t.amount " +
+            "WHEN $LOAN_EXPENSE AND $COUNTED THEN COALESCE(t.principal, t.amount) END), 0) AS expense, COUNT(*) AS count $SEARCH_FROM",
     )
     fun searchTotals(
         from: Instant,
@@ -415,6 +440,7 @@ interface TransactionDao {
         anyTag: Boolean,
         tagIds: List<UUID>,
         like: String,
+        amount: Long,
     ): Flow<SearchTotalsRow>
 
     @Query("SELECT MIN(occurredAt) FROM transactions WHERE deletedAt IS NULL")
@@ -430,8 +456,10 @@ interface TransactionDao {
     ): Flow<List<TransactionEntity>>
 
     @Query(
-        "SELECT categoryId, SUM(amount) AS total, COUNT(*) AS count FROM transactions WHERE deletedAt IS NULL " +
-            "AND categoryId IS NOT NULL AND occurredAt >= :from AND occurredAt < :to GROUP BY categoryId",
+        "SELECT $EFFECTIVE_CATEGORY AS categoryId, " +
+            "SUM(CASE WHEN t.type = 'TRANSFER' THEN COALESCE(t.principal, t.amount) ELSE t.amount END) " +
+            "AS total, COUNT(*) AS count FROM transactions t LEFT JOIN settings ls ON ls.deletedAt IS NULL WHERE t.deletedAt IS NULL " +
+            "AND $EFFECTIVE_CATEGORY IS NOT NULL AND t.occurredAt >= :from AND t.occurredAt < :to GROUP BY $EFFECTIVE_CATEGORY",
     )
     fun observeCategoryTotals(
         from: Instant,
@@ -679,6 +707,16 @@ interface CardDao {
 
     @Query("SELECT * FROM installments WHERE id = :id")
     suspend fun getInstallment(id: UUID): InstallmentEntity?
+
+    /** S15-DOM04: the installments of a card that a payment settled, stamped with its date. */
+    @Query(
+        "SELECT i.* FROM installments i JOIN deferred_purchases d ON d.id = i.deferredPurchaseId " +
+            "WHERE d.cardAccountId = :cardId AND i.status = 'PAID' AND i.paidAt = :paidAt AND i.deletedAt IS NULL",
+    )
+    suspend fun installmentsPaidOn(
+        cardId: UUID,
+        paidAt: Instant,
+    ): List<InstallmentEntity>
 
     @Query(
         "SELECT t.* FROM transactions t WHERE t.deletedAt IS NULL AND (" +

@@ -73,6 +73,7 @@ class LedgerFixture(
         kind: String = "EXPENSE",
         parent: UUID? = null,
         systemKey: String? = null,
+        excluded: Boolean = false,
     ): UUID {
         val id = UUID.randomUUID()
         db.categories().upsert(
@@ -83,6 +84,7 @@ class LedgerFixture(
                     name = name,
                     kind = kind,
                     systemKey = systemKey,
+                    excludeFromReports = excluded,
                     createdAt = past,
                     updatedAt = past,
                     syncState = SyncState.SYNCED,

@@ -127,9 +127,14 @@ class TransactionFormViewModel
             )
         val state: StateFlow<TransactionFormState> = _state.asStateFlow()
 
+        // S15-DOM02: a loan is never offered, except to the movement being edited that already uses it
+        private val keptAccounts = MutableStateFlow(emptySet<UUID>())
+
         val choices: StateFlow<TransactionChoices> =
             combine(
-                accounts.observeBalances(),
+                combine(accounts.observeBalances(), keptAccounts) { accs, kept ->
+                    accs.filter { it.account.type.isPickable || it.account.id in kept }
+                },
                 categories.observeAll(),
                 tags.observeAll(),
                 observeCards(),
@@ -150,6 +155,7 @@ class TransactionFormViewModel
                 if (id != null) {
                     transactions.observe(id).first()?.let { t ->
                         original = t
+                        keptAccounts.value = setOfNotNull(t.accountId, t.destinationAccountId)
                         _state.update {
                             it.copy(
                                 type = t.type,
@@ -170,7 +176,7 @@ class TransactionFormViewModel
                         transactions.lastUsedAccountId() ?: accounts
                             .observeActive()
                             .first()
-                            .firstOrNull()
+                            .firstOrNull { it.type.isPickable }
                             ?.id
                     _state.update { it.copy(accountId = account) }
                 }
@@ -207,7 +213,7 @@ class TransactionFormViewModel
 
         private var suggesting: Job? = null
 
-        /** M5: from 2 letters on, earlier notes of the same type that contain the text. */
+        /** M5: from 2 letters on, earlier notes of the same type that contain the text, the most relevant first. */
         fun setNote(value: String) {
             edit { it.copy(note = value) }
             suggesting?.cancel()
@@ -218,12 +224,8 @@ class TransactionFormViewModel
             }
             suggesting =
                 viewModelScope.launch {
-                    // Figma `114:268`: one row, the most recent match, never a list
-                    val found =
-                        transactions
-                            .suggestNotes(_state.value.type, text)
-                            .filterNot { it.note.equals(text, ignoreCase = true) }
-                            .take(1)
+                    // Figma `114:268`: one row, the best match (also the exact one: it fills the category and the account)
+                    val found = transactions.suggestNotes(_state.value.type, text).take(1)
                     _state.update { it.copy(suggestions = found) }
                 }
         }
@@ -288,7 +290,14 @@ class TransactionFormViewModel
                     destinationAccountId = s.destinationId,
                     categoryId = s.categoryId,
                     tagId = s.tagId.takeIf { s.type != TransactionType.TRANSFER },
-                    note = s.note,
+                    // Without a title the movement is saved under its category's name (PO, 2026-10-23)
+                    note =
+                        s.note.ifBlank {
+                            choices.value.categories
+                                .firstOrNull { it.id == s.categoryId }
+                                ?.name
+                                .orEmpty()
+                        },
                     concept =
                         s.concept
                             .trim()

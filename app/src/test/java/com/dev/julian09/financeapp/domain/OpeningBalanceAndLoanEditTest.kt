@@ -126,7 +126,7 @@ class OpeningBalanceAndLoanEditTest {
     fun editingALoanRecalculatesTheInstallmentsLeftOnTheNewDay() =
         runBlocking {
             val id = loan()
-            val edit = EditLoan(f.observeLoans, f.accounts, f.loans, scheduler)
+            val edit = EditLoan(f.observeLoans, f.accounts, f.loans, scheduler, f.clock)
             val errors =
                 edit(
                     id,
@@ -150,11 +150,96 @@ class OpeningBalanceAndLoanEditTest {
         runBlocking {
             val id = loan()
             val errors =
-                EditLoan(f.observeLoans, f.accounts, f.loans, scheduler)(
+                EditLoan(f.observeLoans, f.accounts, f.loans, scheduler, f.clock)(
                     id,
                     LoanEdit(" ", BigDecimal("0.015"), RateType.MV, paymentDay = 40, Money.ZERO, Money.ZERO),
                 )
             assertEquals(LedgerError.NAME_REQUIRED, errors[LoanField.NAME])
             assertEquals(LedgerError.DAY_INVALID, errors[LoanField.PAYMENT_DAY])
+        }
+
+    @Test
+    fun theNextInstallmentNeverStartsOverdueAfterChangingTheDay() =
+        runBlocking {
+            val id = loan()
+            f.clock.instant = java.time.Instant.parse("2026-11-20T12:00:00Z")
+            EditLoan(f.observeLoans, f.accounts, f.loans, scheduler, f.clock)(
+                id,
+                LoanEdit("Libre inversión", BigDecimal("0.015"), RateType.MV, paymentDay = 10, Money.ZERO, Money.ZERO),
+            )
+            // The 10th of November has passed on the 20th: the next one is December's
+            assertEquals(
+                LocalDate.of(2026, 12, 10),
+                f
+                    .observeLoans()
+                    .first()
+                    .single()
+                    .next!!
+                    .dueDate,
+            )
+        }
+
+    @Test
+    fun changingThePaymentDateMovesThePaymentAndTheInstallmentItSettled() =
+        runBlocking {
+            val id = loan()
+            val cash = f.account("Efectivo", 10_000_000)
+            val validator =
+                com.dev.julian09.financeapp.domain.usecase
+                    .TransactionValidator(f.accounts, f.categories)
+            val paidOn = java.time.Instant.parse("2026-11-05T15:00:00Z")
+            com.dev.julian09.financeapp.domain.usecase
+                .PayLoanInstallment(f.observeLoans, f.loans, validator, scheduler, f.clock)(
+                id,
+                cash,
+                Money.ZERO,
+                paidOn,
+            )
+            val payment =
+                f.db
+                    .transactions()
+                    .observeByAccount(id)
+                    .first()
+                    .single { it.paymentKind != null }
+            assertEquals(
+                paidOn,
+                f.db
+                    .cards()
+                    .getInstallment(payment.installmentId!!)!!
+                    .paidAt,
+            )
+
+            val newDate = java.time.Instant.parse("2026-11-03T15:00:00Z")
+            assertTrue(
+                com.dev.julian09.financeapp.domain.usecase
+                    .ChangePaymentDate(f.transactions, scheduler)(payment.id, newDate),
+            )
+            assertEquals(
+                newDate,
+                f.db
+                    .transactions()
+                    .get(payment.id)!!
+                    .occurredAt,
+            )
+            assertEquals(
+                newDate,
+                f.db
+                    .cards()
+                    .getInstallment(payment.installmentId!!)!!
+                    .paidAt,
+            )
+            // The amount stays, and an ordinary movement is not a payment
+            assertEquals(
+                payment.amount,
+                f.db
+                    .transactions()
+                    .get(payment.id)!!
+                    .amount,
+            )
+            val other = f.tx("EXPENSE", 5, cash)
+            assertFalse(
+                com.dev.julian09.financeapp.domain.usecase
+                    .ChangePaymentDate(f.transactions, scheduler)(other, newDate),
+            )
         }
 }

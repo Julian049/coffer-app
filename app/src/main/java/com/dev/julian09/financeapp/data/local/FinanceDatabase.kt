@@ -46,9 +46,9 @@ import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
         InstallmentEntity::class,
         LoanDetailsEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
-    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7), 4 → 5 categories.excludeFromReports (S9), 5 → 6 loan_details (S10), 6 → 7 transactions.concept and settings.netBalanceMode (S12);
+    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7), 4 → 5 categories.excludeFromReports (S9), 5 → 6 loan_details (S10), 6 → 7 transactions.concept and settings.netBalanceMode (S12), 7 → 8 settings.loanPaymentCategoryId and accounts.includeInNet (S15);
     // FinanceDatabaseMigrationTest checks them
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -57,6 +57,7 @@ import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
+        AutoMigration(from = 7, to = 8),
     ],
 )
 @TypeConverters(Converters::class)

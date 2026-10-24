@@ -294,13 +294,12 @@ class PayCreditCard
                     paymentKind = kind.code,
                 )
             validator.check(payment).takeIf { it.isNotEmpty() }?.let { return it }
-            val now = clock.now()
             val due = statement.period.dueDate
             val covered = kind == CardPaymentKind.TOTAL || amount >= statement.minimum
             val settled =
                 overview.installments.filter { it.status == InstallmentStatus.SCHEDULED }.mapNotNull {
                     when {
-                        !it.dueDate.isAfter(due) && covered -> it.copy(status = InstallmentStatus.PAID, paidAt = now)
+                        !it.dueDate.isAfter(due) && covered -> it.copy(status = InstallmentStatus.PAID, paidAt = occurredAt)
                         it.dueDate.isAfter(due) && kind == CardPaymentKind.TOTAL -> it.copy(status = InstallmentStatus.CANCELLED)
                         else -> null
                     }
