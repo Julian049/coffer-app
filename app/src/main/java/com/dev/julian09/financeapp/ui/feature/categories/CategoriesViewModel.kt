@@ -13,6 +13,7 @@ import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.usecase.CreateCategory
 import com.dev.julian09.financeapp.domain.usecase.DeleteCategory
 import com.dev.julian09.financeapp.domain.usecase.RenameCategory
+import com.dev.julian09.financeapp.domain.usecase.SetLoanPaymentCategory
 import com.dev.julian09.financeapp.domain.usecase.deleteTargets
 import com.dev.julian09.financeapp.domain.usecase.isPickable
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,6 +66,8 @@ sealed interface CategorySheet {
 
     data class Options(
         val category: Category,
+        /** S17-H13: it is the category that receives the principal of loan installments. */
+        val usedForLoans: Boolean = false,
     ) : CategorySheet
 
     /** S13-UI04: Hoja · Elegir ícono for a stored category. */
@@ -105,6 +108,7 @@ class CategoriesViewModel
         private val createCategory: CreateCategory,
         private val renameCategory: RenameCategory,
         private val deleteCategory: DeleteCategory,
+        private val setLoanCategory: SetLoanPaymentCategory,
         clock: Clock,
     ) : ViewModel() {
         private val kind = MutableStateFlow(CategoryKind.EXPENSE)
@@ -166,6 +170,19 @@ class CategoriesViewModel
 
         fun openOptions(category: Category) {
             _sheet.value = CategorySheet.Options(category)
+            viewModelScope.launch {
+                val used = settings.observe().first().loanPaymentCategoryId == category.id
+                _sheet.update { if (it is CategorySheet.Options && it.category.id == category.id) it.copy(usedForLoans = used) else it }
+            }
+        }
+
+        /** S17-H13: «Usar para cuotas de préstamos». */
+        fun useForLoans() {
+            val options = _sheet.value as? CategorySheet.Options ?: return
+            viewModelScope.launch {
+                val error = setLoanCategory(options.category.id)
+                if (error == null) _sheet.update { (it as? CategorySheet.Options)?.copy(usedForLoans = true) ?: it }
+            }
         }
 
         fun setExcluded(excluded: Boolean) {
@@ -214,16 +231,18 @@ class CategoriesViewModel
             val category = (_sheet.value as? CategorySheet.Options)?.category ?: return
             viewModelScope.launch {
                 val all = repository.observeAll().first()
+                val receivesLoans =
+                    settings.observe().first().loanPaymentCategoryId.let { loan ->
+                        loan != null && all.any { it.id == loan && (it.id == category.id || it.parentId == category.id) }
+                    }
                 _sheet.value =
                     CategorySheet.Delete(
                         category = category,
                         subcategories = all.count { it.parentId == category.id },
                         movements = repository.transactionCount(category.id),
-                        targets = deleteTargets(all, category.id),
-                        receivesLoans =
-                            settings.observe().first().loanPaymentCategoryId.let { loan ->
-                                loan != null && all.any { it.id == loan && (it.id == category.id || it.parentId == category.id) }
-                            },
+                        // S17-H13: the category of the installments may land on a subcategory
+                        targets = deleteTargets(all, category.id, anyLevel = receivesLoans),
+                        receivesLoans = receivesLoans,
                     )
             }
         }

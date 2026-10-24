@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -108,6 +109,16 @@ fun CategoriesScreen(
                 if (s.category.parentId == null) ExcludeRow(s.category.excludeFromReports, viewModel::setExcluded)
                 OptionRow(Icons.Outlined.Edit, "Renombrar", null, danger = false, onClick = viewModel::startRename)
                 OptionRow(Icons.Outlined.Palette, "Cambiar ícono", null, danger = false, onClick = viewModel::startIcon)
+                // S17-H13 (MEJORA-01): any expense category, main or sub, can receive the installments of loans
+                if (s.category.kind == CategoryKind.EXPENSE) {
+                    OptionRow(
+                        Icons.Outlined.Payments,
+                        "Usar para cuotas de préstamos",
+                        if (s.usedForLoans) "Es la categoría de las cuotas ahora" else "El capital de tus cuotas contará aquí",
+                        danger = false,
+                        onClick = { if (!s.usedForLoans) viewModel.useForLoans() },
+                    )
+                }
                 OptionRow(Icons.Outlined.DeleteOutline, "Eliminar", null, danger = true, onClick = viewModel::startDelete)
                 AppButton("Cancelar", onClick = viewModel::dismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
             }
@@ -258,53 +269,47 @@ private fun CategoryCard(
                 drawStopIndicator = {},
             )
         }
-        // S15-UI07: the subcategories in tiles of three, «Añadir» being the last one
-        (node.children + listOf(null)).chunked(3).forEach { row ->
+        // Figma «Mosaico»: the subcategories in tiles of three, then «Añadir subcategoría» as a link (PO, 2026-10-24)
+        node.children.chunked(3).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { child ->
-                    if (child == null) {
-                        SubTile(Modifier.weight(1f), onClick = { onAddSub(main.id) }) {
-                            Box(Modifier.size(32.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Outlined.Add,
-                                    contentDescription = null,
-                                    tint = colors.iconOnContainer,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                            Text("Añadir", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-                        }
-                    } else {
-                        SubTile(Modifier.weight(1f), onClick = { onOpen(child.category) }) {
-                            Box(
-                                Modifier.size(32.dp).background(colors.iconContainer, CofferShapes.card),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    categoryIcon(child.category.icon ?: main.icon),
-                                    contentDescription = null,
-                                    tint = colors.iconOnContainer,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                            Text(
-                                child.category.name,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.textPrimary,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            MoneyText(child.total, style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                plural(child.count, "mov.", "mov."),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.textSecondary,
+                    SubTile(Modifier.weight(1f), onClick = { onOpen(child.category) }) {
+                        Box(
+                            Modifier.size(32.dp).background(colors.iconContainer, CofferShapes.card),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                categoryIcon(child.category.icon ?: main.icon),
+                                contentDescription = null,
+                                tint = colors.iconOnContainer,
+                                modifier = Modifier.size(18.dp),
                             )
                         }
+                        Text(
+                            child.category.name,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textPrimary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        MoneyText(child.total, style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            plural(child.count, "mov.", "mov."),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                        )
                     }
                 }
                 repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
+        }
+        Row(
+            Modifier.clip(CofferShapes.pill).clickable { onAddSub(main.id) }.padding(vertical = 6.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(Icons.Outlined.Add, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(16.dp))
+            Text("Añadir subcategoría", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
         }
     }
 }

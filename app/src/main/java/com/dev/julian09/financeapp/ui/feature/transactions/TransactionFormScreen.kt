@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -67,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -343,6 +346,7 @@ private fun AmountCard(
     val error = state.errors[TransactionField.AMOUNT]
     // S15-UI02: a new movement opens on the amount with the keyboard up; editing one does not
     val focus = remember { FocusRequester() }
+    var focused by remember { mutableStateOf(false) }
     LaunchedEffect(focusOnOpen) { if (focusOnOpen) focus.requestFocus() }
     AppCard(Modifier.fillMaxWidth()) {
         Text(
@@ -358,7 +362,7 @@ private fun AmountCard(
                 value = state.amountDigits,
                 visualTransformation = PesosTransformation(symbol = false),
                 onValueChange = onAmount,
-                modifier = Modifier.weight(1f).focusRequester(focus),
+                modifier = Modifier.weight(1f).focusRequester(focus).onFocusChanged { focused = it.isFocused },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 textStyle =
@@ -367,7 +371,8 @@ private fun AmountCard(
                     ),
                 decorationBox = { inner ->
                     Box(contentAlignment = Alignment.Center) {
-                        if (state.amountDigits.isEmpty()) {
+                        // BUG-02: the «0» is a hint for the resting field; with the focus the cursor stands alone
+                        if (state.amountDigits.isEmpty() && !focused) {
                             Text("0", style = MaterialTheme.typography.displaySmall, color = colors.textSecondary)
                         }
                         inner()
@@ -387,7 +392,12 @@ private fun TitleCard(
     actions: TransactionFormActions,
 ) {
     val colors = CofferTheme.colors
-    AppCard {
+    // BUG-03: when a suggestion appears the form scrolls just enough to show it above the keyboard
+    val bringIntoView = remember { BringIntoViewRequester() }
+    LaunchedEffect(state.suggestions.firstOrNull()?.note) {
+        if (state.suggestions.isNotEmpty()) bringIntoView.bringIntoView()
+    }
+    AppCard(Modifier.bringIntoViewRequester(bringIntoView)) {
         AppTextField(
             value = state.note,
             onValueChange = actions.onNote,
@@ -636,7 +646,11 @@ internal fun AccountPicker(
 ) {
     val colors = CofferTheme.colors
     AppCard {
-        Text(title, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            // Figma `1:844`: the hint that the accounts slide sideways
+            if (accounts.size > 1) Text("Deslizar", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        }
         if (accounts.isEmpty()) {
             Text(
                 "Crea una cuenta en Cuentas para registrar movimientos.",
@@ -663,10 +677,12 @@ internal fun AccountPicker(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         CircleIcon(accountIcon(item.account.icon, item.account.type))
-                        Column {
+                        Column(Modifier.weight(1f, fill = false)) {
                             Text(item.account.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
                             subtitle?.let { Text(it(item), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary) }
                         }
+                        // Figma `1:844`: the chosen account carries a dot
+                        if (selected) Box(Modifier.size(10.dp).background(colors.onPrimaryContainer, CircleShape))
                     }
                 }
             }

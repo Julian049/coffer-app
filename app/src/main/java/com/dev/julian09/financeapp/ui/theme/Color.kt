@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.ui.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 /** Tokens of design-system.md §2, same names in light and dark. Read them through [CofferTheme.colors]. */
 @Immutable
@@ -27,6 +28,9 @@ data class CofferColors(
     val transfer: Color get() = textSecondary
 
     val danger: Color get() = expense
+
+    /** Home's quick-action strip (Figma `#F2EEEA` in light): a neutral between the background and the highlighted border. */
+    val quickStrip: Color get() = lerp(background, borderHighlight, 0.3f)
 }
 
 val LightCofferColors =
