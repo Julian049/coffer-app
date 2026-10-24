@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-24
+
 ### Added
 
 - Inicio: an eye on the balance card hides and shows the balance on the screen (Figma `1:997`; UI-01, #171)
