@@ -62,6 +62,8 @@ import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.history.DateField
 import com.dev.julian09.financeapp.ui.feature.history.DayGroup
+import com.dev.julian09.financeapp.ui.feature.history.TagDot
+import com.dev.julian09.financeapp.ui.feature.history.tagColor
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -158,7 +160,10 @@ internal fun TagRow(
             Icon(Icons.Outlined.Sell, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(line.tag.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(line.tag.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                TagDot(line.tag.shownColor)
+            }
             Text(movementsThisMonth(line.count), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
         }
         MoneyText(line.net, kind = netKind(line.net), style = MaterialTheme.typography.titleSmall)
@@ -226,9 +231,6 @@ private fun TagColorPicker(
         }
     }
 }
-
-/** `#RRGGBB` of a tag as a Compose color. */
-internal fun tagColor(hex: String): Color = Color(android.graphics.Color.parseColor(hex))
 
 @Composable
 private fun PinCard(
@@ -314,7 +316,9 @@ fun TagDetailContent(
 ) {
     val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = state?.tag?.name.orEmpty(), onBack = actions.onBack, actions = {
+        AppHeader(title = state?.tag?.name.orEmpty(), onBack = actions.onBack, titleTrailing = {
+            state?.tag?.let { TagDot(it.shownColor, Modifier.size(10.dp)) }
+        }, actions = {
             IconButton(
                 onClick = actions.onEdit,
             ) { Icon(Icons.Outlined.Edit, contentDescription = "Editar etiqueta", tint = colors.textPrimary) }

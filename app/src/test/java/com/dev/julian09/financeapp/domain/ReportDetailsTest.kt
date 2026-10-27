@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.domain
 import com.dev.julian09.financeapp.domain.finance.ReportAggregator
 import com.dev.julian09.financeapp.domain.finance.ReportDetails
 import com.dev.julian09.financeapp.domain.finance.ReportFilter
+import com.dev.julian09.financeapp.domain.finance.ReportPeriod
 import com.dev.julian09.financeapp.domain.finance.ReportSpan
 import com.dev.julian09.financeapp.domain.finance.shareOf
 import com.dev.julian09.financeapp.domain.model.Category
@@ -60,6 +61,8 @@ class ReportDetailsTest {
             tx(300_000, "2026-08-05", food),
             tx(200_000, "2026-09-05", food),
             tx(100_000, "2026-09-06", cafes),
+            // After the 20th: out of «septiembre a la fecha»
+            tx(50_000, "2026-09-25", food),
             tx(250_000, "2026-10-03", food),
             tx(128_000, "2026-10-04", cafes),
             tx(622_000, "2026-10-10", home, account = visa, tags = listOf(trip)),
@@ -81,11 +84,13 @@ class ReportDetailsTest {
         val detail = ReportDetails.category(food.id, reports, firstMovement = LocalDate.of(2026, 8, 5))!!
 
         assertEquals(Money.ofPesos(378_000), detail.spent)
+        // September up to the 20th, as Cambios por categoría (PO, 2026-10-26)
         assertEquals(Money.ofPesos(300_000), detail.previous)
+        assertEquals(Money.ofPesos(78_000), detail.vsPrevious)
         // August and September only: May to July were before the first movement
         assertEquals(3, detail.months.size)
-        assertEquals(Money.ofPesos(300_000), detail.average)
-        assertEquals(Money.ofPesos(78_000), detail.vsAverage)
+        assertEquals(Money.ofPesos(325_000), detail.average)
+        assertEquals(Money.ofPesos(53_000), detail.vsAverage)
         assertEquals(BigDecimal("37.8"), detail.weight)
         assertEquals(listOf(cafes to Money.ofPesos(128_000)), detail.subcategories)
         assertNull(ReportDetails.category(UUID.randomUUID(), reports, null))
@@ -95,11 +100,37 @@ class ReportDetailsTest {
     fun theSummaryFiltersCombineAndACategoryTakesInItsSubcategories() {
         val byId = categories.associateBy { it.id }
         val onlyFood = ReportFilter(categoryIds = setOf(food.id))
-        assertEquals(5, all.count { onlyFood.matches(it, byId) })
+        assertEquals(6, all.count { onlyFood.matches(it, byId) })
         val tripOnCard = ReportFilter(accountIds = setOf(visa), tagIds = setOf(trip), minAmount = Money.ofPesos(500_000))
         assertEquals(1, all.count { tripOnCard.matches(it, byId) })
         assertEquals(3, tripOnCard.count)
         assertFalse(ReportFilter(maxAmount = Money.ofPesos(100_000)).matches(all[0], byId))
         assertTrue(ReportFilter().matches(all[0], byId))
+    }
+
+    @Test
+    fun theSummaryBarsCoverEveryMonthOfThePeriod() {
+        val period = ReportPeriod(LocalDate.of(2026, 1, 1), today)
+        val months = ReportAggregator.months(period)
+        assertEquals(10, months.size)
+        assertEquals(ReportPeriod(LocalDate.of(2026, 10, 1), today), months.last())
+        val report =
+            ReportAggregator.aggregate(
+                ReportSpan.RANGE,
+                period,
+                today,
+                zone,
+                all,
+                categories,
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                periods = months,
+            )
+        assertEquals(10, report.evolution.size)
+        assertEquals(Money.ofPesos(350_000), report.evolution[8].expense)
+        assertEquals(report.expense, report.evolution.fold(Money.ZERO) { s, p -> s + p.expense })
+        // A range cut inside two months
+        assertEquals(2, ReportAggregator.months(ReportPeriod(LocalDate.of(2026, 9, 20), LocalDate.of(2026, 10, 5))).size)
     }
 }

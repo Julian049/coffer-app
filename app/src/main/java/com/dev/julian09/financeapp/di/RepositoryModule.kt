@@ -19,10 +19,12 @@ import com.dev.julian09.financeapp.data.repository.ServerStatusRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.SettingsRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TagRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TransactionRepositoryImpl
+import com.dev.julian09.financeapp.data.session.SharedPrefsCalendarAccountsStore
 import com.dev.julian09.financeapp.data.session.SharedPrefsLegalConsentStore
 import com.dev.julian09.financeapp.data.sync.SyncSchedulerImpl
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.AuthRepository
+import com.dev.julian09.financeapp.domain.port.CalendarAccountsStore
 import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.ChangeLogRepository
@@ -53,6 +55,9 @@ import dagger.hilt.components.SingletonComponent
 abstract class RepositoryModule {
     @Binds
     abstract fun bindClock(impl: SystemClock): Clock
+
+    @Binds
+    abstract fun bindCalendarAccountsStore(impl: SharedPrefsCalendarAccountsStore): CalendarAccountsStore
 
     @Binds
     abstract fun bindLegalConsentStore(impl: SharedPrefsLegalConsentStore): LegalConsentStore

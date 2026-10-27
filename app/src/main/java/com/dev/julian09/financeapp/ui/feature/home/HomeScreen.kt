@@ -1,6 +1,13 @@
 package com.dev.julian09.financeapp.ui.feature.home
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -231,9 +238,13 @@ fun HomeContent(
             // REQ-INI-04: the cards in the order and with the visibility of Personalizar inicio
             val layout = homeLayout(state.settings.homeCards)
             val trend = layout.any { it.key == HomeSection.MONTHLY_TREND.name && it.visible }
-            layout.filter { it.visible }.forEach { card ->
+            val visible = layout.filter { it.visible }
+            // «Por revisar» goes under the balance whatever cards are shown (changes-ui-2.0 §1)
+            val balanceShown = visible.any { it.key == HomeSection.BALANCE.name }
+            if (!balanceShown) DraftsNotice(state.draftCount, onOpenHistory)
+            visible.forEach { card ->
                 when (runCatching { HomeSection.valueOf(card.key) }.getOrNull()) {
-                    HomeSection.BALANCE ->
+                    HomeSection.BALANCE -> {
                         // REQ-CTA-09: the chosen view; a tap shows both
                         AppCard(Modifier.fillMaxWidth(), highlight = true, onClick = { balanceSheet = true }) {
                             val net = state.balanceView == BalanceView.NET
@@ -264,8 +275,9 @@ fun HomeContent(
                                 if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
                             }
                         }
+                        DraftsNotice(state.draftCount, onOpenHistory)
+                    }
                     HomeSection.QUICK_ACTIONS -> {
-                        if (state.draftCount > 0) DraftsNotice(state.draftCount, onOpenHistory)
                         QuickActions(onNewTransaction)
                     }
                     HomeSection.ACCOUNTS -> {
@@ -599,23 +611,32 @@ private fun DraftsNotice(
     onOpen: () -> Unit,
 ) {
     val colors = CofferTheme.colors
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(CofferShapes.card)
-            .background(colors.surfaceHighlight)
-            .clickable(role = Role.Button, onClick = onOpen)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    // motion.md §7: it grows in and out, and its count cross-fades
+    AnimatedVisibility(
+        count > 0,
+        enter = expandVertically(tween(400)) + fadeIn(tween(400)),
+        exit =
+            shrinkVertically(tween(400)) + fadeOut(tween(400)),
     ) {
-        Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
-        Text(
-            if (count == 1) "1 movimiento por revisar" else "$count movimientos por revisar",
-            style = MaterialTheme.typography.labelLarge,
-            color = colors.primary,
-            modifier = Modifier.weight(1f),
-        )
-        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.primary)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(CofferShapes.card)
+                .background(colors.primaryContainer)
+                .clickable(role = Role.Button, onClick = onOpen)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(18.dp))
+            Crossfade(count, Modifier.weight(1f), animationSpec = tween(150), label = "drafts") { n ->
+                Text(
+                    if (n == 1) "1 movimiento por revisar" else "$n movimientos por revisar",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.onPrimaryContainer,
+                )
+            }
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.onPrimaryContainer)
+        }
     }
 }

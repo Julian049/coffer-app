@@ -17,7 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ajustes → Conectar correo: the forwarding address with a copy button, the Gmail steps, Gmail's confirmation code and the switch for the notice (REQ-COR-01, 10)
 - «Últimos 4 dígitos» in accounts and in the card edit (REQ-COR-06)
 - The notice of transactions to review through Firebase Cloud Messaging (ADR-0016), set up from `coffer.firebase.*` Gradle properties instead of `google-services.json`; off while they are blank
-- Calculations for the 2.0 reports and calendar, without screens yet: `shareOf`, `ReportDetails.category`, `ReportFilter` and `ObserveDailyBalances`
+- Reportes detallados (S21, changes-ui-2.0 §3): «Resumen» and «Calendario» accesses, Gastos por categoría (pie and every category with its exact value), Detalle de categoría (vs. the month before to date, average, six months, subcategories, last movements and «Ver en Historial»), Resumen general (global filters sheet, a bar pair for every month of the period, tap a month to focus it, «En qué se fue») and Calendario (the balance at the end of each day, the day's movements and Hoja · Cuentas del calendario, saved on the phone). Fixed colors for the six base categories; any other goes into «Otras»
+- A colored dot per tag after the title of every movement, and beside the tag's name in Etiquetas, pinned tags and Detalle de etiqueta (changes-ui-2.0 §2)
+
+### Changed
+
+- «Por revisar» takes Figma's finish: a dashed card, gray amounts without time, the ✓ that fills on tap; Revisar transacción shows «Descartar» as red text. Inicio's notice sits under the balance even when the quick actions are hidden (S21)
+- The calendar starts with the accounts in Inicio's total only (no cards or loans), and a category's change is measured against the month before up to the same day
 
 ### Removed
 

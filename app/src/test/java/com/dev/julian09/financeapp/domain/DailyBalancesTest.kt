@@ -54,4 +54,19 @@ class DailyBalancesTest {
                     .balance
             assertEquals(home, days.last().closing)
         }
+
+    @Test
+    fun theDefaultIsInicioTotalAndAPickedDebtSubtracts() =
+        runBlocking {
+            val cash = f.account("Efectivo", 500_000, type = "CASH")
+            f.account("Ahorro aparte", 900_000, include = false)
+            val visa = f.account("Visa", 0, type = "CREDIT_CARD")
+            f.tx("EXPENSE", 80_000, visa, Instant.parse("2026-10-03T15:00:00Z"), f.category("Comida"))
+
+            // PO, 2026-10-26: only the accounts of «incluir en saldo total»
+            assertEquals(setOf(cash), defaultCalendarAccounts(f.accounts.observeActive().first()))
+            val days = ObserveDailyBalances(f.accounts, f.clock)(YearMonth.of(2026, 10), setOf(cash, visa))
+            assertEquals(Money.ofPesos(420_000), days[2].closing)
+            assertEquals(Money.ofPesos(-80_000), days[2].change)
+        }
 }

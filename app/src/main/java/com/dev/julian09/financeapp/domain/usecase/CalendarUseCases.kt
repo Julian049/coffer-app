@@ -1,7 +1,6 @@
 package com.dev.julian09.financeapp.domain.usecase
 
 import com.dev.julian09.financeapp.domain.model.Account
-import com.dev.julian09.financeapp.domain.model.AccountType
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.Clock
@@ -18,10 +17,10 @@ data class DayBalance(
     val change: Money,
 )
 
-/** REQ-CAL-03 default: cash and banks; loans out; cards only when the user picks them. */
+/** REQ-CAL-03 default: the accounts in Inicio's total; cards and loans only when the user picks them (PO, 2026-10-26). */
 fun defaultCalendarAccounts(accounts: List<Account>): Set<UUID> =
     accounts
-        .filter { it.active && it.type != AccountType.LOAN && it.type != AccountType.CREDIT_CARD }
+        .filter { it.active && it.includeInTotal && !it.type.isDebt }
         .map { it.id }
         .toSet()
 

@@ -21,7 +21,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Sell
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -38,14 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -93,6 +94,10 @@ fun ReportsScreen(
     onOpenTags: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenTag: (UUID) -> Unit = {},
+    onOpenSummary: () -> Unit = {},
+    onOpenCalendar: () -> Unit = {},
+    onOpenCategories: (LocalDate, LocalDate) -> Unit = { _, _ -> },
+    onOpenCategory: (UUID, LocalDate) -> Unit = { _, _ -> },
     avatarInitial: Char? = null,
     viewModel: ReportsViewModel = hiltViewModel(),
 ) {
@@ -108,6 +113,10 @@ fun ReportsScreen(
                 onMove = viewModel::move,
                 onFrom = { viewModel.setRange(from = it) },
                 onTo = { viewModel.setRange(to = it) },
+                onOpenSummary = onOpenSummary,
+                onOpenCalendar = onOpenCalendar,
+                onOpenCategories = { state?.let { onOpenCategories(it.period.from, it.period.to) } },
+                onOpenCategory = { id -> state?.let { onOpenCategory(id, it.period.from) } },
             ),
         modifier = modifier,
         avatarInitial = avatarInitial,
@@ -122,6 +131,11 @@ data class ReportsActions(
     val onMove: (Long) -> Unit = {},
     val onFrom: (LocalDate) -> Unit = {},
     val onTo: (LocalDate) -> Unit = {},
+    val onOpenSummary: () -> Unit = {},
+    val onOpenCalendar: () -> Unit = {},
+    /** Gastos por categoría of the period shown. */
+    val onOpenCategories: () -> Unit = {},
+    val onOpenCategory: (UUID) -> Unit = {},
 )
 
 /**
@@ -154,10 +168,11 @@ fun ReportsContent(
                 )
                 return@Column
             }
-            SavingCard(state)
+            Accesses(actions)
+            SavingCard(state, actions.onOpenSummary)
             report.pace?.takeIf { it.previous.lastOrNull()?.let { last -> last > Money.ZERO } == true }?.let { PaceCard(state, it) }
             if (report.changes.isNotEmpty()) {
-                ChangesCard(state)
+                ChangesCard(state, actions)
             } else if (report.expenseByCategory.isNotEmpty()) {
                 Categories("Gastos por categoría", report.expenseByCategory, report.expense)
             }
@@ -254,20 +269,64 @@ private fun CardHeader(
 @Composable
 private fun Reference(text: String) = Text(text, style = MaterialTheme.typography.bodySmall, color = CofferTheme.colors.textSecondary)
 
+/** «Resumen · Filtros y meses» and «Calendario · Saldo por día» (changes-ui-2.0 §3, Figma `20:497`). */
 @Composable
-private fun SavingCard(state: ReportsState) {
+private fun Accesses(actions: ReportsActions) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Access("Resumen", "Filtros y meses", Icons.Outlined.Tune, actions.onOpenSummary, Modifier.weight(1f))
+        Access("Calendario", "Saldo por día", Icons.Outlined.CalendarMonth, actions.onOpenCalendar, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun Access(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier,
+) {
+    val colors = CofferTheme.colors
+    AppCard(modifier, onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(36.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(18.dp))
+            }
+            Column {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            }
+        }
+    }
+}
+
+/** «Ver todas», «Ver resumen»: the link that says a card has a detail. */
+@Composable
+private fun Link(
+    text: String,
+    onClick: () -> Unit,
+) = Text(
+    text,
+    Modifier.clip(CofferShapes.pill).clickable(onClick = onClick).padding(4.dp),
+    style = MaterialTheme.typography.labelLarge,
+    color = CofferTheme.colors.primary,
+)
+
+@Composable
+private fun SavingCard(
+    state: ReportsState,
+    onOpenSummary: () -> Unit,
+) {
     val colors = CofferTheme.colors
     val report = state.report
-    AppCard(highlight = true) {
-        Text(
+    AppCard(highlight = true, onClick = onOpenSummary) {
+        CardHeader(
             when (state.span) {
                 ReportSpan.WEEK -> "Ahorro de la semana"
                 ReportSpan.MONTH -> "Ahorro del mes"
                 ReportSpan.RANGE -> "Ahorro del periodo"
             },
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-        )
+        ) { Link("Ver resumen", onOpenSummary) }
         // The main figure is never coloured (Figma: «los montos principales no van en color»)
         MoneyText(report.balance, style = MaterialTheme.typography.displaySmall)
         report.savingsRate?.let { rate ->
@@ -387,14 +446,18 @@ private fun PaceChart(pace: Pace) {
 }
 
 @Composable
-private fun ChangesCard(state: ReportsState) {
+private fun ChangesCard(
+    state: ReportsState,
+    actions: ReportsActions,
+) {
     val colors = CofferTheme.colors
     val report = state.report
     val previous = report.evolution[report.evolution.size - 2].period.from
     val shown = report.changes.take(6)
     val biggest = shown.maxOf { kotlin.math.abs(it.delta.scaled) }.coerceAtLeast(1)
     AppCard {
-        CardHeader("Cambios por categoría") { Reference("vs. ${MONTH.format(previous).replace(".", "")} a la fecha") }
+        CardHeader("Cambios por categoría") { Link("Ver todas", actions.onOpenCategories) }
+        Reference("vs. ${MONTH.format(previous).replace(".", "")} a la fecha")
         report.changePercent?.let { pct ->
             val up = pct >= 0
             val leaders =
@@ -417,7 +480,11 @@ private fun ChangesCard(state: ReportsState) {
             if (i > 0) HorizontalDivider(thickness = 1.dp, color = colors.border)
             val up = change.delta > Money.ZERO
             val tint = if (up) colors.expense else colors.income
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                Modifier.fillMaxWidth().clickable(onClickLabel = "Ver detalle") { actions.onOpenCategory(change.category.id) },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Box(Modifier.size(36.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
                     Icon(
                         categoryIcon(change.category.icon),
@@ -512,34 +579,6 @@ private fun SavingsByPeriod(state: ReportsState) {
                 }
             }
         }
-    }
-}
-
-private fun Modifier.dashedBorder(color: Color) =
-    drawBehind {
-        drawRoundRect(
-            color,
-            style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))),
-            cornerRadius = CornerRadius(6.dp.toPx()),
-        )
-    }
-
-/** «$1,32 M», «$850 mil»: bar labels that fit. */
-private fun shortMoney(value: Money): String {
-    val pesos = value.toBigDecimal()
-    val abs = pesos.abs()
-    val sign = if (pesos.signum() < 0) "−" else ""
-    return when {
-        abs >= BigDecimal(1_000_000) ->
-            "$sign$" +
-                abs
-                    .divide(BigDecimal(1_000_000), 2, RoundingMode.HALF_UP)
-                    .stripTrailingZeros()
-                    .toPlainString()
-                    .replace('.', ',') +
-                " M"
-        abs >= BigDecimal(1_000) -> "$sign$" + abs.divide(BigDecimal(1_000), 0, RoundingMode.HALF_UP).toPlainString() + " mil"
-        else -> formatMoney(value)
     }
 }
 

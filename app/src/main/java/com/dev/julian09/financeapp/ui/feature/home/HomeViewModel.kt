@@ -68,7 +68,13 @@ class HomeViewModel
             ) { dashboard, cats, lines, stored, pending ->
                 HomeUiState(
                     dashboard,
-                    buildDays(dashboard.recent, dashboard.accounts.associate { it.account.id to it.account.name }, cats),
+                    buildDays(
+                        dashboard.recent,
+                        dashboard.accounts.associate { it.account.id to it.account.name },
+                        cats,
+                        clock.zone(),
+                        lines.map { it.tag },
+                    ),
                     lines.filter { it.tag.pinned },
                     stored,
                     pending.size,

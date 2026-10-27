@@ -39,6 +39,7 @@ import com.dev.julian09.financeapp.domain.model.CategoryResolution
 import com.dev.julian09.financeapp.domain.model.ChangeAction
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
+import com.dev.julian09.financeapp.domain.model.DraftSource
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.HomeCard
 import com.dev.julian09.financeapp.domain.model.ImportPreview
@@ -63,6 +64,7 @@ import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
+import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.homeLayout
 import com.dev.julian09.financeapp.domain.port.ImportStatus
@@ -210,6 +212,12 @@ class ComponentsScreenshotTest {
 
     @Test
     fun historyLight() = capture("history_light", dark = false) { History() }
+
+    @Test
+    fun historyDraftsLight() = capture("history_drafts_light", dark = false) { History(drafts = true) }
+
+    @Test
+    fun historyDraftsDark() = capture("history_drafts_dark", dark = true) { History(drafts = true) }
 
     @Test
     fun accountsLight() = capture("accounts_light", dark = false) { Accounts() }
@@ -420,7 +428,7 @@ class ComponentsScreenshotTest {
     }
 
     @Composable
-    private fun History() {
+    private fun History(drafts: Boolean = false) {
         HistoryContent(
             HistoryUiState(
                 month = YearMonth.of(2026, 10),
@@ -432,6 +440,30 @@ class ComponentsScreenshotTest {
                 hasMore = false,
                 choices = HistoryChoices(),
                 fox = FoxMood(FoxState.GOOD),
+                drafts =
+                    if (drafts) {
+                        listOf(
+                            TransactionDraft(
+                                UUID(9, 1),
+                                DraftSource.BANCOLOMBIA,
+                                TransactionType.EXPENSE,
+                                Money.ofPesos(86_400),
+                                Instant.parse("2026-10-17T18:10:00Z"),
+                                "Compra ÉXITO Calle 80",
+                                "2309",
+                            ),
+                            TransactionDraft(
+                                UUID(9, 2),
+                                DraftSource.RAPPICARD,
+                                TransactionType.EXPENSE,
+                                Money.ofPesos(32_900),
+                                Instant.parse("2026-10-16T21:00:00Z"),
+                                "Rappi Restaurantes",
+                            ),
+                        )
+                    } else {
+                        emptyList()
+                    },
             ),
             HistoryActions(),
             avatarInitial = 'J',

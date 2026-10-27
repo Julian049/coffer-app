@@ -104,3 +104,25 @@ data object ChangeHistoryRoute
 
 @Serializable
 data object CustomizeHomeRoute
+
+/** Reportes · Resumen general (changes-ui-2.0 §3). */
+@Serializable
+data object ReportSummaryRoute
+
+/** Reportes · Calendario. */
+@Serializable
+data object ReportCalendarRoute
+
+/** Reportes · Gastos por categoría of a period (ISO dates). */
+@Serializable
+data class ReportCategoriesRoute(
+    val from: String,
+    val to: String,
+)
+
+/** Reportes · Detalle de categoría of the month of [month] (an ISO date in it). */
+@Serializable
+data class ReportCategoryRoute(
+    val categoryId: String,
+    val month: String,
+)

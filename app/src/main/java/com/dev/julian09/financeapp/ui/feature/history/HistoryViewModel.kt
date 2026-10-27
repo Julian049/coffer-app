@@ -142,6 +142,7 @@ class HistoryViewModel
                             ch.accounts.associate { it.account.id to it.account.name },
                             ch.categories,
                             clock.zone(),
+                            ch.tags,
                         ),
                     totals = result.totals,
                     hasMore = result.hasMore,

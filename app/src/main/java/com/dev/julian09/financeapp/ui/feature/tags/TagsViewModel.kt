@@ -204,7 +204,7 @@ class TagDetailViewModel
                             expense = moved.filter { it.type == TransactionType.EXPENSE }.fold(Money.ZERO) { s, t -> s + t.amount },
                             count = rows.size,
                             byCategory = byCategory,
-                            days = buildDays(rows, accs.associate { it.account.id to it.account.name }, cats, zone),
+                            days = buildDays(rows, accs.associate { it.account.id to it.account.name }, cats, zone, all),
                         )
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

@@ -97,7 +97,6 @@ import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.BubbleRow
-import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.IconBubble
@@ -344,7 +343,10 @@ fun TransactionFormContent(
                 modifier = Modifier.fillMaxWidth(),
             )
             if (state.draftId != null) {
-                AppButton("Descartar", onClick = actions.onDiscard, kind = ButtonKind.Danger, modifier = Modifier.fillMaxWidth())
+                // Figma `162:186`: red text without a background
+                TextButton(onClick = actions.onDiscard, modifier = Modifier.fillMaxWidth()) {
+                    Text("Descartar", style = MaterialTheme.typography.labelLarge, color = CofferTheme.colors.expense)
+                }
             }
         }
     }
@@ -357,7 +359,8 @@ private fun DraftNote(bank: String) {
     Row(
         Modifier
             .fillMaxWidth()
-            .background(colors.surfaceHighlight, CofferShapes.card)
+            // Figma's #F2EEEA: the warm grey of the borders, a step off the white card
+            .background(colors.border, CofferShapes.card)
             .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

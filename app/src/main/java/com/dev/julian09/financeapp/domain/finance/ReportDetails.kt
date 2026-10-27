@@ -38,9 +38,10 @@ data class CategoryDetail(
     val subcategories: List<Pair<Category, Money>>,
     /** Whole spending of the month, every category, for [weight]. */
     val monthExpense: Money,
+    /** «vs. septiembre a la fecha»: the month before up to the same day, as Cambios por categoría (null with no month before). */
+    val previous: Money? = null,
 ) {
     val spent: Money get() = months.last().spent
-    val previous: Money? get() = months.getOrNull(months.size - 2)?.spent
 
     /** Over the months since the first movement only, so a new user is not compared with empty months. */
     val average: Money? get() = averageOf(months.dropLast(1).map { it.spent })
@@ -81,7 +82,9 @@ object ReportDetails {
                 .second
                 ?.children
                 .orEmpty()
-        return CategoryDetail(category, months, subcategories, current.expense)
+        // Not among the changes = the same as the month before to date
+        val toDate = current.changes.firstOrNull { it.category.id == categoryId }?.before ?: months.last().spent
+        return CategoryDetail(category, months, subcategories, current.expense, toDate.takeIf { months.size > 1 })
     }
 }
 
