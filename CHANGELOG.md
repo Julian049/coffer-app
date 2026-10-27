@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-27
+
 ### Added
 
 - Several tags per movement (S18, 2.0, ADR-0015): Room 9 stores them in `transactions.tagIds` (`,id1,id2,`), the old single tag migrates into the list, a movement counts whole in each of its tags, deleting a tag keeps the others, and the native CSV joins them with `|`
