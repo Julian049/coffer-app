@@ -144,7 +144,9 @@ fun TransactionDetailContent(
                 Line("Fecha y hora", dateTimeLabel(t.occurredAt, today, zone))
                 if (t.installments > 1) Line("Cuotas", "${t.installments} cuotas")
                 paymentKindLabel(t.paymentKind)?.let { Line("Tipo de pago", it) }
-                d.tagName?.let { Line("Etiqueta", "#$it") }
+                if (d.tagNames.isNotEmpty()) {
+                    Line(if (d.tagNames.size == 1) "Etiqueta" else "Etiquetas", d.tagNames.joinToString(" ") { "#$it" })
+                }
                 t.note?.let { Line("Nota", it) }
             }
             // S15-DOM04: the date of a registered payment can be corrected; the amount and its split stay

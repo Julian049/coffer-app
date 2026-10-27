@@ -247,20 +247,6 @@ class PayPending
         }
     }
 
-/** REQ-REC-06, 08: no expense, the next date. */
-class SkipPending
-    @Inject
-    constructor(
-        private val recurring: RecurringRepository,
-        private val scheduler: SyncScheduler,
-    ) {
-        suspend operator fun invoke(id: UUID) {
-            val r = recurring.observe(id).first() ?: return
-            recurring.update(r.copy(nextDueDate = RecurrenceCalculator.next(r, r.nextDueDate), lastNotifiedOn = null))
-            scheduler.requestSync()
-        }
-    }
-
 /** REQ-REC-06: no more pending payments; it leaves the list for good (PO, 2026-10-18). */
 class EndRecurrence
     @Inject

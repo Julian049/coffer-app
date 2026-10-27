@@ -19,6 +19,7 @@ import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
+import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
@@ -122,6 +123,11 @@ interface TagRepository {
     suspend fun setPinned(
         id: UUID,
         pinned: Boolean,
+    )
+
+    suspend fun setColor(
+        id: UUID,
+        color: String,
     )
 
     /** The tag and, in the same database transaction, the tag of its movements (S9-DOM02). */
@@ -329,4 +335,21 @@ interface LoanRepository {
         payment: Transaction,
         installments: List<LoanInstallment>,
     )
+}
+
+/** REQ-COR-04, 05: transactions to review, from the bank emails the server read. */
+interface DraftRepository {
+    fun observeAll(): Flow<List<TransactionDraft>>
+
+    suspend fun get(id: UUID): TransactionDraft?
+
+    suspend fun count(): Int
+
+    /** Writes [transaction] and drops the draft in one database transaction. */
+    suspend fun apply(
+        draftId: UUID,
+        transaction: Transaction,
+    )
+
+    suspend fun discard(id: UUID)
 }

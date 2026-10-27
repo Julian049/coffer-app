@@ -83,6 +83,7 @@ fun AccountFormScreen(
         onColor = viewModel::setColor,
         onInclude = viewModel::setIncludeInTotal,
         onSave = viewModel::save,
+        onLastDigits = viewModel::setLastDigits,
     )
 }
 
@@ -103,6 +104,7 @@ fun AccountFormContent(
     onInclude: (Boolean) -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
+    onLastDigits: (String) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     val editing = state.editingId != null
@@ -167,9 +169,11 @@ fun AccountFormContent(
                     )
                 }
                 nameField()
+                LastDigitsField(state.lastDigits, onLastDigits)
             } else {
                 balanceField()
                 nameField()
+                LastDigitsField(state.lastDigits, onLastDigits)
                 Label("Tipo de cuenta")
                 // S12-UI05: a loan is not an account to create here; it has its own section in Gestión de cuentas
                 // Figma `1:2293`: three equal boxes, icon above and the name in two lines at most
@@ -270,4 +274,20 @@ fun AccountFormContent(
 @Composable
 private fun Label(text: String) {
     Text(text, style = MaterialTheme.typography.bodyMedium, color = CofferTheme.colors.textSecondary)
+}
+
+/** REQ-COR-06: lets a bank email find this account (Conectar correo). */
+@Composable
+internal fun LastDigitsField(
+    value: String,
+    onChange: (String) -> Unit,
+) {
+    AppTextField(
+        value = value,
+        onValueChange = onChange,
+        label = "Últimos 4 dígitos · opcional",
+        placeholder = "2309",
+        keyboardType = KeyboardType.Number,
+        help = "Así reconocemos la cuenta en los comprobantes que reenvías por correo",
+    )
 }

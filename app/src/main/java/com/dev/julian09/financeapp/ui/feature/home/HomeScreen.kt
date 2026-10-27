@@ -1,7 +1,13 @@
 package com.dev.julian09.financeapp.ui.feature.home
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Image
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,11 +29,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -49,7 +57,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -74,6 +81,7 @@ import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.FabClearance
+import com.dev.julian09.financeapp.ui.components.FoxMascot
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.components.accountIcon
@@ -229,9 +237,13 @@ fun HomeContent(
             // REQ-INI-04: the cards in the order and with the visibility of Personalizar inicio
             val layout = homeLayout(state.settings.homeCards)
             val trend = layout.any { it.key == HomeSection.MONTHLY_TREND.name && it.visible }
-            layout.filter { it.visible }.forEach { card ->
+            val visible = layout.filter { it.visible }
+            // «Por revisar» goes under the balance whatever cards are shown (changes-ui-2.0 §1)
+            val balanceShown = visible.any { it.key == HomeSection.BALANCE.name }
+            if (!balanceShown) DraftsNotice(state.draftCount, onOpenHistory)
+            visible.forEach { card ->
                 when (runCatching { HomeSection.valueOf(card.key) }.getOrNull()) {
-                    HomeSection.BALANCE ->
+                    HomeSection.BALANCE -> {
                         // REQ-CTA-09: the chosen view; a tap shows both
                         AppCard(Modifier.fillMaxWidth(), highlight = true, onClick = { balanceSheet = true }) {
                             val net = state.balanceView == BalanceView.NET
@@ -262,7 +274,11 @@ fun HomeContent(
                                 if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
                             }
                         }
-                    HomeSection.QUICK_ACTIONS -> QuickActions(onNewTransaction)
+                        DraftsNotice(state.draftCount, onOpenHistory)
+                    }
+                    HomeSection.QUICK_ACTIONS -> {
+                        QuickActions(onNewTransaction)
+                    }
                     HomeSection.ACCOUNTS -> {
                         val active = dashboard.accounts.filter { it.account.active && it.account.type.isPickable }
                         SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
@@ -439,7 +455,7 @@ fun FoxCard(
 ) {
     val colors = CofferTheme.colors
     val month = monthName(previousMonth)
-    val (image, title, message) =
+    val (_, title, message) =
         when (mood.state) {
             FoxState.RESTING ->
                 Triple(
@@ -484,7 +500,8 @@ fun FoxCard(
             Text(title, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary)
             Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         }
-        Image(painterResource(image), contentDescription = null, modifier = Modifier.size(92.dp).offset(y = FOX_OVERLAP))
+        // FEATURE-09: the animated fox of the month's mood
+        FoxMascot(mood.state.name.lowercase(), Modifier.offset(y = FOX_OVERLAP), size = 92.dp)
     }
 }
 
@@ -584,5 +601,42 @@ private fun AccountChipCard(
         }
         Text(item.account.name, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, maxLines = 1)
         MoneyText(item.balance, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+/** «Aviso - Por revisar» (changes-ui-2.0 §1): only with at least one; it opens Historial, where they are listed. */
+@Composable
+private fun DraftsNotice(
+    count: Int,
+    onOpen: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    // motion.md §7: it grows in and out, and its count cross-fades
+    AnimatedVisibility(
+        count > 0,
+        enter = expandVertically(tween(400)) + fadeIn(tween(400)),
+        exit =
+            shrinkVertically(tween(400)) + fadeOut(tween(400)),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(CofferShapes.card)
+                .background(colors.primaryContainer)
+                .clickable(role = Role.Button, onClick = onOpen)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(18.dp))
+            Crossfade(count, Modifier.weight(1f), animationSpec = tween(150), label = "drafts") { n ->
+                Text(
+                    if (n == 1) "1 movimiento por revisar" else "$n movimientos por revisar",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.onPrimaryContainer,
+                )
+            }
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.onPrimaryContainer)
+        }
     }
 }

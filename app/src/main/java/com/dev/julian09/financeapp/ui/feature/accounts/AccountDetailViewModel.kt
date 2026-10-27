@@ -8,6 +8,7 @@ import com.dev.julian09.financeapp.domain.model.CardOverview
 import com.dev.julian09.financeapp.domain.model.LoanOverview
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
+import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import com.dev.julian09.financeapp.domain.usecase.ObserveCards
 import com.dev.julian09.financeapp.domain.usecase.ObserveLoans
@@ -38,6 +39,7 @@ class AccountDetailViewModel
         accounts: AccountRepository,
         transactions: TransactionRepository,
         categories: CategoryRepository,
+        tags: TagRepository,
         cards: ObserveCards,
         loans: ObserveLoans,
     ) : ViewModel() {
@@ -48,14 +50,14 @@ class AccountDetailViewModel
             combine(
                 accounts.observeBalances(),
                 transactions.observeByAccount(id),
-                categories.observeAll(),
+                combine(categories.observeAll(), tags.observeAll()) { c, t -> c to t },
                 cards(),
                 loans(),
-            ) { accs, txs, cats, overviews, loanOverviews ->
+            ) { accs, txs, (cats, all), overviews, loanOverviews ->
                 accs.firstOrNull { it.account.id == id }?.let { account ->
                     AccountDetailState(
                         account,
-                        buildDays(txs, accs.associate { it.account.id to it.account.name }, cats),
+                        buildDays(txs, accs.associate { it.account.id to it.account.name }, cats, tags = all),
                         overviews.firstOrNull { it.card.accountId == id },
                         loanOverviews.firstOrNull { it.loan.accountId == id },
                     )

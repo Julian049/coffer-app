@@ -47,7 +47,7 @@ class RegisterViewModel
                     // Usernames are lowercase by contract; typing "Julian" just works
                     AuthField.Username -> it.copy(username = value.lowercase().trim())
                     AuthField.Password -> it.copy(password = value)
-                    AuthField.Identifier -> it
+                    AuthField.Identifier, AuthField.Code -> it
                 }
             edited.copy(errors = it.errors - field, formError = null)
         }

@@ -8,7 +8,9 @@ import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.usecase.CreateTag
 import com.dev.julian09.financeapp.domain.usecase.DeferCardPurchase
 import com.dev.julian09.financeapp.domain.usecase.DeleteTransaction
+import com.dev.julian09.financeapp.domain.usecase.DiscardDraft
 import com.dev.julian09.financeapp.domain.usecase.RegisterTransaction
+import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
 import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
 import com.dev.julian09.financeapp.domain.usecase.UpdateTransaction
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
@@ -95,6 +97,9 @@ class NoteSuggestionsTest {
                     CreateTag(f.tags, sync),
                     DeferCardPurchase(f.cards, register, validator, sync, f.clock),
                     DeleteTransaction(f.transactions, sync),
+                    f.drafts,
+                    SuggestDraft(f.accounts, f.transactions),
+                    DiscardDraft(f.drafts, sync),
                     f.observeCards,
                     f.clock,
                 )
@@ -152,6 +157,9 @@ class NoteSuggestionsTest {
                     CreateTag(f.tags, sync),
                     DeferCardPurchase(f.cards, register, validator, sync, f.clock),
                     DeleteTransaction(f.transactions, sync),
+                    f.drafts,
+                    SuggestDraft(f.accounts, f.transactions),
+                    DiscardDraft(f.drafts, sync),
                     f.observeCards,
                     f.clock,
                 )

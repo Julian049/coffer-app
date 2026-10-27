@@ -4,6 +4,7 @@ import com.dev.julian09.financeapp.data.clock.SystemClock
 import com.dev.julian09.financeapp.data.importing.ImportSchedulerImpl
 import com.dev.julian09.financeapp.data.io.ContentCsvFiles
 import com.dev.julian09.financeapp.data.local.RoomLocalDataEraser
+import com.dev.julian09.financeapp.data.push.FirebasePushTokens
 import com.dev.julian09.financeapp.data.reminder.NotificationPublisher
 import com.dev.julian09.financeapp.data.reminder.ReminderSchedulerImpl
 import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
@@ -11,25 +12,30 @@ import com.dev.julian09.financeapp.data.repository.AuthRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CardRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CategoryRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ChangeLogRepositoryImpl
+import com.dev.julian09.financeapp.data.repository.DraftRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.LoanRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.RecurringRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ServerStatusRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.SettingsRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TagRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TransactionRepositoryImpl
+import com.dev.julian09.financeapp.data.session.SharedPrefsCalendarAccountsStore
 import com.dev.julian09.financeapp.data.session.SharedPrefsLegalConsentStore
 import com.dev.julian09.financeapp.data.sync.SyncSchedulerImpl
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.AuthRepository
+import com.dev.julian09.financeapp.domain.port.CalendarAccountsStore
 import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.ChangeLogRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.CsvFiles
+import com.dev.julian09.financeapp.domain.port.DraftRepository
 import com.dev.julian09.financeapp.domain.port.ImportScheduler
 import com.dev.julian09.financeapp.domain.port.LegalConsentStore
 import com.dev.julian09.financeapp.domain.port.LoanRepository
 import com.dev.julian09.financeapp.domain.port.LocalDataEraser
+import com.dev.julian09.financeapp.domain.port.PushTokens
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.ReminderNotifier
 import com.dev.julian09.financeapp.domain.port.ReminderScheduler
@@ -49,6 +55,9 @@ import dagger.hilt.components.SingletonComponent
 abstract class RepositoryModule {
     @Binds
     abstract fun bindClock(impl: SystemClock): Clock
+
+    @Binds
+    abstract fun bindCalendarAccountsStore(impl: SharedPrefsCalendarAccountsStore): CalendarAccountsStore
 
     @Binds
     abstract fun bindLegalConsentStore(impl: SharedPrefsLegalConsentStore): LegalConsentStore
@@ -75,6 +84,9 @@ abstract class RepositoryModule {
     abstract fun bindTagRepository(impl: TagRepositoryImpl): TagRepository
 
     @Binds
+    abstract fun bindDraftRepository(impl: DraftRepositoryImpl): DraftRepository
+
+    @Binds
     abstract fun bindChangeLogRepository(impl: ChangeLogRepositoryImpl): ChangeLogRepository
 
     @Binds
@@ -94,6 +106,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindReminderScheduler(impl: ReminderSchedulerImpl): ReminderScheduler
+
+    @Binds
+    abstract fun bindPushTokens(impl: FirebasePushTokens): PushTokens
 
     @Binds
     abstract fun bindCsvFiles(impl: ContentCsvFiles): CsvFiles

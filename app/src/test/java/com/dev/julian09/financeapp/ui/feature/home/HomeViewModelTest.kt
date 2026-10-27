@@ -62,6 +62,7 @@ class HomeViewModelTest {
             f.settings,
             UpdateSettings(f.settings, FakeSyncScheduler()),
             SetIncludeInNet(f.accounts, FakeSyncScheduler()),
+            f.drafts,
         ).state.filterNotNull().first()
 
     private fun day(date: String) = Instant.parse("${date}T15:00:00Z")

@@ -6,6 +6,7 @@ import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.DraftRepository
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.usecase.HomeDashboard
@@ -35,6 +36,8 @@ data class HomeUiState(
     /** REQ-ETQ-04: pinned tags with their month total. */
     val pinned: List<TagLine> = emptyList(),
     val settings: Settings = Settings(),
+    /** REQ-COR-04: transactions to review; Home only tells how many (changes-ui-2.0 §1). */
+    val draftCount: Int = 0,
 ) {
     val balanceView: BalanceView get() = if (settings.homeBalanceView == BalanceView.NET.name) BalanceView.NET else BalanceView.AVAILABLE
 
@@ -53,6 +56,7 @@ class HomeViewModel
         settings: SettingsRepository,
         private val updateSettings: UpdateSettings,
         private val setIncludeInNet: SetIncludeInNet,
+        drafts: DraftRepository,
     ) : ViewModel() {
         val state: StateFlow<HomeUiState?> =
             combine(
@@ -60,12 +64,20 @@ class HomeViewModel
                 categories.observeAll(),
                 tagLines(tags, YearMonth.from(clock.today()), clock.zone()),
                 settings.observe(),
-            ) { dashboard, cats, lines, stored ->
+                drafts.observeAll(),
+            ) { dashboard, cats, lines, stored, pending ->
                 HomeUiState(
                     dashboard,
-                    buildDays(dashboard.recent, dashboard.accounts.associate { it.account.id to it.account.name }, cats),
+                    buildDays(
+                        dashboard.recent,
+                        dashboard.accounts.associate { it.account.id to it.account.name },
+                        cats,
+                        clock.zone(),
+                        lines.map { it.tag },
+                    ),
                     lines.filter { it.tag.pinned },
                     stored,
+                    pending.size,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

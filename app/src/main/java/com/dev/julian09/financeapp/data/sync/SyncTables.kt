@@ -13,7 +13,10 @@ import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
+import com.dev.julian09.financeapp.data.local.entity.TransactionDraftEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
+import com.dev.julian09.financeapp.data.local.entity.decodeTagIds
+import com.dev.julian09.financeapp.data.local.entity.encodeTagIds
 import com.dev.julian09.financeapp.data.remote.dto.ChangeDto
 import com.dev.julian09.financeapp.domain.model.Money
 import kotlinx.serialization.json.Json
@@ -84,6 +87,7 @@ class SyncTables
                             put("homeCards", homeCards(s.homeCards))
                             put("netBalanceMode", s.netBalanceMode)
                             s.loanPaymentCategoryId?.let { put("loanPaymentCategoryId", it.toString()) }
+                            put("notifyDrafts", s.notifyDrafts)
                         },
                     )
                 },
@@ -98,6 +102,7 @@ class SyncTables
                         homeCards = d["homeCards"]?.jsonArray?.toString() ?: "[]",
                         netBalanceMode = d.text("netBalanceMode") ?: "PERIOD",
                         loanPaymentCategoryId = d.text("loanPaymentCategoryId")?.let(UUID::fromString),
+                        notifyDrafts = d.boolOr("notifyDrafts", true),
                         createdAt = Instant.parse(c.createdAt),
                         updatedAt = Instant.parse(c.updatedAt),
                         deletedAt = c.deletedAt?.let(Instant::parse),
@@ -135,6 +140,8 @@ class SyncTables
                             put("color", a.color)
                             put("sortOrder", a.sortOrder)
                             put("includeInNet", a.includeInNet)
+                            // "" clears them on the server; a missing key would keep the old ones
+                            put("lastDigits", a.lastDigits.orEmpty())
                         },
                     )
                 },
@@ -153,6 +160,7 @@ class SyncTables
                         color = d.text("color"),
                         sortOrder = d.int("sortOrder"),
                         includeInNet = d.boolOr("includeInNet", true),
+                        lastDigits = d.text("lastDigits")?.ifEmpty { null },
                         createdAt = Instant.parse(c.createdAt),
                         updatedAt = Instant.parse(c.updatedAt),
                         deletedAt = c.deletedAt?.let(Instant::parse),
@@ -230,6 +238,7 @@ class SyncTables
                         buildJsonObject {
                             put("name", t.name)
                             put("pinned", t.pinned)
+                            put("color", t.color)
                         },
                     )
                 },
@@ -238,6 +247,7 @@ class SyncTables
                         id = UUID.fromString(c.id),
                         name = c.data.text("name")!!,
                         pinned = c.data.bool("pinned"),
+                        color = c.data.text("color"),
                         createdAt = Instant.parse(c.createdAt),
                         updatedAt = Instant.parse(c.updatedAt),
                         deletedAt = c.deletedAt?.let(Instant::parse),
@@ -580,12 +590,58 @@ class SyncTables
                 },
             )
 
+        /** REQ-COR-02: the server writes them; the phone sends them back only deleted. */
+        val drafts =
+            SyncTable(
+                entity = "transactionDraft",
+                pending = { db.drafts().pending(it) },
+                syncInfo = { db.drafts().syncInfo(it) },
+                upsert = { db.drafts().upsert(listOf(it)) },
+                markSynced = { id, at -> db.drafts().markSynced(id, at) },
+                markFailed = { id, at, e -> db.drafts().markFailed(id, at, e) },
+                idOf = TransactionDraftEntity::id,
+                updatedAtOf = TransactionDraftEntity::updatedAt,
+                encode = { t ->
+                    envelope(
+                        "transactionDraft",
+                        t.id,
+                        t.createdAt,
+                        t.updatedAt,
+                        t.deletedAt,
+                        buildJsonObject {
+                            put("source", t.source)
+                            put("type", t.type)
+                            put("amount", amount(t.amount))
+                            put("occurredAt", t.occurredAt.toString())
+                            put("merchant", t.merchant)
+                            put("lastDigits", t.lastDigits)
+                        },
+                    )
+                },
+                decode = { c ->
+                    val d = c.data
+                    TransactionDraftEntity(
+                        id = UUID.fromString(c.id),
+                        source = d.text("source")!!,
+                        type = d.text("type")!!,
+                        amount = scaled(d.text("amount")!!),
+                        occurredAt = Instant.parse(d.text("occurredAt")!!),
+                        merchant = d.text("merchant"),
+                        lastDigits = d.text("lastDigits"),
+                        createdAt = Instant.parse(c.createdAt),
+                        updatedAt = Instant.parse(c.updatedAt),
+                        deletedAt = c.deletedAt?.let(Instant::parse),
+                        syncState = SyncState.SYNCED,
+                    )
+                },
+            )
+
         /**
          * Dependency order: settings, accounts and their card and loan terms, categories, tags, recurring expenses, transactions,
-         * deferred purchases and their installments, then the history.
+         * deferred purchases and their installments, then the history and the drafts, which follow the movement they became.
          */
         val all: List<SyncTable<*>> =
-            listOf(settings, accounts, cards, loans, categories, tags, recurring, transactions, deferred, installments, changeLog)
+            listOf(settings, accounts, cards, loans, categories, tags, recurring, transactions, deferred, installments, changeLog, drafts)
 
         val byEntity: Map<String, SyncTable<*>> = all.associateBy { it.entity }
     }
@@ -608,7 +664,10 @@ internal fun transactionData(t: TransactionEntity): JsonObject =
         put("accountId", t.accountId.toString())
         put("destinationAccountId", t.destinationAccountId?.toString())
         put("categoryId", t.categoryId?.toString())
-        put("tagId", t.tagId?.toString())
+        // ADR-0015: tagId is the first tag, for a server or a history entry written before 2.0
+        val tags = decodeTagIds(t.tagIds)
+        put("tagId", tags.firstOrNull()?.toString())
+        put("tagIds", JsonArray(tags.map { JsonPrimitive(it.toString()) }))
         put("note", t.note)
         put("installments", t.installments)
         put("principal", t.principal?.let(::amount))
@@ -632,7 +691,7 @@ internal fun transactionFromData(
     accountId = UUID.fromString(d.text("accountId")!!),
     destinationAccountId = d.text("destinationAccountId")?.let(UUID::fromString),
     categoryId = d.text("categoryId")?.let(UUID::fromString),
-    tagId = d.text("tagId")?.let(UUID::fromString),
+    tagIds = encodeTagIds(d.uuids("tagIds") ?: listOfNotNull(d.text("tagId")?.let(UUID::fromString))),
     note = d.text("note"),
     installments = d.int("installments"),
     principal = d.text("principal")?.let(::scaled),
@@ -652,6 +711,8 @@ internal fun amount(scaled: Long): String = Money(scaled).toBigDecimal().toPlain
 internal fun scaled(amount: String): Long = Money.of(BigDecimal(amount)).scaled
 
 private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content
+
+private fun JsonObject.uuids(key: String): List<UUID>? = (this[key] as? JsonArray)?.map { UUID.fromString(it.jsonPrimitive.content) }
 
 private fun JsonObject.bool(key: String): Boolean = this[key]?.jsonPrimitive?.boolean ?: false
 

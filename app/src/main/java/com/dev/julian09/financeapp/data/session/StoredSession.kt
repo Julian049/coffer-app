@@ -20,6 +20,8 @@ data class StoredUser(
     val email: String,
     val currency: String,
     val googleLinked: Boolean = false,
+    val forwardingAddress: String? = null,
+    val forwardingConfirmation: String? = null,
 ) {
-    fun toDomain() = UserProfile(id, username, displayName, email, currency, googleLinked)
+    fun toDomain() = UserProfile(id, username, displayName, email, currency, googleLinked, forwardingAddress, forwardingConfirmation)
 }

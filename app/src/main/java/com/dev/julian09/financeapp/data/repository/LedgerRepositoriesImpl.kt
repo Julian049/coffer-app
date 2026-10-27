@@ -6,6 +6,7 @@ import com.dev.julian09.financeapp.data.local.dao.AccountDao
 import com.dev.julian09.financeapp.data.local.dao.CardDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
 import com.dev.julian09.financeapp.data.local.dao.ChangeLogDao
+import com.dev.julian09.financeapp.data.local.dao.DraftDao
 import com.dev.julian09.financeapp.data.local.dao.LoanDao
 import com.dev.julian09.financeapp.data.local.dao.NoteRow
 import com.dev.julian09.financeapp.data.local.dao.RecurringDao
@@ -24,7 +25,10 @@ import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
+import com.dev.julian09.financeapp.data.local.entity.TransactionDraftEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
+import com.dev.julian09.financeapp.data.local.entity.decodeTagIds
+import com.dev.julian09.financeapp.data.local.entity.encodeTagIds
 import com.dev.julian09.financeapp.data.sync.SyncMeta
 import com.dev.julian09.financeapp.data.sync.transactionData
 import com.dev.julian09.financeapp.data.sync.transactionFromData
@@ -42,6 +46,7 @@ import com.dev.julian09.financeapp.domain.model.ChangeAction
 import com.dev.julian09.financeapp.domain.model.ChangeEntry
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
+import com.dev.julian09.financeapp.domain.model.DraftSource
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.HomeCard
 import com.dev.julian09.financeapp.domain.model.Installment
@@ -61,6 +66,7 @@ import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.Transaction
+import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
@@ -68,6 +74,7 @@ import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.ChangeLogRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.DraftRepository
 import com.dev.julian09.financeapp.domain.port.LoanRepository
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
@@ -384,11 +391,13 @@ class TagRepositoryImpl
         private val dao: TagDao,
         private val clock: Clock,
     ) : TagRepository {
-        override fun observeAll(): Flow<List<Tag>> = dao.observeAll().map { rows -> rows.map { Tag(it.id, it.name, it.pinned) } }
+        override fun observeAll(): Flow<List<Tag>> = dao.observeAll().map { rows -> rows.map { Tag(it.id, it.name, it.pinned, it.color) } }
 
         override suspend fun create(tag: Tag) {
             val now = clock.now()
-            dao.upsert(listOf(TagEntity(id = tag.id, name = tag.name, pinned = tag.pinned, createdAt = now, updatedAt = now)))
+            dao.upsert(
+                listOf(TagEntity(id = tag.id, name = tag.name, pinned = tag.pinned, color = tag.color, createdAt = now, updatedAt = now)),
+            )
         }
 
         override suspend fun rename(
@@ -400,6 +409,11 @@ class TagRepositoryImpl
             id: UUID,
             pinned: Boolean,
         ) = dao.setPinned(id, pinned, clock.now())
+
+        override suspend fun setColor(
+            id: UUID,
+            color: String,
+        ) = dao.setColor(id, color, clock.now())
 
         override suspend fun movementCount(id: UUID): Int = dao.movementCount(id)
 
@@ -938,6 +952,7 @@ class SettingsRepositoryImpl
                         homeCards(it.homeCards),
                         netBalanceModeOf(it.netBalanceMode),
                         it.loanPaymentCategoryId,
+                        it.notifyDrafts,
                     )
                 } ?: Settings()
             }
@@ -953,6 +968,7 @@ class SettingsRepositoryImpl
                     homeCards = homeCardsJson(settings.homeCards),
                     netBalanceMode = settings.netBalanceMode.name,
                     loanPaymentCategoryId = settings.loanPaymentCategoryId,
+                    notifyDrafts = settings.notifyDrafts,
                     updatedAt = clock.now(),
                     syncState = SyncState.PENDING,
                     syncError = null,
@@ -1017,7 +1033,7 @@ internal fun Transaction.toEntity(
     accountId = accountId,
     destinationAccountId = destinationAccountId,
     categoryId = categoryId,
-    tagId = tagId,
+    tagIds = encodeTagIds(tagIds),
     note = note,
     installments = installments,
     principal = principal?.scaled,
@@ -1047,6 +1063,7 @@ internal fun Account.toEntity(
     color = color,
     sortOrder = sortOrder,
     includeInNet = includeInNet,
+    lastDigits = lastDigits?.takeIf { it.length == 4 },
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -1066,6 +1083,7 @@ internal fun AccountEntity.toDomain() =
         sortOrder,
         createdAt,
         includeInNet,
+        lastDigits,
     )
 
 internal fun CategoryEntity.toDomain() =
@@ -1080,7 +1098,7 @@ internal fun TransactionEntity.toDomain() =
         accountId = accountId,
         destinationAccountId = destinationAccountId,
         categoryId = categoryId,
-        tagId = tagId,
+        tagIds = decodeTagIds(tagIds),
         note = note,
         installments = installments,
         principal = principal?.let(::Money),
@@ -1138,3 +1156,39 @@ internal fun rankNotes(
         .sortedWith(compareBy({ rank(it.first.note) }, { -it.second }))
         .map { (row, _) -> NoteSuggestion(row.note, row.categoryId, row.accountId) }
 }
+
+class DraftRepositoryImpl
+    @Inject
+    constructor(
+        private val db: FinanceDatabase,
+        private val dao: DraftDao,
+        private val transactions: TransactionRepository,
+        private val clock: Clock,
+    ) : DraftRepository {
+        override fun observeAll(): Flow<List<TransactionDraft>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun get(id: UUID): TransactionDraft? = dao.get(id)?.toDomain()
+
+        override suspend fun count(): Int = dao.count()
+
+        override suspend fun apply(
+            draftId: UUID,
+            transaction: Transaction,
+        ) = db.withTransaction {
+            transactions.insert(transaction)
+            dao.delete(draftId, clock.now())
+        }
+
+        override suspend fun discard(id: UUID) = dao.delete(id, clock.now())
+    }
+
+internal fun TransactionDraftEntity.toDomain() =
+    TransactionDraft(
+        id = id,
+        source = DraftSource.valueOf(source),
+        type = TransactionType.valueOf(type),
+        amount = Money(amount),
+        occurredAt = occurredAt,
+        merchant = merchant,
+        lastDigits = lastDigits,
+    )

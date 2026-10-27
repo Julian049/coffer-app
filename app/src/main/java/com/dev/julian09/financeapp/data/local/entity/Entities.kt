@@ -36,6 +36,9 @@ data class SettingsEntity(
     /** The expense category that receives the principal of loan installments (V14, Room 8); null until the first one. */
     @ColumnInfo(defaultValue = "NULL")
     val loanPaymentCategoryId: UUID? = null,
+    /** REQ-COR-10: the notice for transactions to review (V16, Room 10). */
+    @ColumnInfo(defaultValue = "1")
+    val notifyDrafts: Boolean = true,
 )
 
 @Entity(tableName = "accounts", indices = [Index("syncState")])
@@ -59,6 +62,9 @@ data class AccountEntity(
     /** Whether the debt is subtracted in the custom net balance (V14, Room 8). */
     @ColumnInfo(defaultValue = "1")
     val includeInNet: Boolean = true,
+    /** REQ-COR-06: matches the digits a bank email gives (V16, Room 10). */
+    @ColumnInfo(defaultValue = "NULL")
+    val lastDigits: String? = null,
 )
 
 @Entity(tableName = "categories", indices = [Index("syncState"), Index("parentId")])
@@ -90,6 +96,8 @@ data class TagEntity(
     val deletedAt: Instant? = null,
     val syncState: SyncState = SyncState.PENDING,
     val syncError: String? = null,
+    /** `#RRGGBB` from the 6-color palette (V15, Room 9); null shows the first one. */
+    @ColumnInfo(defaultValue = "NULL") val color: String? = null,
 )
 
 @Entity(
@@ -121,6 +129,8 @@ data class TransactionEntity(
     val paymentKind: String? = null,
     /** A transfer's note, apart from its title [note] (V13, Room 7). */
     val concept: String? = null,
+    /** Every tag as `,id1,id2,` or empty (ADR-0015, Room 9); [tagId] is the pre-2.0 column, kept only so old rows migrate. */
+    @ColumnInfo(defaultValue = "") val tagIds: String = "",
     val createdAt: Instant,
     val updatedAt: Instant,
     val deletedAt: Instant? = null,
@@ -259,4 +269,26 @@ data class ChangeLogEntity(
 data class SyncMetaEntity(
     @PrimaryKey val key: String,
     val value: String,
+)
+
+/** ADR-0015: the tags of a movement as stored in [TransactionEntity.tagIds], so `LIKE '%,id,%'` finds one. */
+internal fun encodeTagIds(ids: List<UUID>): String = if (ids.isEmpty()) "" else ids.distinct().joinToString(",", ",", ",")
+
+internal fun decodeTagIds(text: String): List<UUID> = text.split(',').filter { it.isNotEmpty() }.map(UUID::fromString)
+
+/** A transaction to review, made by the server from a bank email (V16, Room 10); it never counts until applied. */
+@Entity(tableName = "transaction_drafts", indices = [Index("syncState")])
+data class TransactionDraftEntity(
+    @PrimaryKey val id: UUID,
+    val source: String,
+    val type: String,
+    val amount: Long,
+    val occurredAt: Instant,
+    val merchant: String? = null,
+    val lastDigits: String? = null,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.SYNCED,
+    val syncError: String? = null,
 )

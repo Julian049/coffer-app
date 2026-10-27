@@ -27,6 +27,14 @@ data object LoginRoute
 @Serializable
 data object RegisterRoute
 
+/** REQ-AUT-09: Recuperar contraseña, from Iniciar sesión. */
+@Serializable
+data object ForgotPasswordRoute
+
+/** REQ-COR-01: Ajustes → Conectar correo. */
+@Serializable
+data object ConnectEmailRoute
+
 @Serializable
 data object NewAccountRoute
 
@@ -56,6 +64,8 @@ data object CategoriesRoute
 data class TransactionFormRoute(
     val type: String = "EXPENSE",
     val id: String? = null,
+    /** REQ-COR-05: Revisar transacción, filled from this draft. */
+    val draftId: String? = null,
 )
 
 @Serializable
@@ -94,3 +104,25 @@ data object ChangeHistoryRoute
 
 @Serializable
 data object CustomizeHomeRoute
+
+/** Reportes · Resumen general (changes-ui-2.0 §3). */
+@Serializable
+data object ReportSummaryRoute
+
+/** Reportes · Calendario. */
+@Serializable
+data object ReportCalendarRoute
+
+/** Reportes · Gastos por categoría of a period (ISO dates). */
+@Serializable
+data class ReportCategoriesRoute(
+    val from: String,
+    val to: String,
+)
+
+/** Reportes · Detalle de categoría of the month of [month] (an ISO date in it). */
+@Serializable
+data class ReportCategoryRoute(
+    val categoryId: String,
+    val month: String,
+)

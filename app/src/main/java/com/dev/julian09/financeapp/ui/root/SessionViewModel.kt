@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.ui.root
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.domain.model.SessionState
+import com.dev.julian09.financeapp.domain.port.PushTokens
 import com.dev.julian09.financeapp.domain.port.ReminderScheduler
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import com.dev.julian09.financeapp.domain.usecase.ObserveNeedsLegalConsent
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -29,6 +31,7 @@ class SessionViewModel
         observeNeedsLegalConsent: ObserveNeedsLegalConsent,
         private val scheduler: SyncScheduler,
         private val reminders: ReminderScheduler,
+        private val pushTokens: PushTokens,
     ) : ViewModel() {
         val session: StateFlow<SessionState> =
             observeSession().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionState.Loading)
@@ -52,6 +55,7 @@ class SessionViewModel
                         scheduler.ensurePeriodic()
                         scheduler.requestSync()
                         reminders.ensureScheduled()
+                        viewModelScope.launch { pushTokens.register() }
                     }
                 }.launchIn(viewModelScope)
         }

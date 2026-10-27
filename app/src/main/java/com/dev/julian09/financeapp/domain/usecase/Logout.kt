@@ -1,6 +1,7 @@
 package com.dev.julian09.financeapp.domain.usecase
 
 import com.dev.julian09.financeapp.domain.port.AuthRepository
+import com.dev.julian09.financeapp.domain.port.PushTokens
 import com.dev.julian09.financeapp.domain.port.ReminderScheduler
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import javax.inject.Inject
@@ -12,8 +13,10 @@ class Logout
         private val repository: AuthRepository,
         private val scheduler: SyncScheduler,
         private val reminders: ReminderScheduler,
+        private val push: PushTokens,
     ) {
         suspend operator fun invoke() {
+            push.unregister()
             scheduler.cancelAll()
             reminders.cancel()
             repository.logout()

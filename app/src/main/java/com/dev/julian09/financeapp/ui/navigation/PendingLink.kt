@@ -1,5 +1,6 @@
 package com.dev.julian09.financeapp.ui.navigation
 
+import com.dev.julian09.financeapp.ui.feature.history.HistoryFilters
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.UUID
 
@@ -10,4 +11,9 @@ object PendingLink {
     val cardId = MutableStateFlow<UUID?>(null)
 
     val loanId = MutableStateFlow<UUID?>(null)
+}
+
+/** Detalle de categoría → «Ver los 34 en Historial»: Historial applies these filters and clears them. */
+object HistoryLink {
+    val filters = MutableStateFlow<HistoryFilters?>(null)
 }

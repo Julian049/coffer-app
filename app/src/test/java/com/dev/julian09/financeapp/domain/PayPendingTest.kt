@@ -12,7 +12,6 @@ import com.dev.julian09.financeapp.domain.model.Urgency
 import com.dev.julian09.financeapp.domain.usecase.EndRecurrence
 import com.dev.julian09.financeapp.domain.usecase.ObservePendingPayments
 import com.dev.julian09.financeapp.domain.usecase.PayPending
-import com.dev.julian09.financeapp.domain.usecase.SkipPending
 import com.dev.julian09.financeapp.domain.usecase.TransactionField
 import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
@@ -39,7 +38,6 @@ class PayPendingTest {
     private val f = LedgerFixture(FixedClock(Instant.parse("2026-10-18T12:00:00Z")))
     private val scheduler = FakeSyncScheduler()
     private val pay = PayPending(f.recurring, TransactionValidator(f.accounts, f.categories), scheduler)
-    private val skip = SkipPending(f.recurring, scheduler)
     private val end = EndRecurrence(f.recurring, scheduler)
     private val pending = ObservePendingPayments(f.recurring, f.settings, f.clock)
 
@@ -145,28 +143,6 @@ class PayPendingTest {
                 errors,
             )
             assertEquals(LocalDate.parse("2026-10-20"), stored(r.id).nextDueDate)
-        }
-
-    @Test
-    fun skippingRegistersNothingAndAnOverdueExpenseGoesOneDateAtATime() =
-        runBlocking {
-            val debit = f.account("Débito", 2_000_000)
-            val r = rent(debit, f.category("Hogar"), due = "2026-08-20")
-            assertEquals(Urgency.OVERDUE, pending().first().single().urgency)
-
-            skip(r.id)
-            assertEquals(LocalDate.parse("2026-09-20"), stored(r.id).nextDueDate)
-            assertEquals(Urgency.OVERDUE, pending().first().single().urgency)
-            skip(r.id)
-            assertEquals(LocalDate.parse("2026-10-20"), stored(r.id).nextDueDate)
-            assertEquals(Money.ofPesos(2_000_000), balance())
-            assertTrue(
-                f.db
-                    .transactions()
-                    .observeRecurringPayments(Instant.EPOCH, END)
-                    .first()
-                    .isEmpty(),
-            )
         }
 
     @Test

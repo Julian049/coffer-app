@@ -16,6 +16,7 @@ import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
+import com.dev.julian09.financeapp.data.local.entity.TransactionDraftEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -88,16 +89,18 @@ private const val SEARCH_FROM =
     LEFT JOIN categories p ON p.id = c.parentId
     LEFT JOIN accounts a ON a.id = t.accountId
     LEFT JOIN accounts d ON d.id = t.destinationAccountId
-    LEFT JOIN tags g ON g.id = t.tagId
     WHERE t.deletedAt IS NULL AND t.occurredAt >= :from AND t.occurredAt < :to
       AND (:anyType OR t.type IN (:types))
       AND (:anyCategory OR $EFFECTIVE_CATEGORY IN (:categoryIds))
       AND (:anyAccount OR t.accountId IN (:accountIds) OR t.destinationAccountId IN (:accountIds))
-      AND (:anyTag OR t.tagId IN (:tagIds))
+      AND (:anyTag OR EXISTS (SELECT 1 FROM tags g WHERE g.id IN (:tagIds) AND t.tagIds LIKE '%,' || g.id || ',%'))
       AND (:like = '' OR t.note LIKE :like ESCAPE '\' OR c.name LIKE :like ESCAPE '\' OR p.name LIKE :like ESCAPE '\'
-           OR a.name LIKE :like ESCAPE '\' OR d.name LIKE :like ESCAPE '\' OR g.name LIKE :like ESCAPE '\'
+           OR a.name LIKE :like ESCAPE '\' OR d.name LIKE :like ESCAPE '\'
+           OR EXISTS (SELECT 1 FROM tags g WHERE g.deletedAt IS NULL AND t.tagIds LIKE '%,' || g.id || ',%' AND g.name LIKE :like ESCAPE '\')
            OR t.amount = :amount)
     """
+
+private const val HAS_TAG = "t.tagIds LIKE '%,' || g.id || ',%'"
 
 private const val COUNTED = "(NOT :anyCategory OR COALESCE(p.excludeFromReports, c.excludeFromReports, 0) = 0)"
 
@@ -262,7 +265,7 @@ interface TagDao {
     fun observeAll(): Flow<List<TagEntity>>
 
     /** S15-UI08: how many movements lose the tag if it is deleted. */
-    @Query("SELECT COUNT(*) FROM transactions WHERE tagId = :id AND deletedAt IS NULL")
+    @Query("SELECT COUNT(*) FROM transactions WHERE tagIds LIKE '%,' || :id || ',%' AND deletedAt IS NULL")
     suspend fun movementCount(id: UUID): Int
 
     @Query("UPDATE tags SET name = :name, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
@@ -279,24 +282,37 @@ interface TagDao {
         now: Instant,
     )
 
+    @Query("UPDATE tags SET color = :color, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun setColor(
+        id: UUID,
+        color: String,
+        now: Instant,
+    )
+
     @Query("UPDATE tags SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
     suspend fun delete(
         id: UUID,
         now: Instant,
     )
 
-    /** S9-DOM02: a deleted tag leaves its movements without a tag. */
-    @Query("UPDATE transactions SET tagId = NULL, updatedAt = :now, syncState = 'PENDING' WHERE tagId = :id AND deletedAt IS NULL")
+    /** S9-DOM02: a deleted tag leaves its movements; they keep their other tags (ADR-0015). */
+    @Query(
+        "UPDATE transactions SET tagIds = CASE WHEN tagIds = ',' || :id || ',' THEN '' " +
+            "ELSE REPLACE(tagIds, ',' || :id || ',', ',') END, tagId = CASE WHEN tagId = :id THEN NULL ELSE tagId END, " +
+            "updatedAt = :now, syncState = 'PENDING' WHERE tagIds LIKE '%,' || :id || ',%' AND deletedAt IS NULL",
+    )
     suspend fun untag(
         id: UUID,
         now: Instant,
     )
 
     @Query(
-        "SELECT tagId, COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount END), 0) AS income, " +
-            "COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount END), 0) AS expense, COUNT(*) AS count FROM transactions " +
-            "WHERE deletedAt IS NULL AND tagId IS NOT NULL AND type != 'TRANSFER' AND occurredAt >= :from AND occurredAt < :to " +
-            "GROUP BY tagId",
+        // A movement with two tags counts whole in each one (ADR-0015)
+        "SELECT g.id AS tagId, COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS income, " +
+            "COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount END), 0) AS expense, COUNT(*) AS count " +
+            "FROM tags g JOIN transactions t ON $HAS_TAG " +
+            "WHERE t.deletedAt IS NULL AND t.type != 'TRANSFER' AND t.occurredAt >= :from AND t.occurredAt < :to " +
+            "GROUP BY g.id",
     )
     fun observeTotals(
         from: Instant,
@@ -837,6 +853,47 @@ interface LoanDao {
     ): Int
 
     @Query("UPDATE loan_details SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailed(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
+}
+
+@Dao
+interface DraftDao {
+    @Upsert
+    suspend fun upsert(drafts: List<TransactionDraftEntity>)
+
+    @Query("SELECT * FROM transaction_drafts WHERE deletedAt IS NULL ORDER BY occurredAt DESC")
+    fun observeAll(): Flow<List<TransactionDraftEntity>>
+
+    @Query("SELECT * FROM transaction_drafts WHERE id = :id AND deletedAt IS NULL")
+    suspend fun get(id: UUID): TransactionDraftEntity?
+
+    @Query("SELECT COUNT(*) FROM transaction_drafts WHERE deletedAt IS NULL")
+    suspend fun count(): Int
+
+    /** Applied or discarded: the server learns it on the next push (REQ-COR-05). */
+    @Query("UPDATE transaction_drafts SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun delete(
+        id: UUID,
+        now: Instant,
+    )
+
+    @Query("SELECT * FROM transaction_drafts WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pending(limit: Int): List<TransactionDraftEntity>
+
+    @Query("SELECT syncState, updatedAt FROM transaction_drafts WHERE id = :id")
+    suspend fun syncInfo(id: UUID): SyncInfo?
+
+    @Query("UPDATE transaction_drafts SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSynced(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE transaction_drafts SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
     suspend fun markFailed(
         id: UUID,
         sentUpdatedAt: Instant,

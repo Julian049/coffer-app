@@ -9,6 +9,7 @@ import com.dev.julian09.financeapp.domain.model.LedgerError
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.usecase.CreateAccount
+import com.dev.julian09.financeapp.domain.usecase.SetLastDigits
 import com.dev.julian09.financeapp.domain.usecase.UpdateAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,8 @@ data class AccountFormState(
     val icon: String = "wallet",
     val color: String = "#4A3328",
     val includeInTotal: Boolean = true,
+    /** REQ-COR-06: up to 4 digits as typed. */
+    val lastDigits: String = "",
     val error: LedgerError? = null,
     val saved: Boolean = false,
 )
@@ -52,6 +55,7 @@ class AccountFormViewModel
         private val repository: AccountRepository,
         private val createAccount: CreateAccount,
         private val updateAccount: UpdateAccount,
+        private val setLastDigits: SetLastDigits,
     ) : ViewModel() {
         private val _state = MutableStateFlow(AccountFormState(editingId = savedState.get<String>("id")?.let(UUID::fromString)))
         val state: StateFlow<AccountFormState> = _state.asStateFlow()
@@ -73,6 +77,7 @@ class AccountFormViewModel
                             icon = account.icon ?: it.icon,
                             color = account.color ?: it.color,
                             includeInTotal = account.includeInTotal,
+                            lastDigits = account.lastDigits.orEmpty(),
                         )
                     }
                 }
@@ -91,18 +96,20 @@ class AccountFormViewModel
 
         fun setIncludeInTotal(value: Boolean) = _state.update { it.copy(includeInTotal = value) }
 
+        fun setLastDigits(value: String) = _state.update { it.copy(lastDigits = value.filter(Char::isDigit).take(4)) }
+
         fun save() {
             val s = _state.value
             val balance = Money.ofPesos(s.balanceDigits.ifEmpty { "0" }.toLong())
             viewModelScope.launch {
+                val id = s.editingId ?: UUID.randomUUID()
                 val error =
                     if (s.editingId == null) {
-                        createAccount(
-                            Account(UUID.randomUUID(), s.name, s.type, balance, s.includeInTotal, icon = s.icon, color = s.color),
-                        )
+                        createAccount(Account(id, s.name, s.type, balance, s.includeInTotal, icon = s.icon, color = s.color))
                     } else {
                         updateAccount(s.editingId, s.name, s.includeInTotal, s.icon, s.color)
                     }
+                if (error == null) setLastDigits(id, s.lastDigits)
                 _state.update { if (error == null) it.copy(saved = true) else it.copy(error = error) }
             }
         }

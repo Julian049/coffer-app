@@ -35,6 +35,10 @@ fun AppHeader(
     title: String,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    /** The period of a report, under the title (changes-ui-2.0 §3). */
+    subtitle: String? = null,
+    /** Beside the title: a tag's colour dot in Detalle de etiqueta (changes-ui-2.0 §2). */
+    titleTrailing: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = CofferTheme.colors
@@ -49,7 +53,18 @@ fun AppHeader(
                 }
                 Spacer(Modifier.size(4.dp))
             }
-            Text(title, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary, modifier = Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colors.textPrimary,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    titleTrailing?.invoke()
+                }
+                subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary) }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
         }
         HorizontalDivider(thickness = 1.dp, color = colors.border)

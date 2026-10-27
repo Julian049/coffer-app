@@ -167,6 +167,13 @@ object ReportAggregator {
             ReportSpan.RANGE -> ReportPeriod(minOf(anchor, to), maxOf(anchor, to))
         }
 
+    /** Every month [period] touches, each cut to the period (Resumen general, REQ-REP-08). */
+    fun months(period: ReportPeriod): List<ReportPeriod> =
+        generateSequence(period.from.withDayOfMonth(1)) { it.plusMonths(1) }
+            .takeWhile { it <= period.to }
+            .map { start -> ReportPeriod(maxOf(start, period.from), minOf(start.plusMonths(1).minusDays(1), period.to)) }
+            .toList()
+
     /** The [EVOLUTION] periods ending with [period]; a range compares the months ending in its last day. */
     fun evolution(
         span: ReportSpan,
@@ -183,7 +190,8 @@ object ReportAggregator {
     /**
      * [transactions] must cover the whole evolution; [purchases] are the deferred purchases' expenses, whenever they
      * happened, because their installments count on each due date (REQ-TC-09). [loanCategoryId] receives the principal of loan
-     * payments (S15-H06).
+     * payments (S15-H06). [periods] are the bars of [Report.evolution]: by default the last [EVOLUTION] ones; the summary
+     * passes every month of its period (2.0).
      */
     fun aggregate(
         span: ReportSpan,
@@ -196,6 +204,7 @@ object ReportAggregator {
         installments: List<Installment>,
         purchases: List<Transaction>,
         loanCategoryId: UUID? = null,
+        periods: List<ReportPeriod> = evolution(span, period),
     ): Report {
         val byId = categories.associateBy { it.id }
         val financialCharges = categories.firstOrNull { it.systemKey == FINANCIAL_CHARGES }?.id
@@ -235,7 +244,7 @@ object ReportAggregator {
         val counted = entries.filter { e -> e.categoryId?.let { byId[it] }?.excludedFromReports(byId) != true }
 
         val evolution =
-            evolution(span, period).map { p ->
+            periods.map { p ->
                 val inside = counted.filter { it.date in p }
                 PeriodSums(p, inside.sum(TransactionType.INCOME), inside.sum(TransactionType.EXPENSE))
             }

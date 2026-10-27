@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.dev.julian09.financeapp.data.local.LegacyDatabaseMigrator
+import com.dev.julian09.financeapp.data.push.FirebasePush
 import com.dev.julian09.financeapp.di.ApplicationScope
 import com.dev.julian09.financeapp.domain.usecase.MoveOpeningBalances
 import com.dev.julian09.financeapp.domain.usecase.PurgeChangeHistory
@@ -38,6 +39,7 @@ class FinanceApp :
 
     override fun onCreate() {
         super.onCreate()
+        FirebasePush.init(this)
         // Off the main thread; screens observe the database and update as soon as the MVP rows land
         appScope.launch {
             legacyMigrator.migrateIfNeeded()

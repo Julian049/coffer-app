@@ -4,11 +4,13 @@ import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
+import com.dev.julian09.financeapp.data.local.entity.encodeTagIds
 import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CardRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CategoryRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ChangeLogRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ChangeLogWriter
+import com.dev.julian09.financeapp.data.repository.DraftRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.LoanRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.RecurringRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.SettingsRepositoryImpl
@@ -39,6 +41,7 @@ class LedgerFixture(
     val observeLoans = ObserveLoans(accounts, loans)
     val loanDues = ObserveLoanDues(observeLoans, loans, settings, clock)
     val changeLog = ChangeLogRepositoryImpl(db.changeLog())
+    val drafts = DraftRepositoryImpl(db, db.drafts(), transactions, clock)
     private val past: Instant = Instant.parse("2026-01-01T00:00:00Z")
 
     suspend fun account(
@@ -102,6 +105,7 @@ class LedgerFixture(
         category: UUID? = null,
         destination: UUID? = null,
         tag: UUID? = null,
+        tags: List<UUID> = listOfNotNull(tag),
     ): UUID {
         val id = UUID.randomUUID()
         db.transactions().upsert(
@@ -114,7 +118,7 @@ class LedgerFixture(
                     accountId = account,
                     destinationAccountId = destination,
                     categoryId = category,
-                    tagId = tag,
+                    tagIds = encodeTagIds(tags),
                     createdAt = past,
                     updatedAt = past,
                     syncState = SyncState.SYNCED,

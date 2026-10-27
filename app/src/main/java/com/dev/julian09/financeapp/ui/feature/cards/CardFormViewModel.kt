@@ -12,6 +12,7 @@ import com.dev.julian09.financeapp.domain.usecase.CardDraft
 import com.dev.julian09.financeapp.domain.usecase.CardErrors
 import com.dev.julian09.financeapp.domain.usecase.CardField
 import com.dev.julian09.financeapp.domain.usecase.CreateCard
+import com.dev.julian09.financeapp.domain.usecase.SetLastDigits
 import com.dev.julian09.financeapp.domain.usecase.UpdateCard
 import com.dev.julian09.financeapp.ui.feature.accounts.digitsOnly
 import com.dev.julian09.financeapp.ui.feature.accounts.wholePesos
@@ -39,6 +40,8 @@ data class CardFormState(
     val rateText: String = "",
     val rateType: RateType = RateType.MV,
     val firstInstallmentInterestFree: Boolean = false,
+    /** REQ-COR-06: shown when editing; a new card gets them in its edit. */
+    val lastDigits: String = "",
     val errors: CardErrors = emptyMap(),
     val saved: Boolean = false,
 ) {
@@ -67,6 +70,7 @@ class CardFormViewModel
         private val cards: CardRepository,
         private val createCard: CreateCard,
         private val updateCard: UpdateCard,
+        private val setLastDigits: SetLastDigits,
     ) : ViewModel() {
         private val _state = MutableStateFlow(CardFormState(editingId = savedState.get<String>("id")?.let(UUID::fromString)))
         val state: StateFlow<CardFormState> = _state.asStateFlow()
@@ -91,11 +95,14 @@ class CardFormViewModel
                             rateText = percentText(card.rate),
                             rateType = card.rateType,
                             firstInstallmentInterestFree = card.firstInstallmentInterestFree,
+                            lastDigits = account.lastDigits.orEmpty(),
                         )
                     }
                 }
             }
         }
+
+        fun setLastDigits(value: String) = edit { it.copy(lastDigits = value.filter(Char::isDigit).take(4)) }
 
         private fun edit(transform: (CardFormState) -> CardFormState) = _state.update { transform(it).copy(errors = emptyMap()) }
 
@@ -135,6 +142,7 @@ class CardFormViewModel
                 )
             viewModelScope.launch {
                 val errors = if (s.editingId == null) createCard(draft) else updateCard(s.editingId, draft)
+                if (errors.isEmpty() && s.editingId != null) setLastDigits(s.editingId, s.lastDigits)
                 _state.update { if (errors.isEmpty()) it.copy(saved = true) else it.copy(errors = errors) }
             }
         }

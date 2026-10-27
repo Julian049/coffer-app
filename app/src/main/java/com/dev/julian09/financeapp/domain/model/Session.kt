@@ -8,6 +8,10 @@ data class UserProfile(
     val email: String,
     val currency: String,
     val googleLinked: Boolean,
+    /** REQ-COR-01: where this user forwards bank receipts; null until the server sends it. */
+    val forwardingAddress: String? = null,
+    /** Gmail's code to accept the forward, once it arrived. */
+    val forwardingConfirmation: String? = null,
 )
 
 /** What the app shows at start: sign-in, or the app. Expired keeps the local data (REQ-AUT-04, SEQ-03). */

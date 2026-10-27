@@ -20,9 +20,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.ui.components.MoneyKind
@@ -49,6 +51,10 @@ data class HistoryRow(
     val id: UUID? = null,
     /** Shown in Historial, not in Home. */
     val time: LocalTime? = null,
+    val categoryId: UUID? = null,
+    val categoryName: String? = null,
+    /** One 8 dp dot per tag, in its colour, after the title (changes-ui-2.0 §2). */
+    val tagColors: List<String> = emptyList(),
 )
 
 data class HistoryDay(
@@ -73,8 +79,10 @@ fun buildDays(
     accountNames: Map<UUID, String>,
     categories: List<Category>,
     zone: ZoneId = ZoneId.systemDefault(),
+    tags: List<Tag> = emptyList(),
 ): List<HistoryDay> {
     val byId = categories.associateBy { it.id }
+    val tagById = tags.associateBy { it.id }
     return transactions
         .groupBy { it.occurredAt.atZone(zone).toLocalDate() }
         .map { (date, dayTransactions) ->
@@ -94,6 +102,9 @@ fun buildDays(
                         icon = category?.icon ?: parent?.icon,
                         id = tx.id,
                         time = tx.occurredAt.atZone(zone).toLocalTime(),
+                        categoryId = tx.categoryId,
+                        categoryName = category?.name,
+                        tagColors = tx.tagIds.mapNotNull { tagById[it]?.shownColor },
                     )
                 },
             )
@@ -194,7 +205,10 @@ private fun MovementRow(
             )
         }
         Column(Modifier.weight(1f)) {
-            Text(row.title, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(row.title, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                TagDots(row.tagColors)
+            }
             Text(row.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
         }
         Column(horizontalAlignment = Alignment.End) {
@@ -213,3 +227,24 @@ private fun MovementRow(
         }
     }
 }
+
+/** The tags of a movement as 8 dp dots in their colours, 4 dp apart; nothing at all without tags (changes-ui-2.0 §2). */
+@Composable
+fun TagDots(
+    colors: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    if (colors.isEmpty()) return
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        colors.forEach { TagDot(it) }
+    }
+}
+
+@Composable
+fun TagDot(
+    hex: String,
+    modifier: Modifier = Modifier,
+) = Box(modifier.size(8.dp).background(tagColor(hex), CircleShape))
+
+/** `#RRGGBB` of TagColors. */
+fun tagColor(hex: String): Color = Color(android.graphics.Color.parseColor(hex))

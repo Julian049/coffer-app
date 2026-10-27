@@ -13,7 +13,6 @@ import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.usecase.EndRecurrence
 import com.dev.julian09.financeapp.domain.usecase.PayPending
-import com.dev.julian09.financeapp.domain.usecase.SkipPending
 import com.dev.julian09.financeapp.domain.usecase.TransactionErrors
 import com.dev.julian09.financeapp.ui.feature.accounts.digitsOnly
 import com.dev.julian09.financeapp.ui.feature.accounts.wholePesos
@@ -29,7 +28,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
-import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 
@@ -39,14 +37,12 @@ data class PendingSheetState(
     val pending: PendingPayment? = null,
     /** "Hogar > Arriendo" */
     val categoryLabel: String = "",
-    /** Where "Omitir esta vez" jumps to. */
-    val nextDate: LocalDate? = null,
     val step: PendingStep = PendingStep.ACTIONS,
     val amountDigits: String = "",
     val occurredAt: Instant = Instant.EPOCH,
     val accountId: UUID? = null,
     val errors: TransactionErrors = emptyMap(),
-    /** Paid, skipped or finalized: the sheet closes. */
+    /** Paid or finalized: the sheet closes. */
     val done: Boolean = false,
 )
 
@@ -60,7 +56,6 @@ class PendingViewModel
         private val recurring: RecurringRepository,
         private val settings: SettingsRepository,
         private val pay: PayPending,
-        private val skip: SkipPending,
         private val end: EndRecurrence,
         private val clock: Clock,
     ) : ViewModel() {
@@ -85,7 +80,6 @@ class PendingViewModel
                     PendingSheetState(
                         pending = RecurrenceCalculator.pending(r, clock.today(), settings.observe().first().reminderLeadDays),
                         categoryLabel = cats.firstOrNull { it.id == r.categoryId }?.let { categoryLabel(it, cats) }.orEmpty(),
-                        nextDate = RecurrenceCalculator.next(r, r.nextDueDate),
                         step = if (payNow) PendingStep.PAY else PendingStep.ACTIONS,
                         // REQ-REC-07: last payment, today and the recurring expense's account, all editable
                         amountDigits = r.suggestedAmount.wholePesos(),
@@ -117,8 +111,6 @@ class PendingViewModel
                 _state.update { if (errors.isEmpty()) it.copy(done = true) else it.copy(errors = errors) }
             }
         }
-
-        fun confirmSkip() = finish { skip(it) }
 
         fun confirmEnd() = finish { end(it) }
 

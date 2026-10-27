@@ -75,7 +75,7 @@ class NotificationPublisher
                         ) {
                             "$amount · Toca para pagarla"
                         } else {
-                            "$amount · Toca para pagarlo u omitirlo"
+                            "$amount · Toca para pagarlo"
                         },
                     ).setAutoCancel(true)
                     .setContentIntent(

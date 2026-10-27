@@ -5,6 +5,8 @@ import com.dev.julian09.financeapp.data.remote.dto.AuthResponseDto
 import com.dev.julian09.financeapp.data.remote.dto.DeleteAccountRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.GoogleLoginRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.LoginRequestDto
+import com.dev.julian09.financeapp.data.remote.dto.PasswordResetConfirmRequestDto
+import com.dev.julian09.financeapp.data.remote.dto.PasswordResetRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.ProblemDto
 import com.dev.julian09.financeapp.data.remote.dto.RefreshRequestDto
 import com.dev.julian09.financeapp.data.remote.dto.RegisterRequestDto
@@ -76,6 +78,24 @@ class AuthRepositoryImpl
             password: String?,
             idToken: String?,
         ): Result<Unit> = runMapped { api.deleteAccount(DeleteAccountRequestDto(password, idToken)) }
+
+        override suspend fun requestPasswordReset(email: String): Result<Unit> =
+            runMapped { api.requestPasswordReset(PasswordResetRequestDto(email.trim())) }
+
+        override suspend fun confirmPasswordReset(
+            email: String,
+            code: String,
+            newPassword: String,
+        ): Result<Unit> =
+            runMapped { api.confirmPasswordReset(PasswordResetConfirmRequestDto(email.trim(), code, newPassword)) }
+                .recoverCatching { e ->
+                    // The server's 400 for a bad code lists no field: it belongs to the code
+                    throw if (e is AuthFailure.Invalid && e.fields.isEmpty()) {
+                        AuthFailure.Invalid(mapOf(AuthField.Code to "El código no es válido o ya venció. Pide uno nuevo."))
+                    } else {
+                        e
+                    }
+                }
 
         override suspend fun clearSession() = store.clear()
 
@@ -166,6 +186,8 @@ class AuthRepositoryImpl
                     "username" to AuthField.Username,
                     "password" to AuthField.Password,
                     "identifier" to AuthField.Identifier,
+                    "code" to AuthField.Code,
+                    "newPassword" to AuthField.Password,
                 )
         }
     }

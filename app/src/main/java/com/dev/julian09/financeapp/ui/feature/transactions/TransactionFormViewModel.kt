@@ -17,13 +17,16 @@ import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.DraftRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import com.dev.julian09.financeapp.domain.usecase.CreateTag
 import com.dev.julian09.financeapp.domain.usecase.DeferCardPurchase
 import com.dev.julian09.financeapp.domain.usecase.DeleteTransaction
+import com.dev.julian09.financeapp.domain.usecase.DiscardDraft
 import com.dev.julian09.financeapp.domain.usecase.ObserveCards
 import com.dev.julian09.financeapp.domain.usecase.RegisterTransaction
+import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
 import com.dev.julian09.financeapp.domain.usecase.TransactionErrors
 import com.dev.julian09.financeapp.domain.usecase.UpdateTransaction
 import com.dev.julian09.financeapp.domain.usecase.isPickable
@@ -62,7 +65,7 @@ data class TransactionFormState(
     val accountId: UUID? = null,
     val destinationId: UUID? = null,
     val occurredAt: Instant,
-    val tagId: UUID? = null,
+    val tagIds: List<UUID> = emptyList(),
     val note: String = "",
     /** A transfer's note or concept, apart from its title (S12-H01). */
     val concept: String = "",
@@ -78,6 +81,9 @@ data class TransactionFormState(
     val saved: Boolean = false,
     /** M5: earlier notes that match what is typed. */
     val suggestions: List<NoteSuggestion> = emptyList(),
+    /** Revisar transacción (REQ-COR-05): the draft being applied, and its bank for the note on top. */
+    val draftId: UUID? = null,
+    val draftBank: String? = null,
 )
 
 /** What the form chooses from: active accounts with their balance, categories and tags. */
@@ -110,6 +116,9 @@ class TransactionFormViewModel
         private val createTag: CreateTag,
         private val deferCardPurchase: DeferCardPurchase,
         private val deleteTransaction: DeleteTransaction,
+        private val drafts: DraftRepository,
+        private val suggestDraft: SuggestDraft,
+        private val discardDraft: DiscardDraft,
         observeCards: ObserveCards,
         clock: Clock,
     ) : ViewModel() {
@@ -120,6 +129,7 @@ class TransactionFormViewModel
             MutableStateFlow(
                 TransactionFormState(
                     editingId = savedState.get<String>("id")?.let(UUID::fromString),
+                    draftId = savedState.get<String>("draftId")?.let(UUID::fromString),
                     type = savedState.get<String>("type")?.let(TransactionType::valueOf) ?: TransactionType.EXPENSE,
                     // REQ-TRX-05: now, editable
                     occurredAt = clock.now(),
@@ -152,7 +162,22 @@ class TransactionFormViewModel
         init {
             viewModelScope.launch {
                 val id = _state.value.editingId
-                if (id != null) {
+                val draft = _state.value.draftId?.let { drafts.get(it) }
+                if (draft != null) {
+                    // What the email said, with the account and category the suggestion found (REQ-COR-06, 08)
+                    val suggestion = suggestDraft(draft)
+                    _state.update {
+                        it.copy(
+                            type = draft.type,
+                            amountDigits = draft.amount.wholePesos(),
+                            occurredAt = draft.occurredAt,
+                            note = draft.merchant.orEmpty(),
+                            accountId = suggestion.accountId,
+                            categoryId = suggestion.categoryId,
+                            draftBank = draft.source.bank,
+                        )
+                    }
+                } else if (id != null) {
                     transactions.observe(id).first()?.let { t ->
                         original = t
                         keptAccounts.value = setOfNotNull(t.accountId, t.destinationAccountId)
@@ -164,7 +189,7 @@ class TransactionFormViewModel
                                 accountId = t.accountId,
                                 destinationId = t.destinationAccountId,
                                 occurredAt = t.occurredAt,
-                                tagId = t.tagId,
+                                tagIds = t.tagIds,
                                 note = t.note.orEmpty(),
                                 concept = t.concept.orEmpty(),
                             )
@@ -206,8 +231,8 @@ class TransactionFormViewModel
 
         fun setOccurredAt(value: Instant) = edit { it.copy(occurredAt = value) }
 
-        /** At most one tag (REQ-ETQ-02): tapping the chosen one clears it. */
-        fun toggleTag(id: UUID) = edit { it.copy(tagId = if (it.tagId == id) null else id) }
+        /** REQ-ETQ-02: any number of tags, in the order they were picked. */
+        fun toggleTag(id: UUID) = edit { it.copy(tagIds = if (id in it.tagIds) it.tagIds - id else it.tagIds + id) }
 
         fun setConcept(value: String) = edit { it.copy(concept = value.take(CONCEPT_MAX)) }
 
@@ -258,7 +283,7 @@ class TransactionFormViewModel
                     if (error ==
                         null
                     ) {
-                        it.copy(tagId = tag.id, tagError = null, createdTags = it.createdTags + 1)
+                        it.copy(tagIds = it.tagIds + tag.id, tagError = null, createdTags = it.createdTags + 1)
                     } else {
                         it.copy(tagError = error)
                     }
@@ -289,7 +314,7 @@ class TransactionFormViewModel
                     accountId = s.accountId ?: UUID(0, 0),
                     destinationAccountId = s.destinationId,
                     categoryId = s.categoryId,
-                    tagId = s.tagId.takeIf { s.type != TransactionType.TRANSFER },
+                    tagIds = if (s.type == TransactionType.TRANSFER) emptyList() else s.tagIds,
                     // Without a title the movement is saved under its category's name (PO, 2026-10-23)
                     note =
                         s.note.ifBlank {
@@ -324,7 +349,18 @@ class TransactionFormViewModel
                         s.editingId == null -> register(transaction)
                         else -> update(transaction)
                     }
+                // The draft goes only once its movement was saved
+                if (errors.isEmpty()) s.draftId?.let { discardDraft(it) }
                 _state.update { if (errors.isEmpty()) it.copy(saved = true) else it.copy(errors = errors) }
+            }
+        }
+
+        /** «Descartar»: the draft goes and nothing is registered. */
+        fun discard() {
+            val id = _state.value.draftId ?: return
+            viewModelScope.launch {
+                discardDraft(id)
+                _state.update { it.copy(saved = true) }
             }
         }
     }

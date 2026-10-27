@@ -38,6 +38,20 @@ class FakeAuthRepository : AuthRepository {
     val deleteCalls = mutableListOf<Pair<String?, String?>>()
     var sessionCleared = false
 
+    val resetRequests = mutableListOf<String>()
+    var resetResult: Result<Unit> = Result.success(Unit)
+
+    override suspend fun requestPasswordReset(email: String): Result<Unit> {
+        resetRequests += email
+        return Result.success(Unit)
+    }
+
+    override suspend fun confirmPasswordReset(
+        email: String,
+        code: String,
+        newPassword: String,
+    ): Result<Unit> = resetResult
+
     override suspend fun deleteAccount(
         password: String?,
         idToken: String?,

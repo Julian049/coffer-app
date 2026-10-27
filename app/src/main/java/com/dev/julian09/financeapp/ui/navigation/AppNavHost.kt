@@ -39,9 +39,14 @@ import com.dev.julian09.financeapp.ui.feature.home.CustomizeHomeScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportScreen
 import com.dev.julian09.financeapp.ui.feature.loans.LoanFormScreen
+import com.dev.julian09.financeapp.ui.feature.mail.ConnectEmailScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
+import com.dev.julian09.financeapp.ui.feature.reports.CalendarScreen
+import com.dev.julian09.financeapp.ui.feature.reports.CategoriesReportScreen
+import com.dev.julian09.financeapp.ui.feature.reports.CategoryReportScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
+import com.dev.julian09.financeapp.ui.feature.reports.SummaryScreen
 import com.dev.julian09.financeapp.ui.feature.settings.ReminderSettingsViewModel
 import com.dev.julian09.financeapp.ui.feature.settings.SettingsScreen
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
@@ -51,6 +56,7 @@ import com.dev.julian09.financeapp.ui.feature.transactions.TransactionDetailScre
 import com.dev.julian09.financeapp.ui.feature.transactions.TransactionFormScreen
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import java.time.LocalDate
 import java.util.UUID
 
 @Composable
@@ -67,6 +73,8 @@ fun AppNavHost(
     val openTransaction = { id: UUID -> navController.navigate(TransactionDetailRoute(id.toString())) }
     val openTags = { navController.navigate(TagsRoute) { launchSingleTop = true } }
     val openTag = { id: UUID -> navController.navigate(TagDetailRoute(id.toString())) }
+    val openCategories = { from: LocalDate, to: LocalDate -> navController.navigate(ReportCategoriesRoute(from.toString(), to.toString())) }
+    val openCategory = { id: UUID, month: LocalDate -> navController.navigate(ReportCategoryRoute(id.toString(), month.toString())) }
 
     val newTransaction = { type: TransactionType -> navController.navigate(TransactionFormRoute(type.name)) }
     // A tapped notice opens its sheet in Home, from wherever the app was
@@ -118,10 +126,37 @@ fun AppNavHost(
                     onOpenSettings = openSettings,
                     onOpenTransaction = openTransaction,
                     avatarInitial = initial,
+                    onReviewDraft = { navController.navigate(TransactionFormRoute(draftId = it.toString())) },
                 )
             }
             composable<ReportsRoute> {
-                ReportsScreen(onOpenSettings = openSettings, onOpenTags = openTags, onOpenTag = openTag, avatarInitial = initial)
+                ReportsScreen(
+                    onOpenSettings = openSettings,
+                    onOpenTags = openTags,
+                    onOpenTag = openTag,
+                    onOpenSummary = { navController.navigate(ReportSummaryRoute) },
+                    onOpenCalendar = { navController.navigate(ReportCalendarRoute) },
+                    onOpenCategories = openCategories,
+                    onOpenCategory = openCategory,
+                    avatarInitial = initial,
+                )
+            }
+            composable<ReportSummaryRoute> {
+                SummaryScreen(onBack = navController::popBackStack, onOpenCategories = openCategories)
+            }
+            composable<ReportCalendarRoute> { CalendarScreen(onBack = navController::popBackStack, onOpenTransaction = openTransaction) }
+            composable<ReportCategoriesRoute> {
+                CategoriesReportScreen(onBack = navController::popBackStack, onOpenCategory = openCategory)
+            }
+            composable<ReportCategoryRoute> {
+                CategoryReportScreen(
+                    onBack = navController::popBackStack,
+                    onOpenTransaction = openTransaction,
+                    onOpenHistory = { filters ->
+                        HistoryLink.filters.value = filters
+                        navController.navigateToTab(Tab.History)
+                    },
+                )
             }
             composable<AccountsRoute> {
                 AccountsScreen(
@@ -144,8 +179,10 @@ fun AppNavHost(
                     onOpenTags = openTags,
                     onOpenChangeHistory = { navController.navigate(ChangeHistoryRoute) },
                     onOpenCustomizeHome = { navController.navigate(CustomizeHomeRoute) },
+                    onOpenConnectEmail = { navController.navigate(ConnectEmailRoute) },
                 )
             }
+            composable<ConnectEmailRoute> { ConnectEmailScreen(onBack = navController::popBackStack) }
             composable<ChangeHistoryRoute> { ChangeHistoryScreen(onBack = navController::popBackStack) }
             composable<CustomizeHomeRoute> { CustomizeHomeScreen(onBack = navController::popBackStack) }
             composable<TagsRoute> { TagsScreen(onBack = navController::popBackStack, onOpenTag = openTag) }

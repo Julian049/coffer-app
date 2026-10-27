@@ -7,6 +7,7 @@ import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.LedgerError
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.TagColors
 import com.dev.julian09.financeapp.domain.model.TagTotal
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import com.dev.julian09.financeapp.domain.model.TransactionType
@@ -19,6 +20,7 @@ import com.dev.julian09.financeapp.domain.usecase.CreateTag
 import com.dev.julian09.financeapp.domain.usecase.DeleteTag
 import com.dev.julian09.financeapp.domain.usecase.PinTag
 import com.dev.julian09.financeapp.domain.usecase.RenameTag
+import com.dev.julian09.financeapp.domain.usecase.SetTagColor
 import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
 import com.dev.julian09.financeapp.ui.feature.history.buildDays
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,6 +55,7 @@ data class TagSheet(
     val editing: Tag? = null,
     val name: String = editing?.name.orEmpty(),
     val pinned: Boolean = editing?.pinned ?: false,
+    val color: String = editing?.shownColor ?: TagColors.SLATE.hex,
     val error: LedgerError? = null,
 )
 
@@ -108,7 +111,7 @@ class TagsViewModel
         fun save() {
             val s = _sheet.value ?: return
             viewModelScope.launch {
-                val error = createTag(Tag(UUID.randomUUID(), s.name, s.pinned))
+                val error = createTag(Tag(UUID.randomUUID(), s.name, s.pinned, s.color))
                 _sheet.value = if (error == null) null else s.copy(error = error)
             }
         }
@@ -155,6 +158,7 @@ class TagDetailViewModel
         private val renameTag: RenameTag,
         private val deleteTag: DeleteTag,
         private val pinTag: PinTag,
+        private val setTagColor: SetTagColor,
         clock: Clock,
     ) : ViewModel() {
         private val id: UUID = UUID.fromString(savedState.get<String>("id"))
@@ -200,7 +204,7 @@ class TagDetailViewModel
                             expense = moved.filter { it.type == TransactionType.EXPENSE }.fold(Money.ZERO) { s, t -> s + t.amount },
                             count = rows.size,
                             byCategory = byCategory,
-                            days = buildDays(rows, accs.associate { it.account.id to it.account.name }, cats, zone),
+                            days = buildDays(rows, accs.associate { it.account.id to it.account.name }, cats, zone, all),
                         )
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -245,6 +249,7 @@ class TagDetailViewModel
             viewModelScope.launch {
                 val error = renameTag(id, s.name)
                 if (error == null && s.editing != null && s.pinned != s.editing.pinned) pinTag(id, s.pinned)
+                if (error == null && s.editing != null && s.color != s.editing.shownColor) setTagColor(id, s.color)
                 _sheet.value = if (error == null) null else s.copy(error = error)
             }
         }
