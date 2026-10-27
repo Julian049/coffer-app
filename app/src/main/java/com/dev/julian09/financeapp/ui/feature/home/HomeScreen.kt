@@ -8,7 +8,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,7 +57,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -83,6 +81,7 @@ import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.FabClearance
+import com.dev.julian09.financeapp.ui.components.FoxMascot
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.components.accountIcon
@@ -456,7 +455,7 @@ fun FoxCard(
 ) {
     val colors = CofferTheme.colors
     val month = monthName(previousMonth)
-    val (image, title, message) =
+    val (_, title, message) =
         when (mood.state) {
             FoxState.RESTING ->
                 Triple(
@@ -501,7 +500,8 @@ fun FoxCard(
             Text(title, style = MaterialTheme.typography.titleLarge, color = colors.textPrimary)
             Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         }
-        Image(painterResource(image), contentDescription = null, modifier = Modifier.size(92.dp).offset(y = FOX_OVERLAP))
+        // FEATURE-09: the animated fox of the month's mood
+        FoxMascot(mood.state.name.lowercase(), Modifier.offset(y = FOX_OVERLAP), size = 92.dp)
     }
 }
 

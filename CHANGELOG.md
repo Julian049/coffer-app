@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - «Últimos 4 dígitos» in accounts and in the card edit (REQ-COR-06)
 - The notice of transactions to review through Firebase Cloud Messaging (ADR-0016), set up from `coffer.firebase.*` Gradle properties instead of `google-services.json`; off while they are blank
 - Reportes detallados (S21, changes-ui-2.0 §3): «Resumen» and «Calendario» accesses, Gastos por categoría (pie and every category with its exact value), Detalle de categoría (vs. the month before to date, average, six months, subcategories, last movements and «Ver en Historial»), Resumen general (global filters sheet, a bar pair for every month of the period, tap a month to focus it, «En qué se fue») and Calendario (the balance at the end of each day, the day's movements and Hoja · Cuentas del calendario, saved on the phone). Fixed colors for the six base categories; any other goes into «Otras»
+- The animated fox (S22, FEATURE-09): `FoxMascot` assembles the 29 layers of the PO's handoff (`FOX_LAYERS`, generated from `manifest.json`) and gives each state its loop — breathing, waving and blinking, the coffee toast, floating Z, twinkles, the drip and the calendar sweep — with a 520 ms bounce on entry and a cross-fade between states; still when the system has animations off. Inicio and Bienvenida use it
 - A colored dot per tag after the title of every movement, and beside the tag's name in Etiquetas, pinned tags and Detalle de etiqueta (changes-ui-2.0 §2)
 
 ### Changed

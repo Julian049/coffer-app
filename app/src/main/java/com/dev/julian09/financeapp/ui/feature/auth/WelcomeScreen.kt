@@ -24,6 +24,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.R
 import com.dev.julian09.financeapp.ui.components.AppButton
+import com.dev.julian09.financeapp.ui.components.FoxMascot
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 /** Bienvenida (S15-UI06): the first screen without a session; «Comenzar» creates an account. */
@@ -58,7 +59,7 @@ fun WelcomeContent(
             modifier = Modifier.size(72.dp),
         )
         Text("Coffer", style = MaterialTheme.typography.headlineSmall, color = colors.textPrimary)
-        Image(painterResource(R.drawable.mascot_welcome), contentDescription = null, modifier = Modifier.size(220.dp))
+        FoxMascot("welcome", size = 220.dp)
         AppButton("Comenzar", onClick = onStart, modifier = Modifier.fillMaxWidth())
         AuthAlternatives("o continúa con", "¿Ya tienes una cuenta?", "Inicia sesión", onLogin, onGoogle, google)
     }
