@@ -111,6 +111,7 @@ import com.dev.julian09.financeapp.ui.feature.cards.parsePercent
 import com.dev.julian09.financeapp.ui.feature.cards.percentText
 import com.dev.julian09.financeapp.ui.feature.cards.rateLabel
 import com.dev.julian09.financeapp.ui.feature.cards.rateTypeLabel
+import com.dev.julian09.financeapp.ui.feature.history.tagColor
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.Instant
@@ -740,9 +741,11 @@ private fun TagPicker(
     var name by rememberSaveable { mutableStateOf("") }
     Text("Etiqueta", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        choices.tags.forEach { tag -> AppChip("#${tag.name}", selected = tag.id in state.tagIds, onClick = { actions.onTag(tag.id) }) }
+        choices.tags.forEach { tag ->
+            AppChip(tag.name, selected = tag.id in state.tagIds, onClick = { actions.onTag(tag.id) }, dot = tagColor(tag.shownColor))
+        }
         Surface(
-            modifier = Modifier.selectable(false, role = Role.Button, onClick = { creating = true }),
+            modifier = Modifier.clip(CofferShapes.pill).selectable(false, role = Role.Button, onClick = { creating = true }),
             shape = CofferShapes.pill,
             color = colors.surface,
             border = BorderStroke(1.dp, colors.border),

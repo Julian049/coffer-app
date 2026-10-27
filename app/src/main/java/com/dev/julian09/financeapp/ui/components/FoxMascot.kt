@@ -62,7 +62,7 @@ private fun foxDescription(state: String) =
 
 /** True when the system has animations off: the fox then stands still and whole (README §4.5). */
 @Composable
-private fun reducedMotion(): Boolean {
+internal fun reducedMotion(): Boolean {
     val resolver = LocalContext.current.contentResolver
     return remember { Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
 }

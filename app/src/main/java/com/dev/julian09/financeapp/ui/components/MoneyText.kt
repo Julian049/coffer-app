@@ -1,10 +1,17 @@
 package com.dev.julian09.financeapp.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +46,40 @@ fun MoneyText(
             MoneyKind.Transfer -> colors.transfer
         }
     Text(text = formatMoney(money, kind), modifier = modifier, color = color, style = style)
+}
+
+/**
+ * INC-08: a balance that counts from its old value to the new one (500 ms) instead of jumping; whole pesos while it moves,
+ * the exact amount at the end. Still when the system turned animations off.
+ */
+@Composable
+fun AnimatedMoneyText(
+    money: Money,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.titleSmall,
+) {
+    val still = reducedMotion()
+    val progress = remember { Animatable(1f) }
+    // Saveable: the form that changed the balance took Inicio off screen, and it must count from the value seen before
+    var from by rememberSaveable { mutableLongStateOf(money.scaled) }
+    var to by rememberSaveable { mutableLongStateOf(money.scaled) }
+
+    fun shown(): Money {
+        val p = progress.value
+        if (p >= 1f) return Money(to)
+        val value = from + ((to - from).toDouble() * p).toLong()
+        return Money(value / 10_000 * 10_000)
+    }
+    LaunchedEffect(money) {
+        if (money.scaled == to) return@LaunchedEffect
+        from = if (progress.value >= 1f) to else shown().scaled
+        to = money.scaled
+        if (still) return@LaunchedEffect
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(500, easing = FastOutSlowInEasing))
+    }
+    // Tabular figures: the digits keep their width while they change
+    MoneyText(shown(), modifier, style = style.copy(fontFeatureSettings = "tnum"))
 }
 
 /**
