@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Several tags per movement (S18, 2.0, ADR-0015): Room 9 stores them in `transactions.tagIds` (`,id1,id2,`), the old single tag migrates into the list, a movement counts whole in each of its tags, deleting a tag keeps the others, and the native CSV joins them with `|`
+- A color per tag from a palette of 6 (REQ-ETQ-05), picked in Nueva and Editar etiqueta (Room 9 `tags.color`)
+- Recuperar contraseña (REQ-AUT-09): «¿Olvidaste tu contraseña?» in Iniciar sesión asks for the email, then the 6-digit code and the new password; afterwards every device signs in again
+
+### Removed
+
+- «Omitir esta vez» in recurring expenses (FEATURE-08): a pending payment is paid or the recurrence ends
+
 ## [1.6.1] - 2026-10-24
 
 ### Added

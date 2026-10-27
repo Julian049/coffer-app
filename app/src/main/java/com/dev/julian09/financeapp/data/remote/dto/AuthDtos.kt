@@ -26,6 +26,19 @@ data class DeleteAccountRequestDto(
     val idToken: String? = null,
 )
 
+/** REQ-AUT-09: asks for the 6-digit code. */
+@Serializable
+data class PasswordResetRequestDto(
+    val email: String,
+)
+
+@Serializable
+data class PasswordResetConfirmRequestDto(
+    val email: String,
+    val code: String,
+    val newPassword: String,
+)
+
 @Serializable
 data class RefreshRequestDto(
     val refreshToken: String,

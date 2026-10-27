@@ -25,6 +25,8 @@ import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
+import com.dev.julian09.financeapp.data.local.entity.decodeTagIds
+import com.dev.julian09.financeapp.data.local.entity.encodeTagIds
 import com.dev.julian09.financeapp.data.sync.SyncMeta
 import com.dev.julian09.financeapp.data.sync.transactionData
 import com.dev.julian09.financeapp.data.sync.transactionFromData
@@ -384,11 +386,13 @@ class TagRepositoryImpl
         private val dao: TagDao,
         private val clock: Clock,
     ) : TagRepository {
-        override fun observeAll(): Flow<List<Tag>> = dao.observeAll().map { rows -> rows.map { Tag(it.id, it.name, it.pinned) } }
+        override fun observeAll(): Flow<List<Tag>> = dao.observeAll().map { rows -> rows.map { Tag(it.id, it.name, it.pinned, it.color) } }
 
         override suspend fun create(tag: Tag) {
             val now = clock.now()
-            dao.upsert(listOf(TagEntity(id = tag.id, name = tag.name, pinned = tag.pinned, createdAt = now, updatedAt = now)))
+            dao.upsert(
+                listOf(TagEntity(id = tag.id, name = tag.name, pinned = tag.pinned, color = tag.color, createdAt = now, updatedAt = now)),
+            )
         }
 
         override suspend fun rename(
@@ -400,6 +404,11 @@ class TagRepositoryImpl
             id: UUID,
             pinned: Boolean,
         ) = dao.setPinned(id, pinned, clock.now())
+
+        override suspend fun setColor(
+            id: UUID,
+            color: String,
+        ) = dao.setColor(id, color, clock.now())
 
         override suspend fun movementCount(id: UUID): Int = dao.movementCount(id)
 
@@ -1017,7 +1026,7 @@ internal fun Transaction.toEntity(
     accountId = accountId,
     destinationAccountId = destinationAccountId,
     categoryId = categoryId,
-    tagId = tagId,
+    tagIds = encodeTagIds(tagIds),
     note = note,
     installments = installments,
     principal = principal?.scaled,
@@ -1080,7 +1089,7 @@ internal fun TransactionEntity.toDomain() =
         accountId = accountId,
         destinationAccountId = destinationAccountId,
         categoryId = categoryId,
-        tagId = tagId,
+        tagIds = decodeTagIds(tagIds),
         note = note,
         installments = installments,
         principal = principal?.let(::Money),

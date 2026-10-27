@@ -144,5 +144,6 @@ internal fun Transaction.normalized() =
     copy(
         note = note?.trim()?.ifEmpty { null },
         categoryId = categoryId.takeIf { type != TransactionType.TRANSFER },
+        tagIds = if (type == TransactionType.TRANSFER) emptyList() else tagIds.distinct(),
         destinationAccountId = destinationAccountId.takeIf { type == TransactionType.TRANSFER },
     )

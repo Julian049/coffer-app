@@ -1,6 +1,7 @@
 package com.dev.julian09.financeapp.domain.usecase
 
 import com.dev.julian09.financeapp.domain.model.LedgerError
+import com.dev.julian09.financeapp.domain.model.TagColors
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import kotlinx.coroutines.flow.first
@@ -68,6 +69,23 @@ class PinTag
             pinned: Boolean,
         ) {
             repository.setPinned(id, pinned)
+            scheduler.requestSync()
+        }
+    }
+
+/** REQ-ETQ-05: only the 6 colors of [TagColors]. */
+class SetTagColor
+    @Inject
+    constructor(
+        private val repository: TagRepository,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke(
+            id: UUID,
+            color: String,
+        ) {
+            require(TagColors.entries.any { it.hex == color }) { "Color fuera de la paleta: $color" }
+            repository.setColor(id, color)
             scheduler.requestSync()
         }
     }

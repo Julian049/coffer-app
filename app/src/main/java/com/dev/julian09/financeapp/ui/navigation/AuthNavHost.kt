@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.dev.julian09.financeapp.ui.feature.auth.ForgotPasswordScreen
 import com.dev.julian09.financeapp.ui.feature.auth.LoginScreen
 import com.dev.julian09.financeapp.ui.feature.auth.RegisterScreen
 import com.dev.julian09.financeapp.ui.feature.auth.WelcomeScreen
@@ -24,7 +25,14 @@ fun AuthNavHost(expiredUser: String?) {
             composable<WelcomeRoute> {
                 WelcomeScreen(onStart = { navController.navigate(RegisterRoute) }, onLogin = { navController.navigate(LoginRoute) })
             }
-            composable<LoginRoute> { LoginScreen(onRegister = { navController.navigate(RegisterRoute) }, expiredUser = expiredUser) }
+            composable<LoginRoute> {
+                LoginScreen(
+                    onRegister = { navController.navigate(RegisterRoute) },
+                    onForgotPassword = { navController.navigate(ForgotPasswordRoute) },
+                    expiredUser = expiredUser,
+                )
+            }
+            composable<ForgotPasswordRoute> { ForgotPasswordScreen(onBack = navController::popBackStack) }
             composable<RegisterRoute> { RegisterScreen(onBack = navController::popBackStack) }
         }
     }

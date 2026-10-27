@@ -4,6 +4,8 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.AutoMigrationSpec
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.dev.julian09.financeapp.data.local.dao.AccountDao
 import com.dev.julian09.financeapp.data.local.dao.CardDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
@@ -46,9 +48,9 @@ import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
         InstallmentEntity::class,
         LoanDetailsEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
-    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7), 4 → 5 categories.excludeFromReports (S9), 5 → 6 loan_details (S10), 6 → 7 transactions.concept and settings.netBalanceMode (S12), 7 → 8 settings.loanPaymentCategoryId and accounts.includeInNet (S15);
+    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7), 4 → 5 categories.excludeFromReports (S9), 5 → 6 loan_details (S10), 6 → 7 transactions.concept and settings.netBalanceMode (S12), 7 → 8 settings.loanPaymentCategoryId and accounts.includeInNet (S15), 8 → 9 tags.color and transactions.tagIds (S18, 2.0);
     // FinanceDatabaseMigrationTest checks them
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -58,10 +60,18 @@ import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
         AutoMigration(from = 7, to = 8),
+        AutoMigration(from = 8, to = 9, spec = FinanceDatabase.TagListMigration::class),
     ],
 )
 @TypeConverters(Converters::class)
 abstract class FinanceDatabase : RoomDatabase() {
+    /** ADR-0015: the single tag of each movement becomes its one-item list. */
+    class TagListMigration : AutoMigrationSpec {
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            db.execSQL("UPDATE transactions SET tagIds = ',' || tagId || ',' WHERE tagId IS NOT NULL")
+        }
+    }
+
     abstract fun accounts(): AccountDao
 
     abstract fun categories(): CategoryDao

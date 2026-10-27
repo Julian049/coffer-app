@@ -6,6 +6,8 @@ import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.domain.model.LedgerError
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.TagColors
+import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import com.dev.julian09.financeapp.domain.usecase.CreateTag
 import com.dev.julian09.financeapp.domain.usecase.DeleteTag
 import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
@@ -13,6 +15,7 @@ import com.dev.julian09.financeapp.domain.usecase.ObservePendingPayments
 import com.dev.julian09.financeapp.domain.usecase.PinTag
 import com.dev.julian09.financeapp.domain.usecase.RenameTag
 import com.dev.julian09.financeapp.domain.usecase.SetIncludeInNet
+import com.dev.julian09.financeapp.domain.usecase.SetTagColor
 import com.dev.julian09.financeapp.domain.usecase.UpdateSettings
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.feature.home.HomeViewModel
@@ -65,6 +68,7 @@ class TagSummaryTest {
             RenameTag(f.tags, sync),
             DeleteTag(f.tags, sync),
             PinTag(f.tags, sync),
+            SetTagColor(f.tags, sync),
             f.clock,
         )
 
@@ -135,6 +139,47 @@ class TagSummaryTest {
         }
 
     @Test
+    fun aMovementWithTwoTagsCountsInBothAndKeepsTheOtherWhenOneIsDeleted() =
+        runBlocking {
+            val cash = f.account("Efectivo")
+            val trip = UUID.randomUUID()
+            val outings = UUID.randomUUID()
+            CreateTag(f.tags, sync)(Tag(trip, "Viaje", color = TagColors.PETROL.hex))
+            CreateTag(f.tags, sync)(Tag(outings, "Salidas"))
+            val dinner = f.tx("EXPENSE", 90_000, cash, day("2026-10-10"), f.category("Comida"), tags = listOf(trip, outings))
+            f.tx("EXPENSE", 10_000, cash, day("2026-10-11"), f.category("Comida"), tag = outings)
+
+            val (from, to) = day("2026-10-01") to day("2026-11-01")
+            val totals =
+                f.tags
+                    .observeTotals(from, to)
+                    .first()
+                    .associateBy { it.tagId }
+            assertEquals(Money.ofPesos(90_000), totals.getValue(trip).expense)
+            assertEquals(Money.ofPesos(100_000), totals.getValue(outings).expense)
+            assertEquals(1, f.tags.movementCount(trip))
+            assertEquals(
+                TagColors.PETROL.hex,
+                f.tags
+                    .observeAll()
+                    .first()
+                    .single { it.id == trip }
+                    .color,
+            )
+            val found = f.transactions.search(TransactionFilter(from, to, tagIds = setOf(trip)), 50).first()
+            assertEquals(listOf(dinner), found.map { it.id })
+
+            DeleteTag(f.tags, sync)(trip)
+            assertEquals(
+                listOf(outings),
+                f.transactions
+                    .observe(dinner)
+                    .first()!!
+                    .tagIds,
+            )
+        }
+
+    @Test
     fun deletingATagLeavesItsMovementsWithoutATag() =
         runBlocking {
             val cash = f.account("Efectivo")
@@ -149,6 +194,7 @@ class TagSummaryTest {
                     .isEmpty(),
             )
             val row = f.db.transactions().get(expense)!!
+            assertEquals("", row.tagIds)
             assertNull(row.tagId)
             assertEquals("PENDING", row.syncState.name)
         }

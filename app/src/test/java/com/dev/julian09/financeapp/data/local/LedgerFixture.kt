@@ -4,6 +4,7 @@ import com.dev.julian09.financeapp.data.local.entity.AccountEntity
 import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
+import com.dev.julian09.financeapp.data.local.entity.encodeTagIds
 import com.dev.julian09.financeapp.data.repository.AccountRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CardRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CategoryRepositoryImpl
@@ -102,6 +103,7 @@ class LedgerFixture(
         category: UUID? = null,
         destination: UUID? = null,
         tag: UUID? = null,
+        tags: List<UUID> = listOfNotNull(tag),
     ): UUID {
         val id = UUID.randomUUID()
         db.transactions().upsert(
@@ -114,7 +116,7 @@ class LedgerFixture(
                     accountId = account,
                     destinationAccountId = destination,
                     categoryId = category,
-                    tagId = tag,
+                    tagIds = encodeTagIds(tags),
                     createdAt = past,
                     updatedAt = past,
                     syncState = SyncState.SYNCED,

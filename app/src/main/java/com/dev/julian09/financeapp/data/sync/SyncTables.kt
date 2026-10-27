@@ -14,6 +14,8 @@ import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
+import com.dev.julian09.financeapp.data.local.entity.decodeTagIds
+import com.dev.julian09.financeapp.data.local.entity.encodeTagIds
 import com.dev.julian09.financeapp.data.remote.dto.ChangeDto
 import com.dev.julian09.financeapp.domain.model.Money
 import kotlinx.serialization.json.Json
@@ -230,6 +232,7 @@ class SyncTables
                         buildJsonObject {
                             put("name", t.name)
                             put("pinned", t.pinned)
+                            put("color", t.color)
                         },
                     )
                 },
@@ -238,6 +241,7 @@ class SyncTables
                         id = UUID.fromString(c.id),
                         name = c.data.text("name")!!,
                         pinned = c.data.bool("pinned"),
+                        color = c.data.text("color"),
                         createdAt = Instant.parse(c.createdAt),
                         updatedAt = Instant.parse(c.updatedAt),
                         deletedAt = c.deletedAt?.let(Instant::parse),
@@ -608,7 +612,10 @@ internal fun transactionData(t: TransactionEntity): JsonObject =
         put("accountId", t.accountId.toString())
         put("destinationAccountId", t.destinationAccountId?.toString())
         put("categoryId", t.categoryId?.toString())
-        put("tagId", t.tagId?.toString())
+        // ADR-0015: tagId is the first tag, for a server or a history entry written before 2.0
+        val tags = decodeTagIds(t.tagIds)
+        put("tagId", tags.firstOrNull()?.toString())
+        put("tagIds", JsonArray(tags.map { JsonPrimitive(it.toString()) }))
         put("note", t.note)
         put("installments", t.installments)
         put("principal", t.principal?.let(::amount))
@@ -632,7 +639,7 @@ internal fun transactionFromData(
     accountId = UUID.fromString(d.text("accountId")!!),
     destinationAccountId = d.text("destinationAccountId")?.let(UUID::fromString),
     categoryId = d.text("categoryId")?.let(UUID::fromString),
-    tagId = d.text("tagId")?.let(UUID::fromString),
+    tagIds = encodeTagIds(d.uuids("tagIds") ?: listOfNotNull(d.text("tagId")?.let(UUID::fromString))),
     note = d.text("note"),
     installments = d.int("installments"),
     principal = d.text("principal")?.let(::scaled),
@@ -652,6 +659,8 @@ internal fun amount(scaled: Long): String = Money(scaled).toBigDecimal().toPlain
 internal fun scaled(amount: String): Long = Money.of(BigDecimal(amount)).scaled
 
 private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content
+
+private fun JsonObject.uuids(key: String): List<UUID>? = (this[key] as? JsonArray)?.map { UUID.fromString(it.jsonPrimitive.content) }
 
 private fun JsonObject.bool(key: String): Boolean = this[key]?.jsonPrimitive?.boolean ?: false
 

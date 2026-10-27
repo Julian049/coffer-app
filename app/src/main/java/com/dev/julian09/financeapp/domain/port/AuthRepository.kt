@@ -29,6 +29,16 @@ interface AuthRepository {
     /** Forgets the session without telling the server (the account no longer exists). */
     suspend fun clearSession()
 
+    /** REQ-AUT-09: the server emails a code if the account exists, and answers the same either way. */
+    suspend fun requestPasswordReset(email: String): Result<Unit>
+
+    /** REQ-AUT-09: a wrong or expired code is an [com.dev.julian09.financeapp.domain.model.AuthFailure.Invalid] on the code. */
+    suspend fun confirmPasswordReset(
+        email: String,
+        code: String,
+        newPassword: String,
+    ): Result<Unit>
+
     /** GET /me, refreshing the stored profile. */
     suspend fun refreshProfile(): Result<UserProfile>
 }

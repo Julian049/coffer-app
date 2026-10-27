@@ -27,6 +27,10 @@ data object LoginRoute
 @Serializable
 data object RegisterRoute
 
+/** REQ-AUT-09: Recuperar contraseña, from Iniciar sesión. */
+@Serializable
+data object ForgotPasswordRoute
+
 @Serializable
 data object NewAccountRoute
 

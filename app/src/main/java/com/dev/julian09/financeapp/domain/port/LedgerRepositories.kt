@@ -124,6 +124,11 @@ interface TagRepository {
         pinned: Boolean,
     )
 
+    suspend fun setColor(
+        id: UUID,
+        color: String,
+    )
+
     /** The tag and, in the same database transaction, the tag of its movements (S9-DOM02). */
     suspend fun delete(id: UUID)
 

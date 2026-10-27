@@ -703,7 +703,7 @@ private fun TagPicker(
     var name by rememberSaveable { mutableStateOf("") }
     Text("Etiqueta", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        choices.tags.forEach { tag -> AppChip("#${tag.name}", selected = tag.id == state.tagId, onClick = { actions.onTag(tag.id) }) }
+        choices.tags.forEach { tag -> AppChip("#${tag.name}", selected = tag.id in state.tagIds, onClick = { actions.onTag(tag.id) }) }
         Surface(
             modifier = Modifier.selectable(false, role = Role.Button, onClick = { creating = true }),
             shape = CofferShapes.pill,

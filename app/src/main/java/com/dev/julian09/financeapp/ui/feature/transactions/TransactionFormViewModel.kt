@@ -62,7 +62,7 @@ data class TransactionFormState(
     val accountId: UUID? = null,
     val destinationId: UUID? = null,
     val occurredAt: Instant,
-    val tagId: UUID? = null,
+    val tagIds: List<UUID> = emptyList(),
     val note: String = "",
     /** A transfer's note or concept, apart from its title (S12-H01). */
     val concept: String = "",
@@ -164,7 +164,7 @@ class TransactionFormViewModel
                                 accountId = t.accountId,
                                 destinationId = t.destinationAccountId,
                                 occurredAt = t.occurredAt,
-                                tagId = t.tagId,
+                                tagIds = t.tagIds,
                                 note = t.note.orEmpty(),
                                 concept = t.concept.orEmpty(),
                             )
@@ -206,8 +206,8 @@ class TransactionFormViewModel
 
         fun setOccurredAt(value: Instant) = edit { it.copy(occurredAt = value) }
 
-        /** At most one tag (REQ-ETQ-02): tapping the chosen one clears it. */
-        fun toggleTag(id: UUID) = edit { it.copy(tagId = if (it.tagId == id) null else id) }
+        /** REQ-ETQ-02: any number of tags, in the order they were picked. */
+        fun toggleTag(id: UUID) = edit { it.copy(tagIds = if (id in it.tagIds) it.tagIds - id else it.tagIds + id) }
 
         fun setConcept(value: String) = edit { it.copy(concept = value.take(CONCEPT_MAX)) }
 
@@ -258,7 +258,7 @@ class TransactionFormViewModel
                     if (error ==
                         null
                     ) {
-                        it.copy(tagId = tag.id, tagError = null, createdTags = it.createdTags + 1)
+                        it.copy(tagIds = it.tagIds + tag.id, tagError = null, createdTags = it.createdTags + 1)
                     } else {
                         it.copy(tagError = error)
                     }
@@ -289,7 +289,7 @@ class TransactionFormViewModel
                     accountId = s.accountId ?: UUID(0, 0),
                     destinationAccountId = s.destinationId,
                     categoryId = s.categoryId,
-                    tagId = s.tagId.takeIf { s.type != TransactionType.TRANSFER },
+                    tagIds = if (s.type == TransactionType.TRANSFER) emptyList() else s.tagIds,
                     // Without a title the movement is saved under its category's name (PO, 2026-10-23)
                     note =
                         s.note.ifBlank {

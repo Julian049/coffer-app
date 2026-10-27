@@ -31,6 +31,18 @@ object AuthValidation {
             if (input.password.length !in 8..128) put(AuthField.Password, "Entre 8 y 128 caracteres")
         }
 
+    fun resetEmail(email: String): Map<AuthField, String> =
+        if (!EMAIL.matches(email.trim()) || email.trim().length > 255) mapOf(AuthField.Email to "Correo no válido") else emptyMap()
+
+    fun resetConfirm(
+        code: String,
+        newPassword: String,
+    ): Map<AuthField, String> =
+        buildMap {
+            if (!Regex("^[0-9]{6}$").matches(code)) put(AuthField.Code, "El código tiene 6 dígitos")
+            if (newPassword.length !in 8..128) put(AuthField.Password, "Entre 8 y 128 caracteres")
+        }
+
     fun login(input: LoginInput): Map<AuthField, String> =
         buildMap {
             if (input.identifier.trim().length !in 3..255) put(AuthField.Identifier, "Escribe tu usuario o correo")

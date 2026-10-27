@@ -30,7 +30,7 @@ data class TransactionDetail(
     val categoryLabel: String?,
     val accountName: String,
     val destinationName: String?,
-    val tagName: String?,
+    val tagNames: List<String> = emptyList(),
 )
 
 /** Detalle de transacción (S5-UI04): what it was, and edit or delete it. */
@@ -66,7 +66,7 @@ class TransactionDetailViewModel
                     categoryLabel = category?.name,
                     accountName = names[t.accountId] ?: "Cuenta",
                     destinationName = t.destinationAccountId?.let { names[it] ?: "Cuenta" },
-                    tagName = tgs.firstOrNull { it.id == t.tagId }?.name,
+                    tagNames = t.tagIds.mapNotNull { id -> tgs.firstOrNull { it.id == id }?.name },
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.ui.feature.auth
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -44,6 +46,7 @@ import com.dev.julian09.financeapp.ui.theme.CofferTheme
 @Composable
 fun LoginScreen(
     onRegister: () -> Unit,
+    onForgotPassword: () -> Unit,
     expiredUser: String?,
     viewModel: LoginViewModel = hiltViewModel(),
     googleViewModel: GoogleSignInViewModel = hiltViewModel(),
@@ -58,12 +61,13 @@ fun LoginScreen(
         viewModel::onPassword,
         viewModel::submit,
         onRegister,
+        onForgotPassword = onForgotPassword,
         onGoogle = rememberGoogleSignIn(googleViewModel),
         google = google,
     )
 }
 
-/** Iniciar Sesión (Figma 1:1911). "¿Olvidaste tu contraseña?" is out of scope for v1.0 (08-ui README §3). */
+/** Iniciar Sesión (Figma 1:1911); "¿Olvidaste tu contraseña?" opens Recuperar contraseña (REQ-AUT-09, 2.0). */
 @Composable
 fun LoginContent(
     state: LoginUiState,
@@ -73,6 +77,7 @@ fun LoginContent(
     onSubmit: () -> Unit,
     onRegister: () -> Unit,
     modifier: Modifier = Modifier,
+    onForgotPassword: () -> Unit = {},
     onGoogle: (() -> Unit)? = null,
     google: GoogleSignInState = GoogleSignInState(),
 ) {
@@ -129,6 +134,12 @@ fun LoginContent(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onSubmit() }),
             autofill = ContentType.Password,
+        )
+        Text(
+            "¿Olvidaste tu contraseña?",
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.primary,
+            modifier = Modifier.align(Alignment.End).clickable(role = Role.Button, onClick = onForgotPassword).padding(vertical = 4.dp),
         )
         FormError(state.formError)
         AppButton(
