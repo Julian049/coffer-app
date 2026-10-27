@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -85,6 +86,7 @@ import java.util.Locale
 private val ES_CO: Locale = Locale.forLanguageTag("es-CO")
 private val MONTH = DateTimeFormatter.ofPattern("MMM", ES_CO)
 private val MONTH_YEAR = DateTimeFormatter.ofPattern("MMMM yyyy", ES_CO)
+private val MONTH_LONG = DateTimeFormatter.ofPattern("MMMM", ES_CO)
 
 private val TYPES =
     listOf(
@@ -316,7 +318,7 @@ private fun ByMonth(
             Legend(colors.income, "Ingresos")
             Legend(colors.expense, "Gastos")
         }
-        Box(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             val guide = colors.border
             Canvas(Modifier.fillMaxWidth().height(barArea)) {
                 var v = step
@@ -326,13 +328,26 @@ private fun ByMonth(
                     v += step
                 }
             }
-            Row(Modifier.fillMaxWidth()) {
+            // The guides' values on the left, as Figma's «1 M», «2 M», «3 M»
+            generateSequence(step) { it + step }.takeWhile { it <= scale }.forEach { v ->
+                Text(
+                    shortMoney(Money(v)).replace("$", ""),
+                    Modifier.offset(y = barArea * (1f - v / scale) - 14.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                )
+            }
+            Row(Modifier.fillMaxWidth().padding(start = 28.dp)) {
                 months.forEach { m -> MonthBars(m, state, scale, barArea, thisMonth, onMonth, Modifier.weight(1f)) }
             }
         }
         Text(
-            "Guías cada ${shortMoney(Money(step))}" +
-                if (months.any { YearMonth.from(it.period.from) == thisMonth }) " · * mes en curso" else "",
+            "Toca un mes para ver su detalle." +
+                if (months.any { YearMonth.from(it.period.from) == thisMonth }) {
+                    " *" + MONTH_LONG.format(state.today).replaceFirstChar { it.uppercase() } + " va en curso."
+                } else {
+                    ""
+                },
             style = MaterialTheme.typography.labelSmall,
             color = colors.textSecondary,
         )
@@ -423,7 +438,19 @@ private fun WhereItWent(
     if (sums.isEmpty()) return
     AppCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("En qué se fue", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+            val months = state.summary.months.size
+            Text(
+                if (state.focus == null &&
+                    months > 1
+                ) {
+                    "En qué se fue · $months meses"
+                } else {
+                    "En qué se fue"
+                },
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textPrimary,
+            )
             Text(
                 "Ver detalle",
                 Modifier.clip(CofferShapes.pill).clickable(onClick = onOpen).padding(4.dp),
@@ -433,7 +460,12 @@ private fun WhereItWent(
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             val slices = pieSlices(sums)
-            DonutChart(slices, 120.dp, 24.dp, "Gastos ${formatMoney(report.expense)}")
+            DonutChart(slices, 128.dp, 24.dp, "Gastos ${formatMoney(report.expense)}") {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Gastos", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+                    Text(shortMoney(report.expense), style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                }
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 // The legend names what the pie paints: the coloured categories and «Otras»
                 val named = sums.filter { categoryColor(it.category) != null }

@@ -52,6 +52,7 @@ data class HistoryRow(
     /** Shown in Historial, not in Home. */
     val time: LocalTime? = null,
     val categoryId: UUID? = null,
+    val categoryName: String? = null,
     /** One 8 dp dot per tag, in its colour, after the title (changes-ui-2.0 §2). */
     val tagColors: List<String> = emptyList(),
 )
@@ -102,6 +103,7 @@ fun buildDays(
                         id = tx.id,
                         time = tx.occurredAt.atZone(zone).toLocalTime(),
                         categoryId = tx.categoryId,
+                        categoryName = category?.name,
                         tagColors = tx.tagIds.mapNotNull { tagById[it]?.shownColor },
                     )
                 },

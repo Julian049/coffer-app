@@ -16,13 +16,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.semantics.contentDescription
@@ -38,11 +38,12 @@ import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.EmptyState
+import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.formatMoney
-import com.dev.julian09.financeapp.ui.feature.history.DayGroup
 import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
 import com.dev.julian09.financeapp.ui.feature.history.HistoryFilters
+import com.dev.julian09.financeapp.ui.feature.history.TagDots
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.format.DateTimeFormatter
@@ -99,21 +100,69 @@ fun CategoryReportContent(
             Headline(detail, state)
             if (detail.months.size > 1) Months(detail, state)
             if (detail.subcategories.isNotEmpty()) Subcategories(detail)
-            if (state.days.isNotEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Movimientos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                    if (state.count > LAST_MOVEMENTS) {
+            if (state.days.isNotEmpty()) Movements(state, onOpenTransaction, onOpenHistory)
+        }
+    }
+}
+
+private val ROW_DAY = DateTimeFormatter.ofPattern("d MMM", ES_CO)
+
+/** Figma `168:301`: the last movements in one card, with «Ver los n en Historial» at its foot. */
+@Composable
+private fun Movements(
+    state: CategoryReportState,
+    onOpenTransaction: (UUID) -> Unit,
+    onOpenHistory: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    AppCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Movimientos", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+            Text("${state.count} este mes", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        }
+        lastRows(state.days, LAST_MOVEMENTS).forEach { day ->
+            day.rows.forEach { row ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            onClickLabel = "Ver detalle",
+                        ) { row.id?.let(onOpenTransaction) }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                row.title,
+                                Modifier.weight(1f, fill = false),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.textPrimary,
+                                maxLines = 1,
+                            )
+                            TagDots(row.tagColors)
+                        }
                         Text(
-                            "Ver los ${state.count} en Historial",
-                            Modifier.clickable(onClick = onOpenHistory).padding(4.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = colors.primary,
+                            listOfNotNull(row.categoryName, ROW_DAY.format(day.date).replace(".", "")).joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary,
                         )
                     }
+                    MoneyText(row.amount, kind = MoneyKind.Expense)
                 }
-                lastRows(state.days, LAST_MOVEMENTS).forEach { DayGroup(it, state.today, onOpen = onOpenTransaction) }
             }
         }
+        Text(
+            "Ver los ${state.count} en Historial",
+            Modifier
+                .fillMaxWidth()
+                .clip(CofferShapes.pill)
+                .clickable(onClick = onOpenHistory)
+                .padding(8.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.textPrimary,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -238,7 +287,8 @@ private fun Months(
                             )
                         }
                         Text(
-                            MONTH.format(m.month).replace(".", "").replaceFirstChar { it.uppercase() },
+                            MONTH.format(m.month).replace(".", "").replaceFirstChar { it.uppercase() } +
+                                if (current) " · en curso" else "",
                             Modifier.padding(top = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = colors.textSecondary,
@@ -268,17 +318,19 @@ private fun Months(
 @Composable
 private fun Subcategories(detail: CategoryDetail) {
     val colors = CofferTheme.colors
-    val bar = categoryColor(detail.category) ?: colors.primary
+    val bar = colors.primary
     AppCard {
         Text("Subcategorías", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
-        detail.subcategories.forEachIndexed { i, (child, total) ->
-            if (i > 0) HorizontalDivider(thickness = 1.dp, color = colors.border)
+        detail.subcategories.forEach { (child, total) ->
             val share = shareOf(total, detail.spent)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(child.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
-                    Text(share.percentLabel(), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-                    Text(formatMoney(total), style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                    Text(
+                        "${formatMoney(total)} · ${share.percentLabel()}",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.textPrimary,
+                    )
                 }
                 Box(Modifier.fillMaxWidth().height(4.dp).background(colors.border, CofferShapes.pill)) {
                     Box(

@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -51,6 +52,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.usecase.DayBalance
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
@@ -60,7 +62,7 @@ import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.formatMoney
-import com.dev.julian09.financeapp.ui.feature.history.DayGroup
+import com.dev.julian09.financeapp.ui.feature.history.TagDots
 import com.dev.julian09.financeapp.ui.feature.history.monthLabel
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.DayOfWeek
@@ -70,7 +72,7 @@ import java.util.Locale
 import java.util.UUID
 
 private val ES_CO: Locale = Locale.forLanguageTag("es-CO")
-private val FULL_DATE = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM 'de' yyyy", ES_CO)
+private val DAY_TITLE = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", ES_CO)
 private val WEEK = listOf("L", "M", "M", "J", "V", "S", "D")
 
 @Composable
@@ -110,23 +112,19 @@ fun CalendarContent(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // Figma `171:186`: the month on the left, the accounts chip on the right
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { actions.onMove(-1) }) {
+                IconButton(onClick = { actions.onMove(-1) }, Modifier.size(36.dp)) {
                     Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "Mes anterior", tint = colors.textPrimary)
                 }
-                Text(
-                    monthLabel(state.month),
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.textPrimary,
-                    textAlign = TextAlign.Center,
-                )
-                IconButton(onClick = { actions.onMove(1) }) {
-                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "Mes siguiente", tint = colors.textPrimary)
+                Text(monthLabel(state.month), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                IconButton(onClick = { actions.onMove(1) }, Modifier.size(36.dp)) {
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "Mes siguiente", tint = colors.textSecondary)
                 }
+                Spacer(Modifier.weight(1f))
+                val n = state.chosen.size
+                AppChip(if (n == 1) "Saldo de 1 cuenta ▾" else "Saldo de $n cuentas ▾", selected = true, onClick = { choosing = true })
             }
-            val n = state.chosen.size
-            AppChip(if (n == 1) "Saldo de 1 cuenta ▾" else "Saldo de $n cuentas ▾", selected = true, onClick = { choosing = true })
             Grid(state, actions.onSelect)
             DayCard(state, actions.onOpenTransaction)
         }
@@ -150,7 +148,7 @@ private fun Grid(
     val first = state.month.atDay(1)
     val lead = first.dayOfWeek.value - DayOfWeek.MONDAY.value
     val cells: List<LocalDate?> = List(lead) { null } + (1..state.month.lengthOfMonth()).map { state.month.atDay(it) }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    AppCard(Modifier.fillMaxWidth()) {
         Row {
             WEEK.forEach {
                 Text(
@@ -174,6 +172,11 @@ private fun Grid(
                 }
             }
         }
+        Text(
+            "Toca un día para ver el valor exacto y sus movimientos.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
     }
 }
 
@@ -193,11 +196,11 @@ private fun DayCell(
         modifier
             .aspectRatio(0.8f)
             .clip(shape)
-            .background(if (selected) colors.primaryContainer else colors.surface)
+            .background(if (selected) colors.primaryContainer else Color.Transparent)
             .then(
                 when {
                     selected -> Modifier.border(BorderStroke(1.5.dp, colors.onPrimaryContainer), shape)
-                    today -> Modifier.border(BorderStroke(1.dp, colors.borderHighlight), shape)
+                    today -> Modifier.border(BorderStroke(1.dp, colors.onPrimaryContainer), shape)
                     else -> Modifier
                 },
             ).clickable(enabled = !future, onClickLabel = "Ver el día") { onSelect(day) }
@@ -236,21 +239,14 @@ private fun DayCard(
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AppCard(Modifier.fillMaxWidth(), highlight = true) {
                 Text(
-                    FULL_DATE.format(b.date).replaceFirstChar {
-                        it.uppercase()
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
+                    DAY_TITLE.format(b.date).replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
                 )
+                Text("Saldo al final del día", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                 MoneyText(b.closing, style = MaterialTheme.typography.displaySmall)
-                HorizontalDivider(thickness = 1.dp, color = colors.border)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Movimiento del día",
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textSecondary,
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Movimiento del día", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                     MoneyText(
                         if (b.change.isNegative) -b.change else b.change,
                         kind =
@@ -259,10 +255,40 @@ private fun DayCard(
                                 b.change.isNegative -> MoneyKind.Expense
                                 else -> MoneyKind.Income
                             },
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
+                rows?.rows?.forEach { row ->
+                    HorizontalDivider(thickness = 1.dp, color = colors.border)
+                    Row(
+                        Modifier.fillMaxWidth().clickable(onClickLabel = "Ver detalle") { row.id?.let(onOpenTransaction) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    row.title,
+                                    Modifier.weight(1f, fill = false),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                )
+                                TagDots(row.tagColors)
+                            }
+                            Text(row.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                        }
+                        MoneyText(
+                            row.amount,
+                            kind =
+                                when (row.type) {
+                                    TransactionType.EXPENSE -> MoneyKind.Expense
+                                    TransactionType.INCOME -> MoneyKind.Income
+                                    TransactionType.TRANSFER -> MoneyKind.Transfer
+                                },
+                        )
+                    }
+                }
             }
-            if (rows != null) DayGroup(rows, state.today, onOpen = onOpenTransaction)
         }
     }
 }
