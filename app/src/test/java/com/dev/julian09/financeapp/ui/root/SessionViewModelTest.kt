@@ -6,6 +6,7 @@ import com.dev.julian09.financeapp.domain.usecase.ObserveNeedsLegalConsent
 import com.dev.julian09.financeapp.domain.usecase.ObserveSession
 import com.dev.julian09.financeapp.ui.FakeAuthRepository
 import com.dev.julian09.financeapp.ui.FakeLegalConsentStore
+import com.dev.julian09.financeapp.ui.FakeLocalDataEraser
 import com.dev.julian09.financeapp.ui.FakePushTokens
 import com.dev.julian09.financeapp.ui.FakeReminderScheduler
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
@@ -39,7 +40,14 @@ class SessionViewModelTest {
 
     @Test
     fun `syncs only with a session whose initial download finished`() {
-        SessionViewModel(ObserveSession(auth), ObserveNeedsLegalConsent(consent), scheduler, reminders, FakePushTokens())
+        SessionViewModel(
+            ObserveSession(auth),
+            ObserveNeedsLegalConsent(consent),
+            scheduler,
+            reminders,
+            FakePushTokens(),
+            FakeLocalDataEraser(),
+        )
         assertEquals(0, scheduler.syncRequests)
 
         auth.session.value = SessionState.Active(PROFILE)
@@ -55,7 +63,15 @@ class SessionViewModelTest {
 
     @Test
     fun `an active session must accept the current terms before anything else`() {
-        val vm = SessionViewModel(ObserveSession(auth), ObserveNeedsLegalConsent(consent), scheduler, reminders, FakePushTokens())
+        val vm =
+            SessionViewModel(
+                ObserveSession(auth),
+                ObserveNeedsLegalConsent(consent),
+                scheduler,
+                reminders,
+                FakePushTokens(),
+                FakeLocalDataEraser(),
+            )
         val seen = mutableListOf<Boolean?>()
         val job = CoroutineScope(UnconfinedTestDispatcher()).launch { vm.needsLegalConsent.collect { seen += it } }
 

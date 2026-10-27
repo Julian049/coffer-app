@@ -20,6 +20,7 @@ import com.dev.julian09.financeapp.domain.model.RegisterInput
 import com.dev.julian09.financeapp.domain.model.SessionState
 import com.dev.julian09.financeapp.domain.model.UserProfile
 import com.dev.julian09.financeapp.domain.port.AuthRepository
+import com.dev.julian09.financeapp.domain.port.LocalDataEraser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -37,6 +38,7 @@ class AuthRepositoryImpl
         private val store: SessionStore,
         private val deviceId: DeviceIdProvider,
         private val json: Json,
+        private val eraser: LocalDataEraser,
     ) : AuthRepository {
         override fun observeSession(): Flow<SessionState> =
             store.session.map { session ->
@@ -110,6 +112,8 @@ class AuthRepositoryImpl
             runMapped {
                 val response = call()
                 val user = response.user.toStored()
+                // Before the session exists, so not one frame of the previous account's data is shown
+                eraser.eraseIfOwnedByAnother(user.id)
                 store.save(StoredSession(response.accessToken, response.refreshToken, user))
                 user.toDomain()
             }

@@ -1,6 +1,5 @@
 package com.dev.julian09.financeapp.ui.feature.home
 
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -75,6 +74,7 @@ import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.Urgency
 import com.dev.julian09.financeapp.domain.model.homeLayout
+import com.dev.julian09.financeapp.ui.components.AnimatedMoneyText
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
@@ -270,7 +270,10 @@ fun HomeContent(
                             if (balanceHidden) {
                                 Text("$ ••••••", style = MaterialTheme.typography.displaySmall, color = colors.textPrimary)
                             } else {
-                                MoneyText(if (net) state.net else dashboard.available, style = MaterialTheme.typography.displaySmall)
+                                AnimatedMoneyText(
+                                    if (net) state.net else dashboard.available,
+                                    style = MaterialTheme.typography.displaySmall,
+                                )
                                 if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
                             }
                         }
@@ -507,19 +510,6 @@ fun FoxCard(
 
 // Figma «Estado del zorro»: 92 dp, 12 dp over the top edge of the balance card: the 16 dp gap between blocks plus those 12 dp
 private val FOX_OVERLAP = 28.dp
-
-/** The image of each state, also used by Historial's monthly summary (M14). */
-@DrawableRes
-fun FoxState.mascot(): Int =
-    when (this) {
-        FoxState.RESTING -> R.drawable.mascot_resting
-        FoxState.DEBT -> R.drawable.mascot_debt
-        FoxState.ATTENTIVE -> R.drawable.mascot_attentive
-        FoxState.WORRIED -> R.drawable.mascot_worried
-        FoxState.GOAL -> R.drawable.mascot_goal
-        FoxState.GOOD -> R.drawable.mascot_good
-        FoxState.NORMAL -> R.drawable.mascot_normal
-    }
 
 /** One tap to each form; the transfer is one tap from Home (REQ-TRX-04). M12 (#95): a thin bar of three segments. */
 @Composable

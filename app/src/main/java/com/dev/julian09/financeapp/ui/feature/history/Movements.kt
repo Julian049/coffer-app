@@ -1,5 +1,9 @@
 package com.dev.julian09.financeapp.ui.feature.history
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,9 +22,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.Money
@@ -32,6 +42,7 @@ import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.TransferIcon
 import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
+import com.dev.julian09.financeapp.ui.components.reducedMotion
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.LocalDate
@@ -160,23 +171,48 @@ fun DayGroup(
         }
         // AppCard without its padding: the press highlight fills the row up to the card's edges (#129)
         Surface(shape = CofferShapes.card, color = colors.surface, border = BorderStroke(1.dp, colors.border)) {
-            Column {
+            // INC-09: the card grows with the new row instead of jumping
+            Column(Modifier.animateContentSize(tween(ENTER_MS))) {
                 day.rows.forEachIndexed { i, row ->
                     if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = colors.border)
-                    MovementRow(
-                        row,
-                        showTime,
-                        onOpen,
-                        PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = if (i == 0) 16.dp else 12.dp,
-                            bottom = if (i == day.rows.lastIndex) 16.dp else 12.dp,
-                        ),
-                    )
+                    Box(Modifier.enterOnce(row.id != null && row.id == NewRow.id)) {
+                        MovementRow(
+                            row,
+                            showTime,
+                            onOpen,
+                            PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = if (i == 0) 16.dp else 12.dp,
+                                bottom = if (i == day.rows.lastIndex) 16.dp else 12.dp,
+                            ),
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+/** INC-09: the movement the form just registered; the first list that draws it fades and slides it in, once. */
+object NewRow {
+    var id by mutableStateOf<UUID?>(null)
+}
+
+private const val ENTER_MS = 350
+
+@Composable
+private fun Modifier.enterOnce(active: Boolean): Modifier {
+    if (!active) return this
+    val still = reducedMotion()
+    val progress = remember { Animatable(if (still) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        progress.animateTo(1f, tween(ENTER_MS, easing = FastOutSlowInEasing))
+        NewRow.id = null
+    }
+    return graphicsLayer {
+        alpha = progress.value
+        translationY = (1f - progress.value) * 12.dp.toPx()
     }
 }
 

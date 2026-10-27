@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-27
+
+### Fixed
+
+- Signing in with another account on a phone that kept the previous one's data (REQ-AUT-06) erases that data before the session is saved, and a phone already in that state erases it on start; the calendar's saved accounts fall back to the default when none of them exists (INC-01)
+- The calendar computes its days in parallel and shows a spinner on the first load and a bar while another month loads (INC-05)
+- Every main category has a colour in the reports, picked by its id, not only the six base ones (INC-06)
+- Historial's monthly summary shows the animated fox (INC-07)
+- Inicio's balance counts from the old value to the new one instead of jumping (INC-08)
+- A movement just registered fades and slides into the list, and its day card grows with it (INC-09)
+- Chips keep their press highlight inside the pill, and the form's tags show their colour dot (INC-10)
+
 ## [2.0.0] - 2026-10-27
 
 ### Added
