@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.ui.root
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.domain.model.SessionState
+import com.dev.julian09.financeapp.domain.port.LocalDataEraser
 import com.dev.julian09.financeapp.domain.port.PushTokens
 import com.dev.julian09.financeapp.domain.port.ReminderScheduler
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -32,6 +34,7 @@ class SessionViewModel
         private val scheduler: SyncScheduler,
         private val reminders: ReminderScheduler,
         private val pushTokens: PushTokens,
+        private val eraser: LocalDataEraser,
     ) : ViewModel() {
         val session: StateFlow<SessionState> =
             observeSession().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionState.Loading)
@@ -47,6 +50,12 @@ class SessionViewModel
             scheduler.observeInitialSyncDone().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         init {
+            // INC-01: a phone where another account signed in before 2.0.1 still holds the first one's data
+            observeSession()
+                .mapNotNull { (it as? SessionState.Active)?.user?.id }
+                .distinctUntilChanged()
+                .onEach { eraser.eraseIfOwnedByAnother(it) }
+                .launchIn(viewModelScope)
             // Every start with a session and a finished download: sync now and keep the periodic work (REQ-SYN-01)
             combine(observeSession(), scheduler.observeInitialSyncDone()) { s, done -> s is SessionState.Active && done }
                 .distinctUntilChanged()

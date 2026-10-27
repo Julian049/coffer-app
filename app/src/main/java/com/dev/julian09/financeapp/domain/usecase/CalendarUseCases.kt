@@ -4,6 +4,9 @@ import com.dev.julian09.financeapp.domain.model.Account
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.YearMonth
@@ -50,15 +53,9 @@ class ObserveDailyBalances
                     .first()
                     .filter { it.account.id in accountIds }
                     .fold(Money.ZERO) { s, b -> s + b.balance }
-            var previous = closing(month.atDay(1).minusDays(1))
-            val days = mutableListOf<DayBalance>()
-            var day = month.atDay(1)
-            while (day <= last) {
-                val value = closing(day)
-                days += DayBalance(day, value, value - previous)
-                previous = value
-                day = day.plusDays(1)
-            }
-            return days
+            // INC-05: one query per day, so they run side by side instead of one after another
+            val dates = generateSequence(month.atDay(1).minusDays(1)) { it.plusDays(1) }.takeWhile { it <= last }.toList()
+            val closings = coroutineScope { dates.map { async { closing(it) } }.awaitAll() }
+            return dates.drop(1).mapIndexed { i, day -> DayBalance(day, closings[i + 1], closings[i + 1] - closings[i]) }
         }
     }

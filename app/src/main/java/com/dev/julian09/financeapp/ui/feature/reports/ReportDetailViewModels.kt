@@ -239,6 +239,8 @@ data class CalendarState(
     val accounts: List<AccountBalance>,
     val chosen: Set<UUID>,
     val today: LocalDate,
+    // INC-05: another month was asked for and its balances are still being computed
+    val loading: Boolean = false,
 )
 
 /** Reportes · Calendario (Figma `171:186`): the balance at the end of each day of the chosen accounts. */
@@ -261,7 +263,9 @@ class CalendarViewModel
         private val chosen: Flow<Pair<List<AccountBalance>, Set<UUID>>> =
             combine(accounts.observeBalances(), store.observe()) { all, saved ->
                 val shown = all.filter { it.account.active }
-                shown to (saved ?: defaultCalendarAccounts(shown.map { it.account }))
+                // Picks that match no account (another account's, INC-01) fall back to the default
+                val picked = saved?.takeIf { ids -> shown.any { it.account.id in ids } }
+                shown to (picked ?: defaultCalendarAccounts(shown.map { it.account }))
             }
 
         val state: StateFlow<CalendarState?> =
@@ -280,8 +284,9 @@ class CalendarViewModel
                     }
                 },
                 selected,
-            ) { (m, c, days), rows, day ->
-                CalendarState(m, days, day, rows.firstOrNull(), c.first, c.second, clock.today())
+                month,
+            ) { (m, c, days), rows, day, wanted ->
+                CalendarState(m, days, day, rows.firstOrNull(), c.first, c.second, clock.today(), loading = wanted != m)
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         fun move(step: Long) {

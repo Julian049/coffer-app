@@ -28,7 +28,7 @@ import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-/** «Otras» in the pie (changes-ui-2.0 §3): every category without a fixed colour; never an invented one. */
+/** «Otras» in the pie (changes-ui-2.0 §3): what has no colour of its own (subcategories). */
 val OTHER_CATEGORY_COLOR = Color(0xFFA8A29E)
 
 private val BASE_COLORS =
@@ -41,15 +41,29 @@ private val BASE_COLORS =
     )
 private val FINANCIAL_CHARGES_COLOR = Color(0xFF7B5FC0)
 
+// INC-06: imported and user categories get one of these too, apart from the base ones' hues
+private val EXTRA_COLORS =
+    listOf(
+        Color(0xFFB5543F),
+        Color(0xFF6E8B3D),
+        Color(0xFF4F5FB0),
+        Color(0xFFA86A2E),
+        Color(0xFF8E4F9E),
+        Color(0xFF3D8FA8),
+        Color(0xFFC0506A),
+    )
+
 /**
- * The colour follows the category, not its place (changes-ui-2.0 §3): the six base ones have theirs, a renamed or user
- * category has none (PO and Claude, 2026-10-26). [CategorySum] already carries the main category.
+ * The colour follows the category, not its place (changes-ui-2.0 §3): the six base ones have theirs and any other main
+ * category one picked by its id, so it is the same on every screen (INC-06, 2026-10-27). [CategorySum] already carries
+ * the main category; a subcategory has none.
  */
 fun categoryColor(category: Category): Color? =
     when {
-        !category.isBase || category.parentId != null -> null
-        category.systemKey == "FINANCIAL_CHARGES" -> FINANCIAL_CHARGES_COLOR
-        else -> BASE_COLORS[category.name]
+        category.parentId != null -> null
+        category.isBase && category.systemKey == "FINANCIAL_CHARGES" -> FINANCIAL_CHARGES_COLOR
+        category.isBase && category.name in BASE_COLORS -> BASE_COLORS.getValue(category.name)
+        else -> EXTRA_COLORS[Math.floorMod(category.id.hashCode(), EXTRA_COLORS.size)]
     }
 
 fun CategorySum.color(): Color = categoryColor(category) ?: OTHER_CATEGORY_COLOR

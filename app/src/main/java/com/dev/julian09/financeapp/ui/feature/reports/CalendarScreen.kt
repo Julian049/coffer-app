@@ -28,9 +28,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -107,7 +110,11 @@ fun CalendarContent(
     var choosing by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         AppHeader(title = "Calendario", onBack = actions.onBack, subtitle = "Saldo al final de cada día")
-        if (state == null) return@Column
+        if (state == null) {
+            // INC-05: the first month takes a moment; never a blank screen
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = colors.primary) }
+            return@Column
+        }
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -125,8 +132,13 @@ fun CalendarContent(
                 val n = state.chosen.size
                 AppChip(if (n == 1) "Saldo de 1 cuenta ▾" else "Saldo de $n cuentas ▾", selected = true, onClick = { choosing = true })
             }
-            Grid(state, actions.onSelect)
-            DayCard(state, actions.onOpenTransaction)
+            if (state.loading) {
+                LinearProgressIndicator(Modifier.fillMaxWidth(), color = colors.primary, trackColor = colors.border)
+            }
+            Column(Modifier.alpha(if (state.loading) 0.4f else 1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Grid(state, actions.onSelect)
+                DayCard(state, actions.onOpenTransaction)
+            }
         }
     }
     if (choosing && state != null) {

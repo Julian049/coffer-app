@@ -4,7 +4,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -58,7 +57,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -80,12 +78,12 @@ import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
 import com.dev.julian09.financeapp.ui.components.EmptyState
 import com.dev.julian09.financeapp.ui.components.FabClearance
+import com.dev.julian09.financeapp.ui.components.FoxMascot
 import com.dev.julian09.financeapp.ui.components.IconBubble
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.iconOf
-import com.dev.julian09.financeapp.ui.feature.home.mascot
 import com.dev.julian09.financeapp.ui.navigation.HistoryLink
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -312,7 +310,8 @@ private fun Summary(state: HistoryUiState) {
             }
             // M14 (#97): how the month closed, or how it goes when it is the current one
             state.fox?.takeUnless { f.customRange }?.let {
-                Image(painterResource(it.state.mascot()), contentDescription = null, modifier = Modifier.size(48.dp))
+                // INC-07: the same animated fox as Inicio
+                FoxMascot(it.state.name.lowercase(), size = 48.dp)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

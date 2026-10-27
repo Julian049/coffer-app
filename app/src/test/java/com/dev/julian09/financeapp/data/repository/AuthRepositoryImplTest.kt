@@ -11,6 +11,7 @@ import com.dev.julian09.financeapp.domain.model.AuthField
 import com.dev.julian09.financeapp.domain.model.LoginInput
 import com.dev.julian09.financeapp.domain.model.RegisterInput
 import com.dev.julian09.financeapp.domain.model.SessionState
+import com.dev.julian09.financeapp.ui.FakeLocalDataEraser
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
@@ -25,13 +26,14 @@ import org.junit.Test
 class AuthRepositoryImplTest {
     private val server = MockWebServer()
     private val store = FakeSessionStore()
+    private val eraser = FakeLocalDataEraser()
     private lateinit var repository: AuthRepositoryImpl
 
     @Before
     fun start() {
         server.start()
         val network = TestNetwork(server, store)
-        repository = AuthRepositoryImpl(network.authApi, store, network.device, testJson)
+        repository = AuthRepositoryImpl(network.authApi, store, network.device, testJson, eraser)
     }
 
     @After

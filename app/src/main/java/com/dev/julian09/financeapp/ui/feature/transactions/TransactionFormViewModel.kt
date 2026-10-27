@@ -33,6 +33,7 @@ import com.dev.julian09.financeapp.domain.usecase.isPickable
 import com.dev.julian09.financeapp.ui.feature.accounts.digitsOnly
 import com.dev.julian09.financeapp.ui.feature.accounts.wholePesos
 import com.dev.julian09.financeapp.ui.feature.cards.parsePercent
+import com.dev.julian09.financeapp.ui.feature.history.NewRow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -351,6 +352,7 @@ class TransactionFormViewModel
                     }
                 // The draft goes only once its movement was saved
                 if (errors.isEmpty()) s.draftId?.let { discardDraft(it) }
+                if (errors.isEmpty() && s.editingId == null) NewRow.id = transaction.id
                 _state.update { if (errors.isEmpty()) it.copy(saved = true) else it.copy(errors = errors) }
             }
         }
