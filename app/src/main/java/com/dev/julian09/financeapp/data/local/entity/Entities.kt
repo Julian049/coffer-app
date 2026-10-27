@@ -36,6 +36,9 @@ data class SettingsEntity(
     /** The expense category that receives the principal of loan installments (V14, Room 8); null until the first one. */
     @ColumnInfo(defaultValue = "NULL")
     val loanPaymentCategoryId: UUID? = null,
+    /** REQ-COR-10: the notice for transactions to review (V16, Room 10). */
+    @ColumnInfo(defaultValue = "1")
+    val notifyDrafts: Boolean = true,
 )
 
 @Entity(tableName = "accounts", indices = [Index("syncState")])
@@ -59,6 +62,9 @@ data class AccountEntity(
     /** Whether the debt is subtracted in the custom net balance (V14, Room 8). */
     @ColumnInfo(defaultValue = "1")
     val includeInNet: Boolean = true,
+    /** REQ-COR-06: matches the digits a bank email gives (V16, Room 10). */
+    @ColumnInfo(defaultValue = "NULL")
+    val lastDigits: String? = null,
 )
 
 @Entity(tableName = "categories", indices = [Index("syncState"), Index("parentId")])
@@ -269,3 +275,20 @@ data class SyncMetaEntity(
 internal fun encodeTagIds(ids: List<UUID>): String = if (ids.isEmpty()) "" else ids.distinct().joinToString(",", ",", ",")
 
 internal fun decodeTagIds(text: String): List<UUID> = text.split(',').filter { it.isNotEmpty() }.map(UUID::fromString)
+
+/** A transaction to review, made by the server from a bank email (V16, Room 10); it never counts until applied. */
+@Entity(tableName = "transaction_drafts", indices = [Index("syncState")])
+data class TransactionDraftEntity(
+    @PrimaryKey val id: UUID,
+    val source: String,
+    val type: String,
+    val amount: Long,
+    val occurredAt: Instant,
+    val merchant: String? = null,
+    val lastDigits: String? = null,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.SYNCED,
+    val syncError: String? = null,
+)

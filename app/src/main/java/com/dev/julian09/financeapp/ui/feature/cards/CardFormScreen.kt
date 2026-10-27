@@ -44,6 +44,7 @@ import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
+import com.dev.julian09.financeapp.ui.feature.accounts.LastDigitsField
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 @Composable
@@ -69,6 +70,7 @@ fun CardFormScreen(
             onRateType = viewModel::setRateType,
             onFirstFree = viewModel::setFirstInterestFree,
             onSave = viewModel::save,
+            onLastDigits = viewModel::setLastDigits,
         ),
     )
 }
@@ -84,6 +86,7 @@ class CardFormActions(
     val onRateType: (RateType) -> Unit = {},
     val onFirstFree: (Boolean) -> Unit = {},
     val onSave: () -> Unit = {},
+    val onLastDigits: (String) -> Unit = {},
 )
 
 /** Nueva tarjeta de crédito (S7-UI01, REQ-TC-01 to 03, 13); editing keeps the debt it was created with. */
@@ -143,6 +146,7 @@ fun CardFormContent(
                 placeholder = "ej. Visa Platinum",
                 error = errors[CardField.NAME]?.message(),
             )
+            if (editing) LastDigitsField(state.lastDigits, actions.onLastDigits)
             AppTextField(
                 value = state.limitDigits,
                 visualTransformation = PesosTransformation(symbol = false),

@@ -16,6 +16,7 @@ import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TagEntity
+import com.dev.julian09.financeapp.data.local.entity.TransactionDraftEntity
 import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -852,6 +853,47 @@ interface LoanDao {
     ): Int
 
     @Query("UPDATE loan_details SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailed(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
+}
+
+@Dao
+interface DraftDao {
+    @Upsert
+    suspend fun upsert(drafts: List<TransactionDraftEntity>)
+
+    @Query("SELECT * FROM transaction_drafts WHERE deletedAt IS NULL ORDER BY occurredAt DESC")
+    fun observeAll(): Flow<List<TransactionDraftEntity>>
+
+    @Query("SELECT * FROM transaction_drafts WHERE id = :id AND deletedAt IS NULL")
+    suspend fun get(id: UUID): TransactionDraftEntity?
+
+    @Query("SELECT COUNT(*) FROM transaction_drafts WHERE deletedAt IS NULL")
+    suspend fun count(): Int
+
+    /** Applied or discarded: the server learns it on the next push (REQ-COR-05). */
+    @Query("UPDATE transaction_drafts SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun delete(
+        id: UUID,
+        now: Instant,
+    )
+
+    @Query("SELECT * FROM transaction_drafts WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pending(limit: Int): List<TransactionDraftEntity>
+
+    @Query("SELECT syncState, updatedAt FROM transaction_drafts WHERE id = :id")
+    suspend fun syncInfo(id: UUID): SyncInfo?
+
+    @Query("UPDATE transaction_drafts SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSynced(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE transaction_drafts SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
     suspend fun markFailed(
         id: UUID,
         sentUpdatedAt: Instant,

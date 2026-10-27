@@ -131,6 +131,7 @@ class TagSummaryTest {
                     f.settings,
                     UpdateSettings(f.settings, FakeSyncScheduler()),
                     SetIncludeInNet(f.accounts, FakeSyncScheduler()),
+                    f.drafts,
                 ).state.filterNotNull().first()
             val line = home.pinned.single()
             assertEquals("Salidas", line.tag.name)

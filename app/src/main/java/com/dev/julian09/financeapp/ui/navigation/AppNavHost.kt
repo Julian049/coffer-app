@@ -39,6 +39,7 @@ import com.dev.julian09.financeapp.ui.feature.home.CustomizeHomeScreen
 import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportScreen
 import com.dev.julian09.financeapp.ui.feature.loans.LoanFormScreen
+import com.dev.julian09.financeapp.ui.feature.mail.ConnectEmailScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
 import com.dev.julian09.financeapp.ui.feature.reports.ReportsScreen
@@ -118,6 +119,7 @@ fun AppNavHost(
                     onOpenSettings = openSettings,
                     onOpenTransaction = openTransaction,
                     avatarInitial = initial,
+                    onReviewDraft = { navController.navigate(TransactionFormRoute(draftId = it.toString())) },
                 )
             }
             composable<ReportsRoute> {
@@ -144,8 +146,10 @@ fun AppNavHost(
                     onOpenTags = openTags,
                     onOpenChangeHistory = { navController.navigate(ChangeHistoryRoute) },
                     onOpenCustomizeHome = { navController.navigate(CustomizeHomeRoute) },
+                    onOpenConnectEmail = { navController.navigate(ConnectEmailRoute) },
                 )
             }
+            composable<ConnectEmailRoute> { ConnectEmailScreen(onBack = navController::popBackStack) }
             composable<ChangeHistoryRoute> { ChangeHistoryScreen(onBack = navController::popBackStack) }
             composable<CustomizeHomeRoute> { CustomizeHomeScreen(onBack = navController::popBackStack) }
             composable<TagsRoute> { TagsScreen(onBack = navController::popBackStack, onOpenTag = openTag) }

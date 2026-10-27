@@ -31,6 +31,10 @@ data object RegisterRoute
 @Serializable
 data object ForgotPasswordRoute
 
+/** REQ-COR-01: Ajustes → Conectar correo. */
+@Serializable
+data object ConnectEmailRoute
+
 @Serializable
 data object NewAccountRoute
 
@@ -60,6 +64,8 @@ data object CategoriesRoute
 data class TransactionFormRoute(
     val type: String = "EXPENSE",
     val id: String? = null,
+    /** REQ-COR-05: Revisar transacción, filled from this draft. */
+    val draftId: String? = null,
 )
 
 @Serializable

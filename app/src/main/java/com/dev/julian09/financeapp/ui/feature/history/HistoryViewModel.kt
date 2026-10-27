@@ -7,13 +7,16 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
+import com.dev.julian09.financeapp.domain.port.DraftRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
+import com.dev.julian09.financeapp.domain.usecase.ApplyDraft
 import com.dev.julian09.financeapp.domain.usecase.ObserveMonthFox
 import com.dev.julian09.financeapp.domain.usecase.SearchTransactions
 import com.dev.julian09.financeapp.domain.usecase.isPickable
@@ -28,6 +31,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -70,6 +74,8 @@ data class HistoryUiState(
     val choices: HistoryChoices,
     /** M14: the mascot of [month]; Summary shows it unless a custom range is set. */
     val fox: FoxMood? = null,
+    /** REQ-COR-04: what arrived by email and does not count yet, newest first. */
+    val drafts: List<TransactionDraft> = emptyList(),
 )
 
 private data class Inputs(
@@ -95,6 +101,8 @@ class HistoryViewModel
         tags: TagRepository,
         private val clock: Clock,
         private val monthFox: ObserveMonthFox,
+        drafts: DraftRepository,
+        private val applyDraft: ApplyDraft,
     ) : ViewModel() {
         private val inputs = MutableStateFlow(Inputs(YearMonth.from(clock.today()), "", HistoryFilters(), PAGE))
 
@@ -121,7 +129,8 @@ class HistoryViewModel
                 choices,
                 months,
                 inputs.map { it.month }.distinctUntilChanged().flatMapLatest { monthFox(it) },
-            ) { (i, result), ch, ms, fox ->
+                drafts.observeAll(),
+            ) { (i, result), ch, ms, fox, pending ->
                 HistoryUiState(
                     month = i.month,
                     months = ms,
@@ -138,6 +147,7 @@ class HistoryViewModel
                     hasMore = result.hasMore,
                     choices = ch,
                     fox = fox,
+                    drafts = pending,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -172,6 +182,14 @@ class HistoryViewModel
         fun setType(type: TransactionType?) = inputs.update { it.copy(filters = it.filters.copy(types = setOfNotNull(type)), limit = PAGE) }
 
         fun applyFilters(filters: HistoryFilters) = inputs.update { it.copy(filters = filters, limit = PAGE) }
+
+        /** «Aplicar» (REQ-COR-05): as it came, or Revisar transacción when its account or category is unknown. */
+        fun apply(
+            id: UUID,
+            review: (UUID) -> Unit,
+        ) {
+            viewModelScope.launch { if (!applyDraft(id)) review(id) }
+        }
 
         fun loadMore() = inputs.update { it.copy(limit = it.limit + PAGE) }
 

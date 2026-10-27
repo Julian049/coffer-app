@@ -34,6 +34,8 @@ data class Account(
     val createdAt: Instant? = null,
     /** S15-H07: a card or loan whose debt the custom net balance subtracts. */
     val includeInNet: Boolean = true,
+    /** REQ-COR-06: the digits a bank email gives for this account or card (2.0). */
+    val lastDigits: String? = null,
 )
 
 enum class CategoryKind { EXPENSE, INCOME }
@@ -155,6 +157,8 @@ data class Settings(
     val netBalanceMode: NetBalanceMode = NetBalanceMode.PERIOD,
     /** S15-H06: where the principal of loan installments counts as an expense; null until the first payment asks. */
     val loanPaymentCategoryId: UUID? = null,
+    /** REQ-COR-10: notify when a transaction to review arrives. */
+    val notifyDrafts: Boolean = true,
 )
 
 /** REQ-CTA-08 (S12-H03): what the net balance subtracts from the available one. */
@@ -246,3 +250,22 @@ enum class LedgerError {
     INSTALLMENTS_INVALID,
     OVER_DEBT,
 }
+
+/** Who wrote the email a [TransactionDraft] came from (REQ-COR-02). */
+enum class DraftSource(
+    val bank: String,
+) {
+    BANCOLOMBIA("Bancolombia"),
+    RAPPICARD("RappiCard"),
+}
+
+/** A transaction to review (REQ-COR-04): it changes no balance, total or report until applied. */
+data class TransactionDraft(
+    val id: UUID,
+    val source: DraftSource,
+    val type: TransactionType,
+    val amount: Money,
+    val occurredAt: Instant,
+    val merchant: String? = null,
+    val lastDigits: String? = null,
+)

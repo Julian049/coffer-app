@@ -186,4 +186,26 @@ class FinanceDatabaseMigrationTest {
             close()
         }
     }
+
+    @Test
+    fun version9To10AddsTheDraftsTheDigitsAndTheNotice() {
+        helper.createDatabase(9).apply {
+            execSQL(
+                "INSERT INTO accounts (id, name, type, initialBalance, includeInTotal, active, sortOrder, createdAt, updatedAt, " +
+                    "syncState) VALUES ('a1', 'Bancolombia', 'SAVINGS', 0, 1, 1, 0, 0, 0, 'SYNCED')",
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(10).apply {
+            prepare("SELECT COUNT(lastDigits) FROM accounts").use {
+                it.step()
+                assertEquals(0L, it.getLong(0))
+            }
+            prepare("SELECT COUNT(*) FROM transaction_drafts").use {
+                it.step()
+                assertEquals(0L, it.getLong(0))
+            }
+            close()
+        }
+    }
 }

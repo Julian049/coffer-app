@@ -103,7 +103,7 @@ fun RecurringScreen(
     var opening by rememberSaveable { mutableStateOf<String?>(null) }
     var payingCard by rememberSaveable { mutableStateOf<String?>(null) }
     var payingLoan by rememberSaveable { mutableStateOf<String?>(null) }
-    // S15-UI09: a tap on the row opens Hoja · Pendiente (Pagar, Finalizar; «Omitir» se quitó en la 2.0), as in Figma; one sheet at a time
+    // S15-UI09: a tap on the row opens Hoja · Pendiente (Pagar, Finalizar; Omitir is gone since 2.0), as in Figma; one sheet at a time
     PendingSheets(
         (paying ?: opening)?.let(UUID::fromString),
         onDismiss = {

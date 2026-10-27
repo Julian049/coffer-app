@@ -23,11 +23,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -262,7 +264,10 @@ fun HomeContent(
                                 if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
                             }
                         }
-                    HomeSection.QUICK_ACTIONS -> QuickActions(onNewTransaction)
+                    HomeSection.QUICK_ACTIONS -> {
+                        if (state.draftCount > 0) DraftsNotice(state.draftCount, onOpenHistory)
+                        QuickActions(onNewTransaction)
+                    }
                     HomeSection.ACCOUNTS -> {
                         val active = dashboard.accounts.filter { it.account.active && it.account.type.isPickable }
                         SectionTitle("Tus cuentas", if (active.size == 1) "1 activa" else "${active.size} activas")
@@ -584,5 +589,33 @@ private fun AccountChipCard(
         }
         Text(item.account.name, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, maxLines = 1)
         MoneyText(item.balance, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+/** «Aviso - Por revisar» (changes-ui-2.0 §1): only with at least one; it opens Historial, where they are listed. */
+@Composable
+private fun DraftsNotice(
+    count: Int,
+    onOpen: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(CofferShapes.card)
+            .background(colors.surfaceHighlight)
+            .clickable(role = Role.Button, onClick = onOpen)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
+        Text(
+            if (count == 1) "1 movimiento por revisar" else "$count movimientos por revisar",
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.primary,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.primary)
     }
 }

@@ -61,8 +61,10 @@ data class UserDto(
     val email: String,
     val currency: String,
     val googleLinked: Boolean = false,
+    val forwardingAddress: String? = null,
+    val forwardingConfirmation: String? = null,
 ) {
-    fun toStored() = StoredUser(id, username, displayName, email, currency, googleLinked)
+    fun toStored() = StoredUser(id, username, displayName, email, currency, googleLinked, forwardingAddress, forwardingConfirmation)
 }
 
 /** RFC 9457 body of every server error (openapi.yml Problem / ValidationProblem). */

@@ -1,6 +1,8 @@
 package com.dev.julian09.financeapp.ui.feature.history
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,13 +12,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Badge
@@ -24,6 +29,7 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,12 +47,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
@@ -63,12 +71,14 @@ import com.dev.julian09.financeapp.ui.components.FabClearance
 import com.dev.julian09.financeapp.ui.components.IconBubble
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
+import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.iconOf
 import com.dev.julian09.financeapp.ui.feature.home.mascot
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -81,6 +91,7 @@ fun HistoryScreen(
     onOpenTransaction: (UUID) -> Unit,
     modifier: Modifier = Modifier,
     avatarInitial: Char? = null,
+    onReviewDraft: (UUID) -> Unit = {},
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -95,6 +106,8 @@ fun HistoryScreen(
                 onType = viewModel::setType,
                 onFilters = viewModel::applyFilters,
                 onLoadMore = viewModel::loadMore,
+                onApplyDraft = { viewModel.apply(it, onReviewDraft) },
+                onReviewDraft = onReviewDraft,
             ),
         modifier = modifier,
         avatarInitial = avatarInitial,
@@ -109,6 +122,8 @@ class HistoryActions(
     val onType: (TransactionType?) -> Unit = {},
     val onFilters: (HistoryFilters) -> Unit = {},
     val onLoadMore: () -> Unit = {},
+    val onApplyDraft: (UUID) -> Unit = {},
+    val onReviewDraft: (UUID) -> Unit = {},
 )
 
 private val ES_CO: Locale = Locale.forLanguageTag("es-CO")
@@ -200,6 +215,7 @@ fun HistoryContent(
                 }
             }
             item { Summary(state) }
+            if (state.drafts.isNotEmpty()) item(key = "drafts") { DraftsSection(state.drafts, actions, today) }
             if (state.days.isEmpty()) {
                 item {
                     EmptyState(
@@ -430,3 +446,79 @@ internal fun mostUsedAll(
     usage: Map<UUID, Int>,
 ): List<Category> =
     categories.sortedWith(compareByDescending<Category> { usage[it.id] ?: 0 }.thenBy { it.parentId != null }.thenBy { it.sortOrder })
+
+private val DRAFT_DAY = DateTimeFormatter.ofPattern("d MMM", ES_CO)
+
+/**
+ * «Por revisar» (changes-ui-2.0 §1, REQ-COR-04): between the summary and the first day; gray amounts and a ✓ to apply.
+ * Functional with the current components; Figma's dashed card comes in part 2 of 2.0.
+ */
+@Composable
+private fun DraftsSection(
+    drafts: List<TransactionDraft>,
+    actions: HistoryActions,
+    today: LocalDate,
+) {
+    val colors = CofferTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Por revisar · ${drafts.size}", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+        Text(
+            "Llegaron por correo. No afectan tu saldo hasta que las apliques.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+        AppCard {
+            drafts.forEachIndexed { i, d ->
+                if (i > 0) HorizontalDivider(color = colors.border)
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(role = Role.Button, onClick = { actions.onReviewDraft(d.id) })
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            d.merchant ?: d.source.bank,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.textPrimary,
+                            maxLines = 1,
+                        )
+                        val day = d.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate()
+                        val digits = d.lastDigits?.let { " · *$it" }.orEmpty()
+                        Text(
+                            "${d.source.bank}$digits · ${if (day == today) "Hoy" else DRAFT_DAY.format(day).replace(".", "")}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    // Gray on purpose: it is not real yet
+                    Text(
+                        (if (d.type == TransactionType.EXPENSE) "−" else "+") + formatMoney(d.amount),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.textSecondary,
+                    )
+                    IconButton(
+                        onClick = { actions.onApplyDraft(d.id) },
+                        modifier = Modifier.size(44.dp),
+                    ) {
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .border(1.5.dp, colors.primary, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Outlined.Check,
+                                contentDescription = "Aplicar",
+                                tint = colors.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

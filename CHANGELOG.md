@@ -13,9 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A color per tag from a palette of 6 (REQ-ETQ-05), picked in Nueva and Editar etiqueta (Room 9 `tags.color`)
 - Recuperar contraseña (REQ-AUT-09): «¿Olvidaste tu contraseña?» in Iniciar sesión asks for the email, then the 6-digit code and the new password; afterwards every device signs in again
 
+- Transactions to review from bank emails (S19, S20, ADR-0014): Room 10 `transaction_drafts` synced as `transactionDraft`; «Por revisar» in Historial applies one in a tap when its last 4 digits and its merchant are known, otherwise opens Revisar transacción (the form filled from the email, with Aplicar and Descartar); Inicio shows how many are waiting. Drafts count in no balance, total or report until applied
+- Ajustes → Conectar correo: the forwarding address with a copy button, the Gmail steps, Gmail's confirmation code and the switch for the notice (REQ-COR-01, 10)
+- «Últimos 4 dígitos» in accounts and in the card edit (REQ-COR-06)
+- The notice of transactions to review through Firebase Cloud Messaging (ADR-0016), set up from `coffer.firebase.*` Gradle properties instead of `google-services.json`; off while they are blank
+- Calculations for the 2.0 reports and calendar, without screens yet: `shareOf`, `ReportDetails.category`, `ReportFilter` and `ObserveDailyBalances`
+
 ### Removed
 
-- «Omitir esta vez» in recurring expenses (FEATURE-08): a pending payment is paid or the recurrence ends
+- «Omitir esta vez» in recurring expenses (FEATURE-08): a pending payment is paid or the recurrence ends; the reminder no longer offers it either
 
 ## [1.6.1] - 2026-10-24
 
