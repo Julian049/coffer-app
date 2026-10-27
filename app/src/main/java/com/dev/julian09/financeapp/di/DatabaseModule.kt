@@ -40,6 +40,9 @@ object DatabaseModule {
     fun provideTagDao(db: FinanceDatabase) = db.tags()
 
     @Provides
+    fun provideDraftDao(db: FinanceDatabase) = db.drafts()
+
+    @Provides
     fun provideTransactionDao(db: FinanceDatabase) = db.transactions()
 
     @Provides

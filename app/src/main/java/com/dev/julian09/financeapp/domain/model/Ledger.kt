@@ -34,6 +34,8 @@ data class Account(
     val createdAt: Instant? = null,
     /** S15-H07: a card or loan whose debt the custom net balance subtracts. */
     val includeInNet: Boolean = true,
+    /** REQ-COR-06: the digits a bank email gives for this account or card (2.0). */
+    val lastDigits: String? = null,
 )
 
 enum class CategoryKind { EXPENSE, INCOME }
@@ -59,7 +61,24 @@ data class Tag(
     val id: UUID,
     val name: String,
     val pinned: Boolean = false,
-)
+    /** `#RRGGBB` of [TagColors] (REQ-ETQ-05); null shows the first one. */
+    val color: String? = null,
+) {
+    val shownColor: String get() = color ?: TagColors.entries.first().hex
+}
+
+/** REQ-ETQ-05: the 6 tag colors of changes-ui-2.0 §2; none is red, green or ocher, which mean expense, income and warning. */
+enum class TagColors(
+    val label: String,
+    val hex: String,
+) {
+    SLATE("Pizarra", "#4F6D8A"),
+    PLUM("Ciruela", "#8A4F7D"),
+    LAVENDER("Lavanda", "#7468A6"),
+    OLD_ROSE("Rosa viejo", "#B56F86"),
+    PETROL("Petróleo", "#2E7781"),
+    SAND("Arena", "#8C7A63"),
+}
 
 data class TagTotal(
     val tagId: UUID,
@@ -81,7 +100,8 @@ data class Transaction(
     val accountId: UUID,
     val destinationAccountId: UUID? = null,
     val categoryId: UUID? = null,
-    val tagId: UUID? = null,
+    /** Every tag of the movement (REQ-ETQ-02, ADR-0015); transfers have none. */
+    val tagIds: List<UUID> = emptyList(),
     val note: String? = null,
     val installments: Int = 1,
     val principal: Money? = null,
@@ -137,6 +157,8 @@ data class Settings(
     val netBalanceMode: NetBalanceMode = NetBalanceMode.PERIOD,
     /** S15-H06: where the principal of loan installments counts as an expense; null until the first payment asks. */
     val loanPaymentCategoryId: UUID? = null,
+    /** REQ-COR-10: notify when a transaction to review arrives. */
+    val notifyDrafts: Boolean = true,
 )
 
 /** REQ-CTA-08 (S12-H03): what the net balance subtracts from the available one. */
@@ -228,3 +250,22 @@ enum class LedgerError {
     INSTALLMENTS_INVALID,
     OVER_DEBT,
 }
+
+/** Who wrote the email a [TransactionDraft] came from (REQ-COR-02). */
+enum class DraftSource(
+    val bank: String,
+) {
+    BANCOLOMBIA("Bancolombia"),
+    RAPPICARD("RappiCard"),
+}
+
+/** A transaction to review (REQ-COR-04): it changes no balance, total or report until applied. */
+data class TransactionDraft(
+    val id: UUID,
+    val source: DraftSource,
+    val type: TransactionType,
+    val amount: Money,
+    val occurredAt: Instant,
+    val merchant: String? = null,
+    val lastDigits: String? = null,
+)

@@ -31,4 +31,4 @@ sealed class AuthFailure : Exception() {
     data object Unexpected : AuthFailure()
 }
 
-enum class AuthField { DisplayName, Email, Username, Password, Identifier }
+enum class AuthField { DisplayName, Email, Username, Password, Identifier, Code }

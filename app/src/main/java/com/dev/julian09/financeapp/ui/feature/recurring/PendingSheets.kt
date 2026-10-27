@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Info
@@ -109,13 +108,6 @@ fun PendingSheets(
                     "Registra el gasto real y programa el siguiente",
                     colors.textPrimary,
                     viewModel::startPay,
-                )
-                ActionRow(
-                    Icons.AutoMirrored.Outlined.ArrowForward,
-                    "Omitir esta vez",
-                    "Salta a la siguiente ocurrencia: ${state.nextDate?.let(::dayMonth).orEmpty()}",
-                    colors.textPrimary,
-                    viewModel::confirmSkip,
                 )
                 ActionRow(
                     Icons.Outlined.Close,

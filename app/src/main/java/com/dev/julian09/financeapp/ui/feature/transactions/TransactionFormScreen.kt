@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.NorthEast
 import androidx.compose.material.icons.outlined.NorthWest
@@ -151,6 +152,7 @@ fun TransactionFormScreen(
                 onSuggestion = viewModel::pickSuggestion,
                 onSave = viewModel::save,
                 onDelete = viewModel::delete,
+                onDiscard = viewModel::discard,
                 onInstallments = viewModel::setInstallments,
                 onRate = viewModel::setRate,
             ),
@@ -174,6 +176,7 @@ class TransactionFormActions(
     val onSuggestion: (NoteSuggestion) -> Unit = {},
     val onSave: () -> Unit = {},
     val onDelete: () -> Unit = {},
+    val onDiscard: () -> Unit = {},
     val onInstallments: (Int) -> Unit = {},
     val onRate: (String) -> Unit = {},
 )
@@ -214,7 +217,12 @@ fun TransactionFormContent(
     Column(modifier.fillMaxSize().imePadding()) {
         var confirming by rememberSaveable { mutableStateOf(false) }
         AppHeader(
-            title = if (state.editingId == null) "Nueva transacción" else "Editar transacción",
+            title =
+                when {
+                    state.draftId != null -> "Revisar transacción"
+                    state.editingId == null -> "Nueva transacción"
+                    else -> "Editar transacción"
+                },
             onBack = actions.onBack,
             actions = {
                 if (state.editingId != null) {
@@ -246,6 +254,7 @@ fun TransactionFormContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            state.draftBank?.let { DraftNote(it) }
             SegmentedSelector(
                 listOf("Gasto", "Ingreso", "Transferencia"),
                 selectedIndex = TYPES.indexOf(state.type),
@@ -324,6 +333,7 @@ fun TransactionFormContent(
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AppButton(
                 when {
+                    state.draftId != null -> "Aplicar"
                     state.editingId != null -> "Guardar cambios"
                     transfer -> "Confirmar transferencia"
                     else -> "Guardar transacción"
@@ -332,7 +342,34 @@ fun TransactionFormContent(
                 icon = Icons.Outlined.Check,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (state.draftId != null) {
+                // Figma `162:186`: red text without a background
+                TextButton(onClick = actions.onDiscard, modifier = Modifier.fillMaxWidth()) {
+                    Text("Descartar", style = MaterialTheme.typography.labelLarge, color = CofferTheme.colors.expense)
+                }
+            }
         }
+    }
+}
+
+/** Revisar transacción (changes-ui-2.0 §1): where it came from and that it counts only once applied. */
+@Composable
+private fun DraftNote(bank: String) {
+    val colors = CofferTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            // Figma's #F2EEEA: the warm grey of the borders, a step off the white card
+            .background(colors.border, CofferShapes.card)
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp))
+        Text(
+            "Llegó en un correo de $bank. Revisa los datos y aplícala para que cuente en tu saldo.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
     }
 }
 
@@ -703,7 +740,7 @@ private fun TagPicker(
     var name by rememberSaveable { mutableStateOf("") }
     Text("Etiqueta", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        choices.tags.forEach { tag -> AppChip("#${tag.name}", selected = tag.id == state.tagId, onClick = { actions.onTag(tag.id) }) }
+        choices.tags.forEach { tag -> AppChip("#${tag.name}", selected = tag.id in state.tagIds, onClick = { actions.onTag(tag.id) }) }
         Surface(
             modifier = Modifier.selectable(false, role = Role.Button, onClick = { creating = true }),
             shape = CofferShapes.pill,

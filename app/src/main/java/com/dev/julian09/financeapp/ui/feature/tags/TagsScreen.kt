@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.PushPin
@@ -34,11 +36,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.Tag
+import com.dev.julian09.financeapp.domain.model.TagColors
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
@@ -54,6 +62,8 @@ import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.history.DateField
 import com.dev.julian09.financeapp.ui.feature.history.DayGroup
+import com.dev.julian09.financeapp.ui.feature.history.TagDot
+import com.dev.julian09.financeapp.ui.feature.history.tagColor
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -150,7 +160,10 @@ internal fun TagRow(
             Icon(Icons.Outlined.Sell, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(line.tag.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(line.tag.name, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                TagDot(line.tag.shownColor)
+            }
             Text(movementsThisMonth(line.count), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
         }
         MoneyText(line.net, kind = netKind(line.net), style = MaterialTheme.typography.titleSmall)
@@ -185,7 +198,37 @@ internal fun TagSheetContent(
         AppTextField(value = sheet.name, onValueChange = { name ->
             onEdit { it.copy(name = name) }
         }, label = "Nombre", error = sheet.error?.message())
+        TagColorPicker(sheet.color) { color -> onEdit { it.copy(color = color) } }
         PinCard(sheet.pinned) { pinned -> onEdit { it.copy(pinned = pinned) } }
+    }
+}
+
+/** REQ-ETQ-05: six 32 dp circles, the picked one with ✓ (changes-ui-2.0 §2). Figma's finish comes in part 2. */
+@Composable
+private fun TagColorPicker(
+    selected: String,
+    onPick: (String) -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Color", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            TagColors.entries.forEach { c ->
+                val picked = c.hex == selected
+                Box(
+                    modifier =
+                        Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(tagColor(c.hex))
+                            .selectable(picked, role = Role.RadioButton, onClick = { onPick(c.hex) })
+                            .semantics { contentDescription = c.label },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (picked) Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
     }
 }
 
@@ -273,7 +316,9 @@ fun TagDetailContent(
 ) {
     val colors = CofferTheme.colors
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = state?.tag?.name.orEmpty(), onBack = actions.onBack, actions = {
+        AppHeader(title = state?.tag?.name.orEmpty(), onBack = actions.onBack, titleTrailing = {
+            state?.tag?.let { TagDot(it.shownColor, Modifier.size(10.dp)) }
+        }, actions = {
             IconButton(
                 onClick = actions.onEdit,
             ) { Icon(Icons.Outlined.Edit, contentDescription = "Editar etiqueta", tint = colors.textPrimary) }

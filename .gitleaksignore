@@ -1,0 +1,5 @@
+# Firebase's Android API key: a public client identifier compiled into every APK, like google-services.json
+# (https://firebase.google.com/docs/projects/api-keys); restricted in Google Cloud to this app. PO approved, 2026-10-27.
+# Format: commit:file:rule:line
+965bff2bcb9568ad19565be6f519c9ddb65e5bca:gradle.properties:gcp-api-key:20
+86fda56347591d7671fc73b6982d3efc67ba1776:gradle.properties:gcp-api-key:20

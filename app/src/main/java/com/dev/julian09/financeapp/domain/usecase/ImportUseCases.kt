@@ -238,7 +238,12 @@ class RunImport
                             accountId = account,
                             destinationAccountId = destination,
                             categoryId = category,
-                            tagId = row.tag?.let { tagId(it, tagIds) },
+                            tagIds =
+                                row.tag
+                                    ?.split(TAG_SEPARATOR)
+                                    ?.filter { it.isNotBlank() }
+                                    ?.map { tagId(it, tagIds) }
+                                    .orEmpty(),
                             note = row.note?.take(NOTE_LIMIT),
                         )
                     if (batch.size == BATCH) flush()
@@ -316,6 +321,9 @@ class RunImport
             }
     }
 
+/** The native `tag` column holds every tag of the movement (ADR-0015). */
+internal const val TAG_SEPARATOR = "|"
+
 internal fun sameRef(
     a: CategoryRef,
     b: CategoryRef,
@@ -371,7 +379,10 @@ class ExportCsv
                             t.destinationAccountId?.let { names[it] },
                             main?.name,
                             category?.takeIf { it.parentId != null }?.name,
-                            t.tagId?.let { tagNames[it] },
+                            t.tagIds
+                                .mapNotNull { tagNames[it] }
+                                .takeIf { it.isNotEmpty() }
+                                ?.joinToString(TAG_SEPARATOR),
                             t.note,
                             t.concept,
                         )

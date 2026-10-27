@@ -3,10 +3,14 @@ package com.dev.julian09.financeapp.ui.feature.history
 import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.usecase.ApplyDraft
 import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
 import com.dev.julian09.financeapp.domain.usecase.ObserveMonthFox
 import com.dev.julian09.financeapp.domain.usecase.ObservePendingPayments
 import com.dev.julian09.financeapp.domain.usecase.SearchTransactions
+import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
+import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
+import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterNotNull
@@ -63,6 +67,13 @@ class HistoryViewModelTest {
                     f.clock,
                 ),
                 f.clock,
+            ),
+            f.drafts,
+            ApplyDraft(
+                f.drafts,
+                SuggestDraft(f.accounts, f.transactions),
+                TransactionValidator(f.accounts, f.categories),
+                FakeSyncScheduler(),
             ),
         )
 

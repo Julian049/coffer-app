@@ -150,7 +150,7 @@ class ImportTest {
                     .observeAll()
                     .first()
                     .single { it.name == "Going out" }
-                    .let { tag -> all.count { it.tagId == tag.id } },
+                    .let { tag -> all.count { tag.id in it.tagIds } },
             )
             val finance = f.categories.observeAll().first()
             assertTrue(finance.any { it.name == "Debts" && it.parentId == finance.single { c -> c.name == "Finance" }.id })

@@ -10,6 +10,7 @@ import com.dev.julian09.financeapp.domain.usecase.ObserveSession
 import com.dev.julian09.financeapp.domain.usecase.RefreshProfile
 import com.dev.julian09.financeapp.ui.FakeAuthRepository
 import com.dev.julian09.financeapp.ui.FakeLocalDataEraser
+import com.dev.julian09.financeapp.ui.FakePushTokens
 import com.dev.julian09.financeapp.ui.FakeReminderScheduler
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.PROFILE
@@ -52,7 +53,7 @@ class SettingsViewModelTest {
             CheckServerStatus(server),
             ObserveSession(auth),
             RefreshProfile(auth),
-            Logout(auth, scheduler, FakeReminderScheduler()),
+            Logout(auth, scheduler, FakeReminderScheduler(), FakePushTokens()),
             DeleteAccount(auth, scheduler, reminders, eraser),
         )
 

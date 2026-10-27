@@ -134,7 +134,7 @@ fun changeDays(
         }
         if (before.occurredAt != after.occurredAt) add("Fecha")
         if (before.note != after.note) add("Nota")
-        if (before.tagId != after.tagId) add("Etiqueta")
+        if (before.tagIds.toSet() != after.tagIds.toSet()) add("Etiquetas")
     }.ifEmpty { listOf("Sin cambios visibles") }
 
     return lines

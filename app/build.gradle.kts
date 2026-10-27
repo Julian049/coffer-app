@@ -29,6 +29,15 @@ android {
         // Web client id of Google Cloud (public: it travels inside the APK); empty disables "Continuar con Google"
         val googleWebClientId = providers.gradleProperty("coffer.googleWebClientId").orElse("").get()
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        // ADR-0016: Firebase without google-services.json; blank values leave the notices off (local builds, CI without them)
+        listOf(
+            "appId" to "FIREBASE_APP_ID",
+            "apiKey" to "FIREBASE_API_KEY",
+            "projectId" to "FIREBASE_PROJECT_ID",
+            "senderId" to "FIREBASE_SENDER_ID",
+        ).forEach { (property, field) ->
+            buildConfigField("String", field, "\"${providers.gradleProperty("coffer.firebase.$property").orElse("").get()}\"")
+        }
     }
 
     signingConfigs {
@@ -122,6 +131,7 @@ dependencies {
     implementation(libs.androidx.datastore)
     // Background sync (ADR-0006): WorkManager with Hilt-injected workers
     implementation(libs.androidx.work.runtime)
+    implementation(libs.firebase.messaging)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.kotlinx.serialization.json)

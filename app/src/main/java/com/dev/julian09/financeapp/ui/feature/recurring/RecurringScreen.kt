@@ -103,7 +103,7 @@ fun RecurringScreen(
     var opening by rememberSaveable { mutableStateOf<String?>(null) }
     var payingCard by rememberSaveable { mutableStateOf<String?>(null) }
     var payingLoan by rememberSaveable { mutableStateOf<String?>(null) }
-    // S15-UI09: a tap on the row opens Hoja · Pendiente (Pagar, Omitir, Finalizar), as in Figma; one sheet at a time
+    // S15-UI09: a tap on the row opens Hoja · Pendiente (Pagar, Finalizar; Omitir is gone since 2.0), as in Figma; one sheet at a time
     PendingSheets(
         (paying ?: opening)?.let(UUID::fromString),
         onDismiss = {
@@ -122,7 +122,6 @@ fun RecurringScreen(
             onEdit,
             onOpenTransaction,
             viewModel::setFilter,
-            viewModel::skip,
             onOpen = { opening = it.toString() },
             onPay = { paying = it.toString() },
             onPayCard = { payingCard = it.toString() },
@@ -137,7 +136,6 @@ class RecurringActions(
     val onEdit: (UUID) -> Unit = {},
     val onOpenTransaction: (UUID) -> Unit = {},
     val onFilter: (RecurringFilter) -> Unit = {},
-    val onSkip: (UUID) -> Unit = {},
     val onOpen: (UUID) -> Unit = {},
     val onPay: (UUID) -> Unit = {},
     val onPayCard: (UUID) -> Unit = {},
@@ -321,7 +319,6 @@ private fun UpcomingRow(
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { actions.onSkip(r.id) }) { Text("Omitir", color = colors.textSecondary) }
                     TextButton(onClick = { actions.onEdit(r.id) }) { Text("Editar", color = colors.textSecondary) }
                     AppButton("Registrar pago", onClick = { actions.onPay(r.id) }, icon = Icons.Outlined.Check)
                 }

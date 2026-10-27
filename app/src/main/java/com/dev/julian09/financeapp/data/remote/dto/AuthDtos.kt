@@ -26,6 +26,19 @@ data class DeleteAccountRequestDto(
     val idToken: String? = null,
 )
 
+/** REQ-AUT-09: asks for the 6-digit code. */
+@Serializable
+data class PasswordResetRequestDto(
+    val email: String,
+)
+
+@Serializable
+data class PasswordResetConfirmRequestDto(
+    val email: String,
+    val code: String,
+    val newPassword: String,
+)
+
 @Serializable
 data class RefreshRequestDto(
     val refreshToken: String,
@@ -48,8 +61,10 @@ data class UserDto(
     val email: String,
     val currency: String,
     val googleLinked: Boolean = false,
+    val forwardingAddress: String? = null,
+    val forwardingConfirmation: String? = null,
 ) {
-    fun toStored() = StoredUser(id, username, displayName, email, currency, googleLinked)
+    fun toStored() = StoredUser(id, username, displayName, email, currency, googleLinked, forwardingAddress, forwardingConfirmation)
 }
 
 /** RFC 9457 body of every server error (openapi.yml Problem / ValidationProblem). */

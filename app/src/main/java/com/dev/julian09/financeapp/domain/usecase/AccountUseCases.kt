@@ -151,3 +151,27 @@ class SetIncludeInNet
             scheduler.requestSync()
         }
     }
+
+/** REQ-COR-06: «Últimos 4 dígitos» of an account or card; anything but 4 digits clears them. */
+class SetLastDigits
+    @Inject
+    constructor(
+        private val accounts: AccountRepository,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend operator fun invoke(
+            accountId: UUID,
+            digits: String,
+        ) {
+            val clean = digits.trim().takeIf { Regex("^[0-9]{4}$").matches(it) }
+            val account =
+                accounts
+                    .observeBalances()
+                    .first()
+                    .firstOrNull { it.account.id == accountId }
+                    ?.account ?: return
+            if (account.lastDigits == clean) return
+            accounts.update(account.copy(lastDigits = clean))
+            scheduler.requestSync()
+        }
+    }

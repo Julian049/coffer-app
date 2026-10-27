@@ -1,6 +1,13 @@
 package com.dev.julian09.financeapp.ui.feature.history
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,13 +17,17 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Badge
@@ -24,6 +35,7 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,19 +46,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
@@ -63,12 +83,17 @@ import com.dev.julian09.financeapp.ui.components.FabClearance
 import com.dev.julian09.financeapp.ui.components.IconBubble
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
+import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.iconOf
 import com.dev.julian09.financeapp.ui.feature.home.mascot
+import com.dev.julian09.financeapp.ui.navigation.HistoryLink
+import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -81,9 +106,17 @@ fun HistoryScreen(
     onOpenTransaction: (UUID) -> Unit,
     modifier: Modifier = Modifier,
     avatarInitial: Char? = null,
+    onReviewDraft: (UUID) -> Unit = {},
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val link by HistoryLink.filters.collectAsStateWithLifecycle()
+    LaunchedEffect(link) {
+        link?.let {
+            viewModel.applyFilters(it)
+            HistoryLink.filters.value = null
+        }
+    }
     HistoryContent(
         state = state,
         actions =
@@ -95,6 +128,8 @@ fun HistoryScreen(
                 onType = viewModel::setType,
                 onFilters = viewModel::applyFilters,
                 onLoadMore = viewModel::loadMore,
+                onApplyDraft = { viewModel.apply(it, onReviewDraft) },
+                onReviewDraft = onReviewDraft,
             ),
         modifier = modifier,
         avatarInitial = avatarInitial,
@@ -109,6 +144,8 @@ class HistoryActions(
     val onType: (TransactionType?) -> Unit = {},
     val onFilters: (HistoryFilters) -> Unit = {},
     val onLoadMore: () -> Unit = {},
+    val onApplyDraft: (UUID) -> Unit = {},
+    val onReviewDraft: (UUID) -> Unit = {},
 )
 
 private val ES_CO: Locale = Locale.forLanguageTag("es-CO")
@@ -200,6 +237,17 @@ fun HistoryContent(
                 }
             }
             item { Summary(state) }
+            // motion.md §7: the section and the days below move together when a draft is applied or discarded
+            if (state.drafts.isNotEmpty()) {
+                item(key = "drafts") {
+                    DraftsSection(
+                        state.drafts,
+                        actions,
+                        today,
+                        Modifier.animateItem(fadeInSpec = tween(400), fadeOutSpec = tween(400), placementSpec = tween(400)),
+                    )
+                }
+            }
             if (state.days.isEmpty()) {
                 item {
                     EmptyState(
@@ -220,7 +268,15 @@ fun HistoryContent(
                         key = "m$month",
                     ) { Text(monthLabel(month), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary) }
                 }
-                item(key = day.date.toString()) { DayGroup(day, today, showTime = true, onOpen = actions.onOpenTransaction) }
+                item(key = day.date.toString()) {
+                    DayGroup(
+                        day,
+                        today,
+                        Modifier.animateItem(placementSpec = tween(400)).animateContentSize(tween(400)),
+                        showTime = true,
+                        onOpen = actions.onOpenTransaction,
+                    )
+                }
             }
         }
     }
@@ -430,3 +486,121 @@ internal fun mostUsedAll(
     usage: Map<UUID, Int>,
 ): List<Category> =
     categories.sortedWith(compareByDescending<Category> { usage[it.id] ?: 0 }.thenBy { it.parentId != null }.thenBy { it.sortOrder })
+
+/**
+ * «Por revisar» (changes-ui-2.0 §1, REQ-COR-04): between the summary and the first day, in a dashed card — not real yet —
+ * with gray amounts, no time and a ✓ to apply as it came.
+ */
+@Composable
+private fun DraftsSection(
+    drafts: List<TransactionDraft>,
+    actions: HistoryActions,
+    today: LocalDate,
+    modifier: Modifier = Modifier,
+) {
+    val colors = CofferTheme.colors
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(horizontal = 4.dp)) {
+            // A count, not an amount: it cross-fades (motion.md §7)
+            Crossfade(drafts.size, animationSpec = tween(150), label = "drafts") { n ->
+                Text("Por revisar · $n", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            }
+            Text(
+                "Llegaron por correo. No afectan tu saldo hasta que las apliques.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary,
+            )
+        }
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(CofferShapes.card)
+                .background(colors.surface)
+                .drawBehind {
+                    drawRoundRect(
+                        colors.borderHighlight,
+                        style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))),
+                        cornerRadius = CornerRadius(12.dp.toPx()),
+                    )
+                }.animateContentSize(tween(400)),
+        ) {
+            drafts.forEachIndexed { i, d ->
+                key(d.id) {
+                    if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = colors.border)
+                    DraftRow(d, actions, today)
+                }
+            }
+        }
+    }
+}
+
+private val DRAFT_DAY = DateTimeFormatter.ofPattern("d MMM", ES_CO)
+
+@Composable
+private fun DraftRow(
+    d: TransactionDraft,
+    actions: HistoryActions,
+    today: LocalDate,
+) {
+    val colors = CofferTheme.colors
+    var applying by remember { mutableStateOf(false) }
+    // The ✓ fills in 100 ms (motion.short) and the row leaves without waiting for anything else
+    val fill by animateColorAsState(if (applying) colors.primary else colors.surface, tween(100), label = "apply")
+    // Back to empty when the draft needed Revisar transacción instead (it stays in the list)
+    LaunchedEffect(applying) {
+        if (applying) {
+            delay(600)
+            applying = false
+        }
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = "Revisar", onClick = { actions.onReviewDraft(d.id) })
+            .padding(start = 16.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(d.merchant ?: d.source.bank, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary, maxLines = 1)
+            val day = d.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate()
+            val digits = d.lastDigits?.let { " · *$it" }.orEmpty()
+            Text(
+                "${d.source.bank}$digits · ${if (day == today) "Hoy" else DRAFT_DAY.format(day).replace(".", "")}",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary,
+            )
+        }
+        // Gray on purpose, whatever the type: it is not real yet
+        Text(
+            (if (d.type == TransactionType.EXPENSE) "−" else "+") + formatMoney(d.amount),
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.textSecondary,
+        )
+        Box(
+            Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .clickable(role = Role.Button, onClickLabel = "Aplicar") {
+                    applying = true
+                    actions.onApplyDraft(d.id)
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.size(40.dp).background(fill, CircleShape).border(1.5.dp, colors.primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Check,
+                    contentDescription = "Aplicar",
+                    tint = if (applying) colors.onPrimary else colors.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+    }
+}

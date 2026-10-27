@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.di
 import com.dev.julian09.financeapp.BuildConfig
 import com.dev.julian09.financeapp.data.remote.AuthApi
 import com.dev.julian09.financeapp.data.remote.AuthInterceptor
+import com.dev.julian09.financeapp.data.remote.DeviceApi
 import com.dev.julian09.financeapp.data.remote.HealthApi
 import com.dev.julian09.financeapp.data.remote.SyncApi
 import com.dev.julian09.financeapp.data.remote.TokenAuthenticator
@@ -64,6 +65,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideDeviceApi(retrofit: Retrofit): DeviceApi = retrofit.create(DeviceApi::class.java)
 
     @Provides
     @Singleton

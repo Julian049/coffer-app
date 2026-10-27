@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Only reminders of pending payments (REQ-REC-09, 10) -->
+    <!-- Reminders of pending payments (REQ-REC-09, 10) and the notice of transactions to review (REQ-COR-10) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
@@ -32,6 +32,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- ADR-0016: a data message from the server when a bank email became a transaction to review -->
+        <service
+            android:name=".data.push.CofferMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         <!-- WorkManager is initialized by FinanceApp (Configuration.Provider) so workers get Hilt dependencies -->
         <provider
             android:name="androidx.startup.InitializationProvider"

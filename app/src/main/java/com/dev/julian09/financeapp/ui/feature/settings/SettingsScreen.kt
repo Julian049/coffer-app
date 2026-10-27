@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.DeleteForever
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ImportExport
@@ -80,6 +81,7 @@ fun SettingsScreen(
     onOpenTags: () -> Unit = {},
     onOpenChangeHistory: () -> Unit = {},
     onOpenCustomizeHome: () -> Unit = {},
+    onOpenConnectEmail: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
     reminderViewModel: ReminderSettingsViewModel = hiltViewModel(),
@@ -123,6 +125,7 @@ fun SettingsScreen(
         onBalanceView = reminderViewModel::setBalanceView,
         onDecimals = reminderViewModel::setDecimals,
         onOpenCustomizeHome = onOpenCustomizeHome,
+        onOpenConnectEmail = onOpenConnectEmail,
     )
 }
 
@@ -153,6 +156,7 @@ fun SettingsContent(
     onBalanceView: (String) -> Unit = {},
     onDecimals: (Int) -> Unit = {},
     onOpenCustomizeHome: () -> Unit = {},
+    onOpenConnectEmail: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     var showAbout by rememberSaveable { mutableStateOf(false) }
@@ -231,6 +235,8 @@ fun SettingsContent(
                 LinkRow(Icons.Outlined.AccountBalance, "Cuentas desactivadas", onOpenDeactivated)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.ImportExport, "Importar y exportar", onOpenImportExport)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.Email, "Conectar correo", onOpenConnectEmail)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.History, "Historial de cambios", onOpenChangeHistory)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
