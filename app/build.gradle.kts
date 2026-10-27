@@ -21,8 +21,8 @@ android {
         minSdk = 31
         targetSdk = 36
         // versionCode = MAJOR*10000 + MINOR*100 + PATCH (manage-config §3.1.2)
-        versionCode = 10601
-        versionName = "1.6.1"
+        versionCode = 20000
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
