@@ -98,7 +98,8 @@ object CardPeriodCalculator {
             val onePayment =
                 transactions
                     .filter {
-                        it.type == TransactionType.EXPENSE &&
+                        // a transfer out of the card (cash advance) raises the debt like a purchase and the bank bills it
+                        (it.type == TransactionType.EXPENSE || it.type == TransactionType.TRANSFER) &&
                             it.accountId == card.accountId &&
                             it.installments <= 1 &&
                             inside(dateOf(it), period)
