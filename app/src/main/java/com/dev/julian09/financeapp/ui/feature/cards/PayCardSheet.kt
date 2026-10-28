@@ -30,7 +30,9 @@ import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.ApproximateNote
 import com.dev.julian09.financeapp.ui.components.ButtonKind
+import com.dev.julian09.financeapp.ui.components.CARD_APPROXIMATE_NOTE
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
@@ -138,6 +140,7 @@ fun PayCardContent(
                 Line("Otros cargos", split.fees)
             }
         }
+        ApproximateNote(CARD_APPROXIMATE_NOTE)
         if (withButtons) PayCardButtons(actions)
     }
 }

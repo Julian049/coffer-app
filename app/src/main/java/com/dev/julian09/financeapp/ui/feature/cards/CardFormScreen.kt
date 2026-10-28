@@ -38,7 +38,9 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.ApproximateNote
 import com.dev.julian09.financeapp.ui.components.ButtonKind
+import com.dev.julian09.financeapp.ui.components.CARD_APPROXIMATE_NOTE
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
@@ -251,6 +253,7 @@ fun CardFormContent(
                 }
             }
         }
+        ApproximateNote(CARD_APPROXIMATE_NOTE, Modifier.padding(horizontal = 16.dp))
         // M4 (#88): the save button stays visible while the form scrolls
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AppButton(

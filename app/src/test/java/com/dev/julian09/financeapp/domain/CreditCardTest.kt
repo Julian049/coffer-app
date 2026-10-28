@@ -198,6 +198,29 @@ class CreditCardTest {
         }
 
     @Test
+    fun aTransferOutOfTheCardIsDueLikeAPurchase() =
+        runBlocking {
+            val id = card()
+            val debit = f.account("Bancolombia", 0)
+            val food = f.category("Comida")
+            RegisterTransaction(f.transactions, validator, scheduler)(purchase(id, food, 300_000))
+            val advance =
+                Transaction(
+                    UUID.randomUUID(),
+                    TransactionType.TRANSFER,
+                    Money.ofPesos(4_000),
+                    f.clock.now(),
+                    id,
+                    destinationAccountId = debit,
+                )
+            assertEquals(emptyMap<Any, Any>(), RegisterTransaction(f.transactions, validator, scheduler)(advance))
+
+            val o = overview(id)
+            assertEquals(Money.ofPesos(-304_000), o.account.balance)
+            assertEquals(Money.ofPesos(304_000), o.statement.minimum)
+        }
+
+    @Test
     fun theTotalSettlesEverythingWithoutFutureInterest() =
         runBlocking {
             val id = card()
