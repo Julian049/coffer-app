@@ -37,7 +37,9 @@ import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.ApproximateNote
 import com.dev.julian09.financeapp.ui.components.ButtonKind
+import com.dev.julian09.financeapp.ui.components.LOAN_APPROXIMATE_NOTE
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
@@ -330,6 +332,7 @@ fun LoanPaymentContent(
                 color = colors.expense,
             )
         }
+        if (state.sheet == LoanSheet.PAY) ApproximateNote(LOAN_APPROXIMATE_NOTE)
         if (withButtons) LoanPaymentButtons(state.sheet, actions)
     }
 }

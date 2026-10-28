@@ -40,6 +40,8 @@ import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
+import com.dev.julian09.financeapp.ui.components.ApproximateNote
+import com.dev.julian09.financeapp.ui.components.LOAN_APPROXIMATE_NOTE
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.PesosTransformation
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
@@ -313,6 +315,7 @@ fun LoanFormContent(
                 )
             }
         }
+        ApproximateNote(LOAN_APPROXIMATE_NOTE, Modifier.padding(horizontal = 16.dp))
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             AppButton(
                 if (converting) "Guardar condiciones" else "Crear préstamo",
