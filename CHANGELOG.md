@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Release and staging builds enable R8 (`isMinifyEnabled` + `isShrinkResources`) with explicit kotlinx.serialization keep rules, shrinking the APK and obfuscating the code (2.1 security review, S23-H03). All drawables are referenced by `R.drawable.*`, so resource shrinking keeps the fox layers and icons.
+
 ## [2.0.1] - 2026-10-27
 
 ### Fixed
