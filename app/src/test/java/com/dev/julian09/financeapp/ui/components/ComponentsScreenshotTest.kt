@@ -52,6 +52,7 @@ import com.dev.julian09.financeapp.domain.model.LoanInstallment
 import com.dev.julian09.financeapp.domain.model.LoanMode
 import com.dev.julian09.financeapp.domain.model.LoanOverview
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.RecurringOverview
@@ -389,7 +390,7 @@ class ComponentsScreenshotTest {
                     YearMonth.of(2026, 9),
                     BALANCES,
                     emptyList(),
-                    FoxMood(FoxState.GOOD, change = BigDecimal("8.4")),
+                    FoxMood(FoxState.GOOD, month = PeriodTotals(Money.ofPesos(3_000_000), Money.ofPesos(2_000_000))),
                 )
             }
         Column(Modifier.fillMaxSize()) {

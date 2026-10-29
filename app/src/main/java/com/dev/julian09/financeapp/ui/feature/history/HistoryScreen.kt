@@ -329,7 +329,7 @@ private fun monthMood(state: FoxState) =
         FoxState.ATTENTIVE -> "Con un pago cerca"
         FoxState.WORRIED -> "Gastos por encima de los ingresos"
         FoxState.GOAL -> "Mes anterior cerrado en positivo"
-        FoxState.GOOD -> "Por encima del mes anterior"
+        FoxState.GOOD -> "Ingresos por encima de los gastos"
         FoxState.NORMAL -> "Todo en orden"
     }
 
