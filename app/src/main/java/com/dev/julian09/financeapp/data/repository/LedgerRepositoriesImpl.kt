@@ -294,6 +294,11 @@ class CategoryRepositoryImpl
             icon: String,
         ) = dao.setIcon(id, icon, clock.now())
 
+        override suspend fun setColor(
+            id: UUID,
+            color: String,
+        ) = dao.setColor(id, color, clock.now())
+
         override suspend fun setExcludedFromReports(
             id: UUID,
             excluded: Boolean,
