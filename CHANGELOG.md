@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-29
+
 ### Added
 
 - Download page for Coffer in `docs/` (GitHub Pages): Oficial button (`releases/latest/download/coffer.apk`, a fixed asset name in `release.yml`) and Beta button (a rolling `beta` pre-release that CI recreates on every push to `develop`).
