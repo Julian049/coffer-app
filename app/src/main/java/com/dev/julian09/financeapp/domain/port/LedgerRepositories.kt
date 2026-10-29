@@ -94,6 +94,12 @@ interface CategoryRepository {
         icon: String,
     )
 
+    /** REQ-CAT-05: the color of a main category (`#RRGGBB`); the screen offers it on parents only. */
+    suspend fun setColor(
+        id: UUID,
+        color: String,
+    )
+
     /** REQ-CAT-04; the screen offers it on parents only. */
     suspend fun setExcludedFromReports(
         id: UUID,

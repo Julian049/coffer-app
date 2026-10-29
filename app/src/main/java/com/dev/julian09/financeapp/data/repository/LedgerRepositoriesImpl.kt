@@ -276,6 +276,7 @@ class CategoryRepositoryImpl
                         icon = category.icon,
                         sortOrder = category.sortOrder,
                         excludeFromReports = category.excludeFromReports,
+                        color = category.color,
                         createdAt = now,
                         updatedAt = now,
                     ),
@@ -292,6 +293,11 @@ class CategoryRepositoryImpl
             id: UUID,
             icon: String,
         ) = dao.setIcon(id, icon, clock.now())
+
+        override suspend fun setColor(
+            id: UUID,
+            color: String,
+        ) = dao.setColor(id, color, clock.now())
 
         override suspend fun setExcludedFromReports(
             id: UUID,
@@ -1087,7 +1093,7 @@ internal fun AccountEntity.toDomain() =
     )
 
 internal fun CategoryEntity.toDomain() =
-    Category(id, name, CategoryKind.valueOf(kind), parentId, isBase, systemKey, icon, sortOrder, excludeFromReports)
+    Category(id, name, CategoryKind.valueOf(kind), parentId, isBase, systemKey, icon, sortOrder, excludeFromReports, color)
 
 internal fun TransactionEntity.toDomain() =
     Transaction(

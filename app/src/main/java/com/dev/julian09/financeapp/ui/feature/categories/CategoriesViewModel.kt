@@ -10,6 +10,7 @@ import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
+import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import com.dev.julian09.financeapp.domain.usecase.CreateCategory
 import com.dev.julian09.financeapp.domain.usecase.DeleteCategory
 import com.dev.julian09.financeapp.domain.usecase.RenameCategory
@@ -61,6 +62,8 @@ sealed interface CategorySheet {
         val name: String = "",
         val parentId: UUID? = null,
         val icon: String = "pets",
+        /** REQ-CAT-05: only a main category uses it; null = automatic. */
+        val color: String? = null,
         val error: LedgerError? = null,
     ) : CategorySheet
 
@@ -70,19 +73,17 @@ sealed interface CategorySheet {
         val usedForLoans: Boolean = false,
     ) : CategorySheet
 
-    /** S13-UI04: Hoja · Elegir ícono for a stored category. */
-    data class Icon(
-        val category: Category,
-    ) : CategorySheet
-
     /** REQ-CAT-04: turning the exclusion on asks first; turning it off does not. */
     data class Exclude(
         val category: Category,
     ) : CategorySheet
 
-    data class Rename(
+    /** 2.2: «Personalizar» a stored category: name, icon and (main categories) color in one sheet. */
+    data class Customize(
         val category: Category,
         val name: String,
+        val icon: String,
+        val color: String?,
         val error: LedgerError? = null,
     ) : CategorySheet
 
@@ -109,6 +110,7 @@ class CategoriesViewModel
         private val renameCategory: RenameCategory,
         private val deleteCategory: DeleteCategory,
         private val setLoanCategory: SetLoanPaymentCategory,
+        private val scheduler: SyncScheduler,
         clock: Clock,
     ) : ViewModel() {
         private val kind = MutableStateFlow(CategoryKind.EXPENSE)
@@ -163,7 +165,20 @@ class CategoriesViewModel
             viewModelScope.launch {
                 val error =
                     // Every category has its own icon, subcategories too (S13)
-                    createCategory(Category(UUID.randomUUID(), s.name, s.kind, s.parentId, icon = s.icon))
+                    createCategory(
+                        Category(
+                            UUID.randomUUID(),
+                            s.name,
+                            s.kind,
+                            s.parentId,
+                            icon = s.icon,
+                            color =
+                                s.color.takeIf {
+                                    s.parentId ==
+                                        null
+                                },
+                        ),
+                    )
                 _sheet.value = if (error == null) null else s.copy(error = error)
             }
         }
@@ -201,29 +216,29 @@ class CategoriesViewModel
             _sheet.value = null
         }
 
-        fun startIcon() {
+        fun startCustomize() {
             val category = (_sheet.value as? CategorySheet.Options)?.category ?: return
-            _sheet.value = CategorySheet.Icon(category)
+            _sheet.value = CategorySheet.Customize(category, category.name, category.icon ?: "pets", category.color)
         }
 
-        fun saveIcon(icon: String) {
-            val category = (_sheet.value as? CategorySheet.Icon)?.category ?: return
-            viewModelScope.launch { repository.setIcon(category.id, icon) }
-            _sheet.value = null
-        }
+        fun editCustomize(transform: (CategorySheet.Customize) -> CategorySheet.Customize) =
+            _sheet.update { (it as? CategorySheet.Customize)?.let { s -> transform(s).copy(error = null) } ?: it }
 
-        fun startRename() {
-            val category = (_sheet.value as? CategorySheet.Options)?.category ?: return
-            _sheet.value = CategorySheet.Rename(category, category.name)
-        }
-
-        fun typeName(name: String) = _sheet.update { (it as? CategorySheet.Rename)?.copy(name = name, error = null) ?: it }
-
-        fun saveRename() {
-            val s = _sheet.value as? CategorySheet.Rename ?: return
+        fun saveCustomize() {
+            val s = _sheet.value as? CategorySheet.Customize ?: return
             viewModelScope.launch {
-                val error = renameCategory(s.category.id, s.name)
-                _sheet.value = if (error == null) null else s.copy(error = error)
+                val c = s.category
+                if (s.name.trim() != c.name) {
+                    val error = renameCategory(c.id, s.name)
+                    if (error != null) {
+                        _sheet.value = s.copy(error = error)
+                        return@launch
+                    }
+                }
+                if (s.icon != c.icon) repository.setIcon(c.id, s.icon)
+                if (c.parentId == null && s.color != null && s.color != c.color) repository.setColor(c.id, s.color)
+                scheduler.requestSync()
+                _sheet.value = null
             }
         }
 

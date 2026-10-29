@@ -54,3 +54,23 @@ jobs:
             app/build/test-results/
             app/build/outputs/roborazzi/
           if-no-files-found: ignore
+
+  # 2.2-01: the download page's "Beta" button reads the latest pre-release; GitHub Actions artifacts need a session and expire
+  beta:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: coffer-staging-apk
+          path: apk
+      - name: Publish the rolling beta pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete beta --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
+          gh release create beta apk/*.apk --prerelease --title "beta" --target "$GITHUB_SHA" \
+            --notes "Staging build of develop ($GITHUB_SHA). For testing only." --repo "$GITHUB_REPOSITORY"

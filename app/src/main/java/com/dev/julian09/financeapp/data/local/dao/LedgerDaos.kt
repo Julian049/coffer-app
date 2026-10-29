@@ -211,6 +211,13 @@ interface CategoryDao {
         now: Instant,
     )
 
+    @Query("UPDATE categories SET color = :color, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
+    suspend fun setColor(
+        id: UUID,
+        color: String,
+        now: Instant,
+    )
+
     @Query("UPDATE categories SET excludeFromReports = :excluded, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
     suspend fun setExcludedFromReports(
         id: UUID,
