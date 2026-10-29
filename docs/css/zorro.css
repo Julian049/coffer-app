@@ -1,0 +1,21 @@
+/* Estilos mínimos de las animaciones del zorro.
+   Cargar los scripts en este orden: js/manifest.js, js/kit.js, js/behaviors.js */
+
+/* Lienzo de 1024×1024: todas las capas se apilan en la misma caja cuadrada */
+.fox-box { position: absolute; aspect-ratio: 1; }
+.fx-layer { position: absolute; inset: 0; }
+.fx-layer img { width: 100%; height: 100%; display: block; }
+.fx-rect { position: absolute; max-width: none; display: block; }
+.floor-shadow { position: absolute; border-radius: 50%; background: rgba(122, 69, 32, 0.16); }
+
+/* Zorro centrado sobre el piso del contenedor (celebrar, calendario, descansar, mirada, sobresalto) */
+.center-fox { width: 300px; left: 50%; margin-left: -150px; bottom: 0; }
+.cal-fox { width: 330px; margin-left: -165px; }
+.rest-fox { width: 330px; margin-left: -165px; bottom: -20px; }
+
+/* Asomarse: el zorro va detrás de .peek-card y las patas delante de su borde */
+.peek-card { position: absolute; }
+.peek-paws { position: absolute; height: 50px; z-index: 3; pointer-events: none; }
+.peek-paws .paw { position: absolute; top: 0; width: 40px; height: 50px; }
+.peek-paws .paw svg { display: block; width: 100%; height: 100%; }
+

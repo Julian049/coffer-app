@@ -1,0 +1,249 @@
+<!doctype html>
+<!--
+  Configuración: cambia data-repo por el repositorio de GitHub donde se publican las APK
+  (por ejemplo "julian/coffer-app"). La página lee de ahí las versiones con la API de Releases:
+  la oficial es la última release normal y la de pruebas es la última marcada como pre-release.
+  Busca y reemplaza "Julian049/coffer-app" en este archivo para que los enlaces sin JavaScript también apunten bien.
+-->
+<html lang="es-CO" data-repo="Julian049/coffer-app">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Descargar Coffer para Android</title>
+  <meta name="description" content="Descarga la APK de Coffer, la app para llevar tus cuentas, tarjetas, préstamos y pagos. Versión oficial y versión de pruebas.">
+  <meta name="theme-color" content="#fafaf9">
+  <meta property="og:title" content="Descargar Coffer para Android">
+  <meta property="og:description" content="La APK oficial de Coffer y la versión de pruebas.">
+  <meta property="og:image" content="img/icono-app.png">
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="preload" href="fuentes/inter-500.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fuentes/inter-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/zorro.css">
+  <link rel="stylesheet" href="css/pagina.css">
+  <script>
+    document.documentElement.classList.add('motion');
+    // Si main.js no llega a cargar, el contenido no se queda oculto
+    setTimeout(function () { if (!window.cofferReady) document.documentElement.classList.remove('motion'); }, 2500);
+  </script>
+</head>
+<body>
+  <a class="skip" href="#descarga">Ir a la descarga</a>
+
+  <header class="bar">
+    <div class="wrap bar__in">
+      <a class="bar__logo" href="#top" aria-label="Coffer, inicio">
+        <img src="img/marca-coffer.webp" width="40" height="40" alt="Coffer">
+      </a>
+      <nav class="bar__nav" aria-label="Secciones">
+        <a href="#pantallas">Pantallas</a>
+        <a href="#zorro">El zorro</a>
+        <a href="#instalar">Instalar</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Primera pantalla: el logo y las dos descargas, nada más -->
+    <section class="hero" aria-labelledby="hero-title">
+      <!-- Fondo: retícula de puntos, dos luces de lino que derivan y cifras de la pantalla de ejemplo flotando -->
+      <div class="hero__bg" aria-hidden="true">
+        <div class="hero__dots"></div>
+        <div class="glow glow--a"></div>
+        <div class="glow glow--b"></div>
+        <div class="tag tag--1" data-depth="18"><div class="tag__in"><span>Saldo disponible</span><b class="num">$2.750.000</b></div></div>
+        <div class="tag tag--2" data-depth="28"><div class="tag__in"><span>Ahorro del mes</span><b class="num num--in">$1.209.500</b></div></div>
+        <div class="tag tag--3" data-depth="24"><div class="tag__in"><span>Tarjeta Visa</span><b class="num num--out">−$800.000</b></div></div>
+        <div class="tag tag--4" data-depth="14"><div class="tag__in"><span>Arriendo · en 2 días</span><b class="num">$900.000</b></div></div>
+      </div>
+      <div class="wrap hero__in" id="descarga">
+        <h1 id="hero-title" class="hero__logo enter">
+          <img src="img/logo-coffer.webp" width="1600" height="597" alt="Coffer" fetchpriority="high">
+          <span class="sr">para Android</span>
+          <span class="spot spot--rest" data-fox-spot="rest" aria-hidden="true"></span>
+          <object class="mascota mascota--code" type="image/svg+xml" data="img/mascotas/programando.svg" aria-hidden="true" tabindex="-1"></object>
+        </h1>
+
+        <div class="hero__dl enter">
+          <a class="btn btn--primary btn--lg" data-official="link" href="https://github.com/Julian049/coffer-app/releases/latest/download/coffer.apk">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+            Descargar APK
+          </a>
+          <p class="hero__meta" data-official="meta">Versión oficial para Android</p>
+        </div>
+
+        <div class="hero__stg enter">
+          <a class="stg" data-staging="link" href="https://github.com/Julian049/coffer-app/releases">
+            Descargar versión de pruebas (staging)
+            <svg class="ico ico--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v10m0 0-4-4m4 4 4-4M6 19h12"/></svg>
+          </a>
+          <p class="hero__note"><span data-staging="version"></span>Va aparte de la oficial y puede tener errores. Úsala solo si estás probando la app.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cuentas y deudas -->
+    <section class="sec sec--accounts" id="pantallas" aria-labelledby="acc-title">
+      <div class="wrap accounts">
+        <div class="accounts__copy">
+          <h2 id="acc-title" class="h2 reveal">Lo que tienes y lo que debes</h2>
+          <p class="body reveal">Tus cuentas, tarjetas de crédito y préstamos quedan juntos, con el patrimonio neto arriba. Una deuda siempre se ve en rojo y en negativo, nunca como saldo a favor.</p>
+          <dl class="facts reveal" data-ui>
+            <div><dt>Lo que tienes</dt><dd class="num">$3.000.000</dd></div>
+            <div><dt>Lo que debes</dt><dd class="num num--out">−$5.175.000</dd></div>
+          </dl>
+          <p class="cap">Cifras de la pantalla de ejemplo.</p>
+        </div>
+        <div class="accounts__phones">
+          <div class="phone-wrap phone--a reveal" data-tilt>
+            <object class="mascota mascota--coffee" type="image/svg+xml" data="img/mascotas/cafe.svg" aria-hidden="true" tabindex="-1"></object>
+            <figure class="phone" data-ui>
+              <img src="img/pantallas/cuentas.webp" width="780" height="3292" loading="lazy" alt="Gestión de cuentas: lo que tienes en efectivo, Bancolombia y Nu, y lo que debes en la tarjeta Visa y un préstamo.">
+            </figure>
+          </div>
+          <div class="phone-wrap phone--b reveal" data-tilt data-fox-spot="peek">
+            <figure class="phone peek-card" data-ui>
+              <img src="img/pantallas/tarjeta.webp" width="780" height="1956" loading="lazy" alt="Detalle de la tarjeta Visa Platinum: deuda total de −$800.000, cupo disponible y el pago que vence este periodo.">
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pagos -->
+    <section class="sec sec--strip" aria-labelledby="pay-title">
+      <div class="wrap pay">
+        <div class="phone-wrap pay__phone reveal" data-tilt>
+          <span class="spot spot--calendar" data-fox-spot="calendar" aria-hidden="true"></span>
+          <figure class="phone" data-ui>
+            <img src="img/pantallas/recurrentes.webp" width="780" height="2495" loading="lazy" alt="Gastos recurrentes: arriendo, tarjeta Visa, plan de teléfono y Netflix con su fecha de vencimiento y el botón Registrar pago.">
+          </figure>
+        </div>
+        <div class="pay__copy">
+          <h2 id="pay-title" class="h2 reveal">Pagos que no se te pasan</h2>
+          <p class="body reveal">Programa el arriendo, la tarjeta o tus suscripciones una vez. Coffer te muestra cuánto falta para cada uno, el color sube de gris a ocre cuando se acerca y a rojo si se vence, y lo registras con un toque.</p>
+          <ul class="due reveal" aria-label="Ejemplo de próximos pagos" data-ui>
+            <li><span>Arriendo apartamento</span><span class="due__when due__when--soon">En 2 días</span><span class="num">$900.000</span></li>
+            <li><span>Pago tarjeta Visa</span><span class="due__when due__when--soon">En 5 días</span><span class="num">$250.000</span></li>
+            <li><span>Netflix &amp; Spotify</span><span class="due__when">En 15 días</span><span class="num">$38.000</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Historial y reportes -->
+    <section class="sec" aria-labelledby="hist-title">
+      <div class="wrap">
+        <div class="lead">
+          <h2 id="hist-title" class="h2 reveal">Cada movimiento, en orden</h2>
+          <p class="body reveal">Lo que llega por correo espera en «Por revisar» y no toca tu saldo hasta que lo apruebas. Los reportes comparan tu ritmo de gasto con el mes anterior y te dicen qué categoría subió.</p>
+        </div>
+        <ol class="trio" aria-label="Pantallas de historial y reportes">
+          <li class="trio__item reveal">
+            <figure>
+              <div class="phone" data-tilt data-ui><img src="img/pantallas/historial.webp" width="780" height="2705" loading="lazy" alt="Historial de octubre con el resumen del mes y tres movimientos por revisar."></div>
+              <figcaption><strong>Historial.</strong> Filtra por gastos, ingresos o transferencias y busca por comercio.</figcaption>
+            </figure>
+          </li>
+          <li class="trio__item reveal">
+            <figure>
+              <div class="phone-wrap" data-tilt>
+                <span class="spot spot--startle" data-fox-spot="startle" aria-hidden="true"><span class="toast">Nuevo movimiento por revisar</span></span>
+                <div class="phone" data-ui><img src="img/pantallas/reportes.webp" width="780" height="4016" loading="lazy" alt="Reportes de octubre: ahorro del mes de $1.209.500 y ritmo de gasto un día adelantado frente a septiembre."></div>
+              </div>
+              <figcaption><strong>Reportes.</strong> Ahorro del mes, ritmo de gasto y cambios por categoría.</figcaption>
+            </figure>
+          </li>
+          <li class="trio__item reveal">
+            <figure>
+              <div class="phone" data-tilt data-ui><img src="img/pantallas/calendario.webp" width="780" height="1688" loading="lazy" alt="Calendario de octubre con el saldo al final de cada día y el detalle del 21 de octubre."></div>
+              <figcaption><strong>Calendario.</strong> Tu saldo al final de cada día y lo que pasó en él.</figcaption>
+            </figure>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- El zorro: la parte viva de la página -->
+    <section class="sec sec--linen" id="zorro" aria-labelledby="fox-title">
+      <div class="wrap foxsec">
+        <div class="foxsec__copy">
+          <h2 id="fox-title" class="h2 reveal">Un zorro que reacciona a tu mes</h2>
+          <p class="body reveal">En Inicio, el zorro de Coffer cambia según cómo van tus finanzas y te dice lo importante en una línea. Elige un mes y míralo.</p>
+          <fieldset class="picker reveal">
+            <legend class="sr">Estado de tus finanzas</legend>
+            <label class="chip"><input type="radio" name="fox" value="normal"><span>Todo en orden</span></label>
+            <label class="chip"><input type="radio" name="fox" value="good" checked><span>Vas bien</span></label>
+            <label class="chip"><input type="radio" name="fox" value="goal"><span>Meta cumplida</span></label>
+            <label class="chip"><input type="radio" name="fox" value="attentive"><span>Pago cercano</span></label>
+            <label class="chip"><input type="radio" name="fox" value="worried"><span>Gastas de más</span></label>
+            <label class="chip"><input type="radio" name="fox" value="debt"><span>Saldo en rojo</span></label>
+            <label class="chip"><input type="radio" name="fox" value="resting"><span>Sin movimientos</span></label>
+          </fieldset>
+        </div>
+        <div class="foxsec__stage">
+          <div class="foxsec__fox">
+            <div class="fox fox--big" data-fox="good" data-fox-picker></div>
+            <noscript><img src="img/zorro/estatico.png" width="1024" height="1024" alt=""></noscript>
+          </div>
+          <div class="foxsec__msg" aria-live="polite">
+            <p class="foxsec__title" data-fox-title>¡Vas muy bien!</p>
+            <p class="foxsec__body" data-fox-body>Llevas 8,4 % más que en septiembre. Sigue así.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Instalar -->
+    <section class="sec" id="instalar" aria-labelledby="inst-title">
+      <div class="wrap install">
+        <div class="install__copy">
+          <h2 id="inst-title" class="h2 reveal">Cómo instalar la APK</h2>
+          <ol class="steps reveal">
+            <li><strong>Descarga el archivo desde tu teléfono.</strong> Abre esta página en Android y toca «Descargar APK».</li>
+            <li><strong>Ábrelo cuando termine.</strong> Si Android lo pide, permite instalar apps de esa fuente en Ajustes › Instalar apps desconocidas.</li>
+            <li><strong>Toca «Instalar» y abre Coffer.</strong> La primera vez, el zorro te da la bienvenida.</li>
+          </ol>
+        </div>
+        <div class="install__side reveal">
+          <div class="install__card" data-ui>
+            <span class="spot spot--celebrate" data-fox-spot="celebrate" aria-hidden="true"></span>
+            <object class="mascota mascota--hug" type="image/svg+xml" data="img/mascotas/grano-de-cafe.svg" aria-hidden="true" tabindex="-1"></object>
+            <p class="install__q">¿Cuál descargo?</p>
+            <p class="body">La <strong>oficial</strong>, si vas a usar Coffer para tus finanzas. La de <strong>pruebas</strong>, solo si te pidieron probar algo nuevo antes de que salga.</p>
+            <a class="btn btn--primary" data-official="link" href="https://github.com/Julian049/coffer-app/releases/latest/download/coffer.apk">
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+              Descargar APK oficial
+            </a>
+            <a class="link" data-releases href="https://github.com/Julian049/coffer-app/releases">Ver todas las versiones
+              <svg class="ico ico--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m0 0-5-5m5 5-5 5"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <div class="foot__brand">
+        <img class="foot__logo" src="img/logo-coffer.webp" width="1600" height="597" loading="lazy" alt="Coffer">
+        <span class="spot spot--look" data-fox-spot="look" aria-hidden="true"></span>
+      </div>
+      <div class="foot__row">
+        <p>Coffer para Android. Las pantallas muestran datos de ejemplo.</p>
+        <nav aria-label="Pie de página">
+          <a href="#descarga">Descargar</a>
+          <a data-releases href="https://github.com/Julian049/coffer-app/releases">Versiones</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/zorro-manifiesto.js" defer></script>
+  <script src="js/zorro-estados.js" defer></script>
+  <script src="js/zorro-kit.js" defer></script>
+  <script src="js/zorro-comportamientos.js" defer></script>
+  <script src="js/pagina.js" defer></script>
+</body>
+</html>
