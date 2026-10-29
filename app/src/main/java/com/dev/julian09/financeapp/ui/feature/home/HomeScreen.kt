@@ -2,12 +2,14 @@ package com.dev.julian09.financeapp.ui.feature.home
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,14 +20,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -33,8 +36,10 @@ import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -54,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -64,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.R
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.finance.FoxState
+import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.CardDue
 import com.dev.julian09.financeapp.domain.model.DuePayment
@@ -85,7 +92,6 @@ import com.dev.julian09.financeapp.ui.components.FoxMascot
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.components.accountIcon
-import com.dev.julian09.financeapp.ui.components.accountTypeShortLabel
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.feature.cards.PayCardSheet
 import com.dev.julian09.financeapp.ui.feature.history.DayGroup
@@ -383,43 +389,93 @@ private fun UpcomingPayments(
     onOpen: (DuePayment) -> Unit,
 ) {
     val colors = CofferTheme.colors
+    // 2.2: one summary card; a tap unfolds the list (the state is remembered between visits)
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val closest = pending.minBy { it.daysLeft }
+    val soon = closest.daysLeft <= RecurrenceCalculator.SOON_DAYS
+    val shape = RoundedCornerShape(14.dp)
+    val chevron by animateFloatAsState(if (expanded) 180f else 0f, tween(300), label = "chevron")
+    val accent = if (soon) Color(0xFFB03A2E) else Color(0xFF9C5F33)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Próximos pagos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-            TextButton(onClick = onOpenRecurring) { Text("Gestionar recurrentes →", color = colors.primary) }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 62.dp)
+                .clip(shape)
+                .background(if (soon) Color(0xFFFBEDEB) else colors.surface, shape)
+                .border(1.dp, if (soon) Color(0xFFEDC4BE) else Color(0xFFECEAE7), shape)
+                .clickable(onClickLabel = if (expanded) "Plegar los próximos pagos" else "Ver los próximos pagos") { expanded = !expanded }
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                Modifier.size(36.dp).background(if (soon) Color(0xFFF5D7D2) else Color(0xFFF8F0E8), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Próximos pagos · ${pending.size}", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                val dueText = dueSentence(closest.daysLeft).replaceFirstChar { it.lowercase() }
+                Text(
+                    if (soon) "${closest.title} $dueText · ${formatMoney(closest.amount)}" else "El próximo: ${closest.title} $dueText",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (soon) accent else colors.textSecondary,
+                    maxLines = 1,
+                )
+            }
+            Icon(
+                Icons.Outlined.ExpandMore,
+                contentDescription = null,
+                tint = colors.textSecondary,
+                modifier = Modifier.rotate(chevron),
+            )
         }
-        Text(
-            "Avisos automáticos · No afectan tu saldo disponible",
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.textSecondary,
-        )
-        pending.forEach { p ->
-            AppCard(Modifier.fillMaxWidth(), onClick = { onOpen(p) }) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(8.dp).background(urgencyTint(p), CircleShape))
-                    Column(Modifier.weight(1f)) {
-                        Text(p.title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
-                        Text(
-                            "${dueSentence(p.daysLeft)} · ${dayMonth(p.dueDate)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = urgencyTint(p),
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            formatMoney(p.amount),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = colors.textPrimary,
-                        )
-                        Text(
-                            when (p.urgency) {
-                                Urgency.OVERDUE -> "Vencido"
-                                Urgency.SOON -> "Pendiente"
-                                Urgency.UPCOMING -> "Próximo"
-                            },
-                            style = MaterialTheme.typography.labelMedium,
-                            color = colors.textSecondary,
-                        )
+        AnimatedVisibility(
+            expanded,
+            enter = expandVertically(tween(300)) + fadeIn(tween(300)),
+            exit = shrinkVertically(tween(300)) + fadeOut(tween(300)),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Próximos pagos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+                    TextButton(onClick = onOpenRecurring) { Text("Gestionar recurrentes →", color = colors.primary) }
+                }
+                Text(
+                    "Avisos automáticos · No afectan tu saldo disponible",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
+                pending.forEach { p ->
+                    AppCard(Modifier.fillMaxWidth(), onClick = { onOpen(p) }) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Box(Modifier.size(8.dp).background(urgencyTint(p), CircleShape))
+                            Column(Modifier.weight(1f)) {
+                                Text(p.title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
+                                Text(
+                                    "${dueSentence(p.daysLeft)} · ${dayMonth(p.dueDate)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = urgencyTint(p),
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    formatMoney(p.amount),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = colors.textPrimary,
+                                )
+                                Text(
+                                    when (p.urgency) {
+                                        Urgency.OVERDUE -> "Vencido"
+                                        Urgency.SOON -> "Pendiente"
+                                        Urgency.UPCOMING -> "Próximo"
+                                    },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colors.textSecondary,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -494,7 +550,11 @@ fun FoxCard(
                     "Ahorraste ${formatMoney(mood.amount!!)} en $month.",
                 )
             FoxState.GOOD ->
-                Triple(R.drawable.mascot_good, "¡Vas muy bien!", "Llevas ${percent(mood.change!!)} % más que en $month. Sigue así.")
+                Triple(
+                    R.drawable.mascot_good,
+                    "¡Vas muy bien!",
+                    "Este mes llevas ${formatMoney(mood.month!!.income - mood.month.expense)} más de ingresos que de gastos.",
+                )
             FoxState.NORMAL -> Triple(R.drawable.mascot_normal, "Todo en orden", "Tus gastos van como de costumbre este mes.")
         }
     // M13 (#96): no card; the fox stands on the background and over the top edge of the card below it
@@ -571,15 +631,9 @@ private fun AccountChipCard(
     onClick: () -> Unit,
 ) {
     val colors = CofferTheme.colors
-    AppCard(Modifier.width(150.dp), onClick = onClick) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                accountTypeShortLabel(item.account.type),
-                Modifier.weight(1f),
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.textSecondary,
-                maxLines = 1,
-            )
+    // 2.2: a low horizontal tile (56 dp): icon, name and balance; the type label is gone
+    AppCard(Modifier.heightIn(min = 56.dp), onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.size(28.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(
                     accountIcon(item.account.icon, item.account.type),
@@ -588,9 +642,11 @@ private fun AccountChipCard(
                     modifier = Modifier.size(16.dp),
                 )
             }
+            Column {
+                Text(item.account.name, style = MaterialTheme.typography.labelMedium, color = colors.textSecondary, maxLines = 1)
+                MoneyText(item.balance, style = MaterialTheme.typography.titleSmall)
+            }
         }
-        Text(item.account.name, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, maxLines = 1)
-        MoneyText(item.balance, style = MaterialTheme.typography.titleMedium)
     }
 }
 

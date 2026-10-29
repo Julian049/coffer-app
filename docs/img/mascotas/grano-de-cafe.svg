@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="mascot" viewBox="50 120 920 752" role="img" aria-label="Mascota naranja abrazando un grano de café" data-mood="idle">
+<style><![CDATA[
+  :root {
+    --shadow: rgba(0, 0, 0, 0.18);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1); /* easings.net easeOutBack */
+  }
+
+  .mascot { cursor: pointer; }
+
+  /* --- whole character: gentle rocking, starts and ends at rest so mood changes never jump --- */
+  .rig { transform-box: fill-box; transform-origin: 50% 100%; animation: sway 3.2s ease-in-out infinite;
+         transition: transform 400ms var(--ease-in-out); }
+  /* lean into the bean while hugging (whole rig, so the legs stay attached) */
+  [data-mood="hug"] .rig { animation: none; transform: rotate(2deg); }
+  @keyframes sway {
+    0%, 100% { transform: none; }
+    25% { transform: rotate(1.5deg); }
+    75% { transform: rotate(-1.5deg); }
+  }
+
+  /* bean squishes on each squeeze */
+  .bean { transform-box: fill-box; transform-origin: 50% 100%; }
+  [data-mood="hug"] .bean { animation: squish 600ms ease-in-out infinite alternate; }
+  @keyframes squish { to { transform: scale(1.04, 0.95); } }
+
+  /* --- arms rotate around the shoulder (each group's local origin) --- */
+  .pose { transition: transform 400ms var(--ease-out-back); }
+  [data-mood="hug"] .armR .pose { transform: rotate(10deg); }
+  [data-mood="hug"] .armL .pose { transform: rotate(-15deg); }
+  [data-mood="hug"] .armR .wig { animation: press 600ms ease-in-out infinite alternate; }
+  @keyframes press { to { transform: rotate(6deg); } }
+  [data-mood="wave"] .armL .pose { transform: rotate(55deg); }
+  [data-mood="wave"] .armL .wig { animation: wave 260ms ease-in-out 300ms infinite alternate; }
+  @keyframes wave { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+
+  /* --- face --- */
+  .eyes { transition: transform 220ms var(--ease-out); }
+  .lid, .happy, .blush {
+    transform-box: fill-box; transform-origin: 50% 50%;
+    transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out);
+  }
+  .happy, .blush { opacity: 0; }
+  .happy { transform: translateY(8px) scale(0.8); }
+  [data-mood="hug"] .lid   { opacity: 0; transform: scale(0.7); }
+  [data-mood="hug"] .happy { opacity: 1; transform: none; }
+  [data-mood="hug"] .blush, [data-mood="wave"] .blush { opacity: 0.5; }
+  [data-blink]:not([data-mood="hug"]) .lid { transform: scaleY(0.1); transition-duration: 70ms; }
+
+  /* --- heart and lines from the original drawing --- */
+  .heart { transform-box: fill-box; transform-origin: 50% 60%; animation: beat 1.2s ease-out infinite; }
+  [data-mood="hug"] .heart { animation-duration: 600ms; }
+  @keyframes beat {
+    0%, 40%, 100% { transform: none; }
+    12% { transform: scale(1.14); }
+    26% { transform: scale(1.06); }
+  }
+  .burst { transform-box: fill-box; transform-origin: 50% 50%; }
+  [data-mood="hug"] .burst { animation: pop 600ms ease-out infinite; }
+  @keyframes pop { 15% { transform: scale(1.2); opacity: 1; } 100% { transform: none; opacity: 0.6; } }
+
+  /* little hearts float up from the bean while hugging */
+  .mini path { opacity: 0; }
+  [data-mood="hug"] .mini path { animation: rise 1.4s var(--ease-out) infinite; }
+  [data-mood="hug"] .mini g:nth-child(2) path { animation-delay: 450ms; }
+  [data-mood="hug"] .mini g:nth-child(3) path { animation-delay: 900ms; }
+  @keyframes rise {
+    0%   { opacity: 0; transform: translateY(0) scale(0.6); }
+    20%  { opacity: 1; transform: translateY(-20px) scale(1); }
+    100% { opacity: 0; transform: translateY(-120px) scale(0.9); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* keep expressions and poses, drop movement */
+    .rig, .bean, .wig, .heart, .burst, .mini path { animation: none !important; }
+    .pose, .rig { transition: none !important; }
+  }
+]]></style>
+  <ellipse class="floor" cx="512" cy="822" rx="445" ry="50" fill="var(--shadow)"/>
+
+  <g class="rig">
+    <g fill="#dd7452">
+      <rect x="205" y="720" width="85" height="102"/>
+      <polygon points="357,720 424,720 438,822 357,822"/>
+    </g>
+
+    <g class="bob">
+      <g class="armL" transform="translate(205 522) rotate(180)">
+        <g class="pose"><g class="wig"><rect x="-40" y="-59" width="156" height="118" fill="#dd7452"/></g></g>
+      </g>
+
+      <rect x="205" y="330" width="534" height="400" fill="#dd7452"/>
+
+      <rect class="blush" x="284" y="468" width="88" height="20" rx="10" fill="#f2a08a"/>
+      <rect class="blush" x="560" y="468" width="60" height="20" rx="10" fill="#f2a08a"/>
+      <g class="eyes">
+        <rect class="lid" x="297" y="388" width="62" height="66" fill="#0b0a0a"/>
+        <rect class="lid" x="601" y="388" width="61" height="66" fill="#0b0a0a"/>
+        <path class="happy" d="M296 440 L328 405 L360 440" fill="none" stroke="#0b0a0a" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+        <path class="happy" d="M599 440 L631 405 L663 440" fill="none" stroke="#0b0a0a" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+
+      <g class="bean">
+        <ellipse cx="613" cy="673" rx="172" ry="210" transform="rotate(35 613 673)" fill="#553724"/>
+        <path d="M708 522C690 590 600 615 585 690S545 790 528 822" fill="none" stroke="#c48d67" stroke-width="30" stroke-linecap="round"/>
+      </g>
+
+      <g class="armR" transform="translate(739 522)">
+        <g class="pose"><g class="wig"><rect x="-40" y="-59" width="160" height="118" fill="#dd7452"/></g></g>
+      </g>
+    </g>
+  </g>
+
+  <g class="mini" fill="#c48d67">
+    <g transform="translate(440 315)"><path d="M0 16C-20 2-26-8-20-16C-14-24-4-22 0-14C4-22 14-24 20-16C26-8 20 2 0 16Z"/></g>
+    <g transform="translate(800 330)"><path d="M0 16C-20 2-26-8-20-16C-14-24-4-22 0-14C4-22 14-24 20-16C26-8 20 2 0 16Z"/></g>
+    <g transform="translate(890 440)"><path d="M0 16C-20 2-26-8-20-16C-14-24-4-22 0-14C4-22 14-24 20-16C26-8 20 2 0 16Z"/></g>
+  </g>
+
+  <path class="heart" d="M651 272C600 236 582 206 590 182C598 158 630 152 651 178C672 152 704 158 712 182C720 206 702 236 651 272Z" fill="#c48d67"/>
+  <g stroke="#c48d67" stroke-width="26" stroke-linecap="round">
+    <line class="burst" x1="513" y1="212" x2="548" y2="270"/>
+    <line class="burst" x1="812" y1="226" x2="780" y2="284"/>
+    <line class="burst" x1="826" y1="346" x2="898" y2="316"/>
+  </g>
+<script><![CDATA[
+  const svg = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const SCRIPT = [['idle', 2800], ['hug', 2400], ['idle', 1600], ['wave', 2400]];
+  let step = 0, timer;
+  function next() {
+    const [mood, ms] = SCRIPT[step];
+    svg.dataset.mood = mood;
+    step = (step + 1) % SCRIPT.length;
+    timer = setTimeout(next, ms);
+  }
+
+  function blink() {
+    svg.dataset.blink = '';
+    setTimeout(() => delete svg.dataset.blink, 130);
+    setTimeout(blink, 2200 + Math.random() * 3000);
+  }
+
+  // click = a hug right now, then the loop carries on
+  svg.addEventListener('click', () => {
+    clearTimeout(timer);
+    step = SCRIPT.findIndex(([m]) => m === 'hug');
+    next();
+  });
+
+  // eyes follow the cursor a little (mouse only, not with reduced motion)
+  if (!reduce && matchMedia('(pointer: fine)').matches) {
+    const eyes = svg.querySelector('.eyes');
+    addEventListener('pointermove', e => {
+      const b = svg.getBoundingClientRect();
+      const dx = e.clientX - (b.left + b.width * 0.5), dy = e.clientY - (b.top + b.height * 0.4);
+      const d = Math.hypot(dx, dy) || 1, k = Math.min(8, d / 30) / d;
+      eyes.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+    });
+  }
+
+  next(); setTimeout(blink, 1800);
+]]></script>
+</svg>

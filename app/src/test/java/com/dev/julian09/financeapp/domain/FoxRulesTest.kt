@@ -35,10 +35,11 @@ class FoxRulesTest {
         assertEquals(FoxState.RESTING, state(hasMovements = false, available = -5))
         assertEquals(FoxState.DEBT, state(available = -1, month = PeriodTotals(pesos(1), pesos(9))))
         assertEquals(FoxState.WORRIED, state(month = PeriodTotals(pesos(2_100_000), pesos(2_480_000)), previous = saved, today = firstWeek))
-        assertEquals(FoxState.GOAL, state(previous = saved, today = firstWeek, change = BigDecimal.TEN))
-        assertEquals(FoxState.GOOD, state(previous = saved, change = BigDecimal("8.4")))
-        assertEquals(FoxState.NORMAL, state(change = BigDecimal("-5.2")))
-        assertEquals(FoxState.NORMAL, state(change = null))
+        assertEquals(FoxState.GOAL, state(previous = saved, today = firstWeek, month = saved))
+        // 2.2: GOOD when this month's income beats its expenses; NORMAL while no income came in
+        assertEquals(FoxState.GOOD, state(month = saved))
+        assertEquals(FoxState.NORMAL, state(month = PeriodTotals(expense = pesos(100_000))))
+        assertEquals(FoxState.NORMAL, state())
     }
 
     private fun dueIn(days: Long) =

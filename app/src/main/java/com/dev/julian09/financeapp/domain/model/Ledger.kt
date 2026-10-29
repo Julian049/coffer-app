@@ -52,6 +52,8 @@ data class Category(
     val sortOrder: Int = 0,
     /** REQ-CAT-04: set on parents; subcategories follow their parent ([excludedFromReports]). */
     val excludeFromReports: Boolean = false,
+    /** REQ-CAT-05: `#RRGGBB` of [TagColors] on a main category; null = the automatic one of Reports. */
+    val color: String? = null,
 )
 
 /** REQ-CAT-04: a subcategory follows its parent; a parent (or an orphan) its own flag. */

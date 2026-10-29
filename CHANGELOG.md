@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-29
+
+### Added
+
+- Download page for Coffer in `docs/` (GitHub Pages): Oficial button (`releases/latest/download/coffer.apk`, a fixed asset name in `release.yml`) and Beta button (a rolling `beta` pre-release that CI recreates on every push to `develop`).
+- Categorías → «Personalizar» (replaces «Renombrar» and «Cambiar ícono»): name, icon and, for main categories, color in one sheet; the color of a stored category can now be changed. The color row shows five colors and a sixth button that opens «Elegir color» with the whole palette (22 colors); Etiquetas uses the same row.
+- A main category can have its own color (Room 11, `categories.color`, synced with server V17); Reportes and Categorías use it, otherwise the automatic one. The color picker is shared with Etiquetas.
+- «Descargando tus datos» shows the `brewing` fox: the cup fills with the real download progress.
+- Home: Próximos pagos folds into one summary card (red when a payment is due in 2 days or less); the tile of an account is lower and drops the type label; the movements come before the pinned tags in the default order.
+- Nueva transacción: the main button says «Siguiente» (amount → title → category) until only saving is left.
+
+### Changed
+
+- The fox is `good` when the month's income beats its expenses (it used to need a balance above last month's close and almost never showed); Home says how much more came in than went out.
+
 ## [2.1.1] - 2026-10-28
 
 ### Fixed

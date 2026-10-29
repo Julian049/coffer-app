@@ -24,6 +24,7 @@ import com.dev.julian09.financeapp.domain.finance.CategorySum
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.ui.components.formatMoney
+import com.dev.julian09.financeapp.ui.feature.history.tagColor
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -61,6 +62,7 @@ private val EXTRA_COLORS =
 fun categoryColor(category: Category): Color? =
     when {
         category.parentId != null -> null
+        category.color != null -> tagColor(category.color)
         category.isBase && category.systemKey == "FINANCIAL_CHARGES" -> FINANCIAL_CHARGES_COLOR
         category.isBase && category.name in BASE_COLORS -> BASE_COLORS.getValue(category.name)
         else -> EXTRA_COLORS[Math.floorMod(category.id.hashCode(), EXTRA_COLORS.size)]

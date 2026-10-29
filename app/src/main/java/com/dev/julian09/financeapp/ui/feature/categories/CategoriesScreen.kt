@@ -24,7 +24,6 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material3.Icon
@@ -60,14 +59,15 @@ import com.dev.julian09.financeapp.ui.components.BubbleRow
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.CATEGORY_ICONS
 import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
+import com.dev.julian09.financeapp.ui.components.ColorPicker
 import com.dev.julian09.financeapp.ui.components.IconBubble
-import com.dev.julian09.financeapp.ui.components.IconPickerSheet
 import com.dev.julian09.financeapp.ui.components.IconRow
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.accounts.OptionRow
+import com.dev.julian09.financeapp.ui.feature.history.tagColor
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.math.BigDecimal
@@ -107,8 +107,13 @@ fun CategoriesScreen(
         is CategorySheet.Options ->
             AppBottomSheet(onDismiss = viewModel::dismiss, title = s.category.name) {
                 if (s.category.parentId == null) ExcludeRow(s.category.excludeFromReports, viewModel::setExcluded)
-                OptionRow(Icons.Outlined.Edit, "Renombrar", null, danger = false, onClick = viewModel::startRename)
-                OptionRow(Icons.Outlined.Palette, "Cambiar ícono", null, danger = false, onClick = viewModel::startIcon)
+                OptionRow(
+                    Icons.Outlined.Palette,
+                    "Personalizar",
+                    "Nombre, ícono y color",
+                    danger = false,
+                    onClick = viewModel::startCustomize,
+                )
                 // S17-H13 (MEJORA-01): any expense category, main or sub, can receive the installments of loans
                 if (s.category.kind == CategoryKind.EXPENSE) {
                     OptionRow(
@@ -122,13 +127,21 @@ fun CategoriesScreen(
                 OptionRow(Icons.Outlined.DeleteOutline, "Eliminar", null, danger = true, onClick = viewModel::startDelete)
                 AppButton("Cancelar", onClick = viewModel::dismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
             }
-        is CategorySheet.Rename ->
+        is CategorySheet.Customize ->
             AppBottomSheet(
                 onDismiss = viewModel::dismiss,
-                title = "Renombrar categoría",
-                actions = { AppButton("Guardar", onClick = viewModel::saveRename, modifier = Modifier.fillMaxWidth()) },
+                title = "Personalizar categoría",
+                actions = { AppButton("Guardar", onClick = viewModel::saveCustomize, modifier = Modifier.fillMaxWidth()) },
             ) {
-                AppTextField(value = s.name, onValueChange = viewModel::typeName, label = "Nombre", error = s.error?.message())
+                AppTextField(
+                    value = s.name,
+                    onValueChange = { name -> viewModel.editCustomize { it.copy(name = name) } },
+                    label = "Nombre",
+                    error = s.error?.message(),
+                )
+                if (s.category.parentId == null) ColorPicker(s.color) { hex -> viewModel.editCustomize { it.copy(color = hex) } }
+                Text("Ícono", style = MaterialTheme.typography.bodyMedium, color = CofferTheme.colors.textSecondary)
+                IconRow(s.icon, CATEGORY_ICONS.map { it.first }, onPick = { key -> viewModel.editCustomize { it.copy(icon = key) } })
             }
         is CategorySheet.Exclude ->
             AppBottomSheet(onDismiss = viewModel::dismiss, title = "Excluir «${s.category.name}» de reportes") {
@@ -141,7 +154,6 @@ fun CategoriesScreen(
                 AppButton("Excluir de reportes", onClick = viewModel::confirmExclude, modifier = Modifier.fillMaxWidth())
                 AppButton("Cancelar", onClick = viewModel::dismiss, kind = ButtonKind.Secondary, modifier = Modifier.fillMaxWidth())
             }
-        is CategorySheet.Icon -> IconPickerSheet(s.category.icon, onPick = viewModel::saveIcon, onDismiss = viewModel::dismiss)
         is CategorySheet.Delete -> DeleteCategorySheet(s, viewModel::dismiss, viewModel::selectTarget, viewModel::confirmDelete)
     }
 }
@@ -245,7 +257,10 @@ private fun CategoryCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(Modifier.size(48.dp).background(colors.primary, CircleShape), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(48.dp).background(main.color?.let(::tagColor) ?: colors.primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
                 Icon(categoryIcon(main.icon), contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(24.dp))
             }
             Column(Modifier.weight(1f)) {
@@ -384,6 +399,7 @@ private fun NewCategorySheet(
                 }
             }
         }
+        if (sheet.parentId == null) ColorPicker(sheet.color) { hex -> onEdit { it.copy(color = hex) } }
         Text("Ícono", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         IconRow(sheet.icon, CATEGORY_ICONS.map { it.first }, onPick = { key -> onEdit { it.copy(icon = key) } })
         sheet.error?.takeIf { it == LedgerError.ONE_LEVEL_ONLY || it == LedgerError.KIND_MISMATCH }?.let {

@@ -1,7 +1,10 @@
 package com.dev.julian09.financeapp.domain.model
 
-/** The cards of Inicio that Personalizar inicio shows, hides and orders (REQ-INI-04; the contract's homeCards keys). */
-enum class HomeSection { BALANCE, QUICK_ACTIONS, ACCOUNTS, PENDING, PINNED_TAGS, RECENT, MONTHLY_TREND }
+/**
+ * The cards of Inicio that Personalizar inicio shows, hides and orders (REQ-INI-04; the contract's homeCards keys).
+ * The order is the default one; 2.2 moved the movements above the pinned tags.
+ */
+enum class HomeSection { BALANCE, QUICK_ACTIONS, ACCOUNTS, PENDING, RECENT, PINNED_TAGS, MONTHLY_TREND }
 
 /**
  * What Home shows, in order: the stored cards it knows, then any it is missing, visible, so an empty value (every
