@@ -1,5 +1,7 @@
 package com.dev.julian09.financeapp.ui.feature.transactions
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -68,9 +70,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -217,6 +221,11 @@ fun TransactionFormContent(
     // S12-UI09: the bottom button rides on the keyboard
     Column(modifier.fillMaxSize().imePadding()) {
         var confirming by rememberSaveable { mutableStateOf(false) }
+        // 2.2: the main button says «Siguiente» until only saving is left
+        var pickingCategory by rememberSaveable { mutableStateOf(false) }
+        var titleVisited by rememberSaveable { mutableStateOf(false) }
+        val focusManager = LocalFocusManager.current
+        val ready = readyToSave(state)
         AppHeader(
             title =
                 when {
@@ -315,7 +324,7 @@ fun TransactionFormContent(
                     )
                 }
             } else {
-                CategoryCard(state, choices, actions.onCategory)
+                CategoryCard(state, choices, actions.onCategory, pickingCategory) { pickingCategory = it }
                 DateTimeCard(state.occurredAt, actions.onOccurredAt, today, zone)
                 // S12-UI03: the account without its balance, as in Figma
                 AccountPicker(
@@ -332,17 +341,36 @@ fun TransactionFormContent(
         }
         // M4 (#88): the save button stays visible while the form scrolls
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AppButton(
+            val label =
                 when {
                     state.draftId != null -> "Aplicar"
                     state.editingId != null -> "Guardar cambios"
+                    !ready -> "Siguiente"
                     transfer -> "Confirmar transferencia"
                     else -> "Guardar transacción"
-                },
-                onClick = actions.onSave,
-                icon = Icons.Outlined.Check,
-                modifier = Modifier.fillMaxWidth(),
-            )
+                }
+            Crossfade(label, animationSpec = tween(150), label = "mainButton") { text ->
+                AppButton(
+                    text,
+                    onClick = {
+                        when {
+                            ready -> actions.onSave()
+                            !titleVisited -> {
+                                titleVisited = true
+                                focusManager.moveFocus(FocusDirection.Next)
+                            }
+                            // Nothing else to type: the category (or, in a transfer, the validation) is what is left
+                            !transfer && state.categoryId == null -> {
+                                focusManager.clearFocus()
+                                pickingCategory = true
+                            }
+                            else -> actions.onSave()
+                        }
+                    },
+                    icon = if (text == "Siguiente") null else Icons.Outlined.Check,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             if (state.draftId != null) {
                 // Figma `162:186`: red text without a background
                 TextButton(onClick = actions.onDiscard, modifier = Modifier.fillMaxWidth()) {
@@ -511,15 +539,29 @@ internal fun mostUsed(
 
 private const val QUICK_CATEGORIES = 4
 
+/**
+ * 2.2: nothing is left to ask for. Editing or reviewing a draft already has everything; a new movement needs the amount, the
+ * account and, depending on the type, the category or the destination (a suggestion fills the category).
+ */
+internal fun readyToSave(state: TransactionFormState): Boolean =
+    state.editingId != null ||
+        state.draftId != null ||
+        (
+            state.amountDigits.isNotEmpty() &&
+                state.accountId != null &&
+                if (state.type == TransactionType.TRANSFER) state.destinationId != null else state.categoryId != null
+        )
+
 /** Categoría (Figma `1:844`): the four most used and «Más», which opens Hoja · Elegir categoría. */
 @Composable
 private fun CategoryCard(
     state: TransactionFormState,
     choices: TransactionChoices,
     onCategory: (UUID) -> Unit,
+    picking: Boolean,
+    onPicking: (Boolean) -> Unit,
 ) {
     val colors = CofferTheme.colors
-    var picking by rememberSaveable { mutableStateOf(false) }
     val kind = if (state.type == TransactionType.EXPENSE) CategoryKind.EXPENSE else CategoryKind.INCOME
     val ranked = mostUsed(choices.categories, kind, choices.usage)
     val selected = ranked.firstOrNull { it.id == state.categoryId }
@@ -527,7 +569,7 @@ private fun CategoryCard(
     val quick = (listOfNotNull(selected) + ranked).distinctBy { it.id }.take(QUICK_CATEGORIES)
     AppCard {
         Text("Categoría", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-        BubbleRow(quick.size, onMore = { picking = true }) { i, cell ->
+        BubbleRow(quick.size, onMore = { onPicking(true) }) { i, cell ->
             val c = quick[i]
             IconBubble(c.name, iconOf(c, choices.categories), selected = c.id == state.categoryId, modifier = cell) { onCategory(c.id) }
         }
@@ -542,9 +584,9 @@ private fun CategoryCard(
             selected = setOfNotNull(state.categoryId),
             onPick = {
                 onCategory(it)
-                picking = false
+                onPicking(false)
             },
-            onDismiss = { picking = false },
+            onDismiss = { onPicking(false) },
         )
     }
 }
