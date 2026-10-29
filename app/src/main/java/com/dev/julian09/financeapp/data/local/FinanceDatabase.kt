@@ -51,9 +51,9 @@ import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
         LoanDetailsEntity::class,
         TransactionDraftEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
-    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7), 4 → 5 categories.excludeFromReports (S9), 5 → 6 loan_details (S10), 6 → 7 transactions.concept and settings.netBalanceMode (S12), 7 → 8 settings.loanPaymentCategoryId and accounts.includeInNet (S15), 8 → 9 tags.color and transactions.tagIds (S18, 2.0), 9 → 10 transaction_drafts, accounts.lastDigits and settings.notifyDrafts (S19, S20);
+    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7), 4 → 5 categories.excludeFromReports (S9), 5 → 6 loan_details (S10), 6 → 7 transactions.concept and settings.netBalanceMode (S12), 7 → 8 settings.loanPaymentCategoryId and accounts.includeInNet (S15), 8 → 9 tags.color and transactions.tagIds (S18, 2.0), 9 → 10 transaction_drafts, accounts.lastDigits and settings.notifyDrafts (S19, S20), 10 → 11 categories.color (S24, 2.2);
     // FinanceDatabaseMigrationTest checks them
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -65,6 +65,7 @@ import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
         AutoMigration(from = 7, to = 8),
         AutoMigration(from = 8, to = 9, spec = FinanceDatabase.TagListMigration::class),
         AutoMigration(from = 9, to = 10),
+        AutoMigration(from = 10, to = 11),
     ],
 )
 @TypeConverters(Converters::class)

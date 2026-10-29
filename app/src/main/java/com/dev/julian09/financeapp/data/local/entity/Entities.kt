@@ -84,6 +84,8 @@ data class CategoryEntity(
     val syncError: String? = null,
     /** V11 / Room 5 (REQ-CAT-04). */
     @ColumnInfo(defaultValue = "0") val excludeFromReports: Boolean = false,
+    /** V17 / Room 11 (REQ-CAT-05). */
+    val color: String? = null,
 )
 
 @Entity(tableName = "tags", indices = [Index("syncState")])

@@ -61,6 +61,8 @@ sealed interface CategorySheet {
         val name: String = "",
         val parentId: UUID? = null,
         val icon: String = "pets",
+        /** REQ-CAT-05: only a main category uses it; null = automatic. */
+        val color: String? = null,
         val error: LedgerError? = null,
     ) : CategorySheet
 
@@ -163,7 +165,20 @@ class CategoriesViewModel
             viewModelScope.launch {
                 val error =
                     // Every category has its own icon, subcategories too (S13)
-                    createCategory(Category(UUID.randomUUID(), s.name, s.kind, s.parentId, icon = s.icon))
+                    createCategory(
+                        Category(
+                            UUID.randomUUID(),
+                            s.name,
+                            s.kind,
+                            s.parentId,
+                            icon = s.icon,
+                            color =
+                                s.color.takeIf {
+                                    s.parentId ==
+                                        null
+                                },
+                        ),
+                    )
                 _sheet.value = if (error == null) null else s.copy(error = error)
             }
         }

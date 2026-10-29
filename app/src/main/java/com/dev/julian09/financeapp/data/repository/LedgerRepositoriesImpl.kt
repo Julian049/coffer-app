@@ -276,6 +276,7 @@ class CategoryRepositoryImpl
                         icon = category.icon,
                         sortOrder = category.sortOrder,
                         excludeFromReports = category.excludeFromReports,
+                        color = category.color,
                         createdAt = now,
                         updatedAt = now,
                     ),
@@ -1087,7 +1088,7 @@ internal fun AccountEntity.toDomain() =
     )
 
 internal fun CategoryEntity.toDomain() =
-    Category(id, name, CategoryKind.valueOf(kind), parentId, isBase, systemKey, icon, sortOrder, excludeFromReports)
+    Category(id, name, CategoryKind.valueOf(kind), parentId, isBase, systemKey, icon, sortOrder, excludeFromReports, color)
 
 internal fun TransactionEntity.toDomain() =
     Transaction(

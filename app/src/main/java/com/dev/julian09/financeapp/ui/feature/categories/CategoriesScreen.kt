@@ -60,6 +60,7 @@ import com.dev.julian09.financeapp.ui.components.BubbleRow
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.CATEGORY_ICONS
 import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
+import com.dev.julian09.financeapp.ui.components.ColorPicker
 import com.dev.julian09.financeapp.ui.components.IconBubble
 import com.dev.julian09.financeapp.ui.components.IconPickerSheet
 import com.dev.julian09.financeapp.ui.components.IconRow
@@ -68,6 +69,7 @@ import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.accounts.OptionRow
+import com.dev.julian09.financeapp.ui.feature.history.tagColor
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.math.BigDecimal
@@ -245,7 +247,10 @@ private fun CategoryCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(Modifier.size(48.dp).background(colors.primary, CircleShape), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(48.dp).background(main.color?.let(::tagColor) ?: colors.primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
                 Icon(categoryIcon(main.icon), contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(24.dp))
             }
             Column(Modifier.weight(1f)) {
@@ -384,6 +389,7 @@ private fun NewCategorySheet(
                 }
             }
         }
+        if (sheet.parentId == null) ColorPicker(sheet.color) { hex -> onEdit { it.copy(color = hex) } }
         Text("Ícono", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         IconRow(sheet.icon, CATEGORY_ICONS.map { it.first }, onPick = { key -> onEdit { it.copy(icon = key) } })
         sheet.error?.takeIf { it == LedgerError.ONE_LEVEL_ONLY || it == LedgerError.KIND_MISMATCH }?.let {

@@ -195,6 +195,7 @@ class SyncTables
                             put("icon", k.icon)
                             put("sortOrder", k.sortOrder)
                             put("excludeFromReports", k.excludeFromReports)
+                            put("color", k.color)
                         },
                     )
                 },
@@ -214,6 +215,7 @@ class SyncTables
                         deletedAt = c.deletedAt?.let(Instant::parse),
                         syncState = SyncState.SYNCED,
                         excludeFromReports = d.bool("excludeFromReports"),
+                        color = d.text("color"),
                     )
                 },
             )
