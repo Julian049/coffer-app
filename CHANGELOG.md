@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-11-03
+
 ### Changed
 
 - Figma parity pass (PO report «Reporte 02», screen by screen against Figma `tiOOI1wfZyn2xaG9ENO9Wp`):
