@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.ui.feature.reports
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -62,6 +64,7 @@ import com.dev.julian09.financeapp.domain.finance.Pace
 import com.dev.julian09.financeapp.domain.finance.PeriodSums
 import com.dev.julian09.financeapp.domain.finance.ReportSpan
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
@@ -117,6 +120,9 @@ fun ReportsScreen(
                 onOpenCalendar = onOpenCalendar,
                 onOpenCategories = { state?.let { onOpenCategories(it.period.from, it.period.to) } },
                 onOpenCategory = { id -> state?.let { onOpenCategory(id, it.period.from) } },
+                onToggleAccount = viewModel::toggleAccount,
+                onAllAccounts = viewModel::allAccounts,
+                onType = viewModel::selectType,
             ),
         modifier = modifier,
         avatarInitial = avatarInitial,
@@ -136,6 +142,9 @@ data class ReportsActions(
     /** Gastos por categoría of the period shown. */
     val onOpenCategories: () -> Unit = {},
     val onOpenCategory: (UUID) -> Unit = {},
+    val onToggleAccount: (UUID) -> Unit = {},
+    val onAllAccounts: () -> Unit = {},
+    val onType: (TransactionType?) -> Unit = {},
 )
 
 /**
@@ -208,6 +217,8 @@ private fun Filters(
 ) {
     val colors = CofferTheme.colors
     var spanMenu by remember { mutableStateOf(false) }
+    var accountMenu by remember { mutableStateOf(false) }
+    var typeMenu by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (state.span == ReportSpan.RANGE) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -232,22 +243,75 @@ private fun Filters(
                 }
             }
         }
-        Box {
-            AppChip(
-                when (state.span) {
-                    ReportSpan.WEEK -> "Semana ▾"
-                    ReportSpan.MONTH -> "Mes ▾"
-                    ReportSpan.RANGE -> "Rango ▾"
-                },
-                selected = true,
-                onClick = { spanMenu = true },
-            )
-            DropdownMenu(expanded = spanMenu, onDismissRequest = { spanMenu = false }) {
-                listOf(ReportSpan.WEEK to "Semana", ReportSpan.MONTH to "Mes", ReportSpan.RANGE to "Rango").forEach { (span, label) ->
-                    DropdownMenuItem(text = { Text(label) }, onClick = {
-                        actions.onSpan(span)
-                        spanMenu = false
-                    })
+        // NAV-APP-008 (Figma `20:497`): Mes ▾ · Cuentas ▾ · Movimientos ▾; it scrolls when an account name is long
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box {
+                AppChip(
+                    when (state.span) {
+                        ReportSpan.WEEK -> "Semana ▾"
+                        ReportSpan.MONTH -> "Mes ▾"
+                        ReportSpan.RANGE -> "Rango ▾"
+                    },
+                    selected = true,
+                    onClick = { spanMenu = true },
+                )
+                DropdownMenu(expanded = spanMenu, onDismissRequest = { spanMenu = false }) {
+                    listOf(ReportSpan.WEEK to "Semana", ReportSpan.MONTH to "Mes", ReportSpan.RANGE to "Rango").forEach { (span, label) ->
+                        DropdownMenuItem(text = { Text(label) }, onClick = {
+                            actions.onSpan(span)
+                            spanMenu = false
+                        })
+                    }
+                }
+            }
+            val chosen = state.filter.accountIds
+            Box {
+                AppChip(
+                    when {
+                        chosen.isEmpty() -> "Cuentas ▾"
+                        chosen.size == 1 -> (state.accountChoices.firstOrNull { it.first in chosen }?.second ?: "1 cuenta") + " ▾"
+                        else -> "${chosen.size} cuentas ▾"
+                    },
+                    selected = chosen.isNotEmpty(),
+                    onClick = { accountMenu = true },
+                )
+                DropdownMenu(expanded = accountMenu, onDismissRequest = { accountMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Todas las cuentas") },
+                        leadingIcon = { Checkbox(checked = chosen.isEmpty(), onCheckedChange = null) },
+                        onClick = {
+                            actions.onAllAccounts()
+                            accountMenu = false
+                        },
+                    )
+                    // several can be chosen, so the menu stays open
+                    state.accountChoices.forEach { (id, name) ->
+                        DropdownMenuItem(
+                            text = { Text(name) },
+                            leadingIcon = { Checkbox(checked = id in chosen, onCheckedChange = null) },
+                            onClick = { actions.onToggleAccount(id) },
+                        )
+                    }
+                }
+            }
+            Box {
+                AppChip(
+                    when (state.filter.type) {
+                        TransactionType.EXPENSE -> "Gastos ▾"
+                        TransactionType.INCOME -> "Ingresos ▾"
+                        else -> "Movimientos ▾"
+                    },
+                    selected = state.filter.type != null,
+                    onClick = { typeMenu = true },
+                )
+                DropdownMenu(expanded = typeMenu, onDismissRequest = { typeMenu = false }) {
+                    listOf(null to "Todos los movimientos", TransactionType.EXPENSE to "Gastos", TransactionType.INCOME to "Ingresos")
+                        .forEach { (type, label) ->
+                            DropdownMenuItem(text = { Text(label) }, onClick = {
+                                actions.onType(type)
+                                typeMenu = false
+                            })
+                        }
                 }
             }
         }

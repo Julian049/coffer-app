@@ -6,10 +6,12 @@ import com.dev.julian09.financeapp.domain.finance.Report
 import com.dev.julian09.financeapp.domain.finance.ReportAggregator
 import com.dev.julian09.financeapp.domain.finance.ReportPeriod
 import com.dev.julian09.financeapp.domain.finance.ReportSpan
+import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.usecase.ObserveReport
+import com.dev.julian09.financeapp.domain.usecase.ReportFilter
 import com.dev.julian09.financeapp.ui.feature.tags.TagLine
 import com.dev.julian09.financeapp.ui.feature.tags.tagLines
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,11 +39,16 @@ data class ReportsState(
     val tags: List<TagLine> = emptyList(),
     /** From the Clock, so «Del 1 al 21 · hoy» is the same in the screenshots on any day. */
     val today: LocalDate = LocalDate.now(),
+    /** «Cuentas ▾» and «Movimientos ▾» (NAV-APP-008). */
+    val filter: ReportFilter = ReportFilter(),
+    /** The accounts «Cuentas ▾» offers: the ones movements can use, by name. */
+    val accountChoices: List<Pair<UUID, String>> = emptyList(),
 )
 
 private data class Selection(
     val span: ReportSpan,
     val period: ReportPeriod,
+    val filter: ReportFilter = ReportFilter(),
 )
 
 /** Reportes (S9-UI01): the current month by default. */
@@ -60,12 +67,14 @@ class ReportsViewModel
         @OptIn(ExperimentalCoroutinesApi::class)
         val state: StateFlow<ReportsState?> =
             combine(
-                selection.flatMapLatest { s -> observeReport(s.span, s.period).map { s to it } },
-                accounts.observeBalances().map { list -> list.associate { it.account.id to it.account.name } },
+                selection.flatMapLatest { s -> observeReport(s.span, s.period, s.filter).map { s to it } },
+                accounts.observeBalances(),
                 selection.flatMapLatest { s -> tagLines(tags, YearMonth.from(s.period.from), clock.zone()) },
-            ) { (s, report), names, lines ->
+            ) { (s, report), balances, lines ->
                 val shown = if (s.span == ReportSpan.MONTH) lines.filter { it.count > 0 }.sortedBy { it.net.scaled } else emptyList()
-                ReportsState(s.span, s.period, report, names, shown, clock.today())
+                val names = balances.associate { it.account.id to it.account.name }
+                val choices = balances.filter { it.account.active && it.account.type.isPickable }.map { it.account.id to it.account.name }
+                ReportsState(s.span, s.period, report, names, shown, clock.today(), s.filter, choices)
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
         fun selectSpan(span: ReportSpan) =
@@ -76,7 +85,7 @@ class ReportsViewModel
                     } else {
                         ReportAggregator.period(span, minOf(it.period.to, today))
                     }
-                Selection(span, period)
+                it.copy(span = span, period = period)
             }
 
         /** Previous (-1) or next (+1) week or month. */
@@ -94,5 +103,17 @@ class ReportsViewModel
         fun setRange(
             from: LocalDate = selection.value.period.from,
             to: LocalDate = selection.value.period.to,
-        ) = selection.update { Selection(ReportSpan.RANGE, ReportAggregator.period(ReportSpan.RANGE, from, to)) }
+        ) = selection.update { it.copy(span = ReportSpan.RANGE, period = ReportAggregator.period(ReportSpan.RANGE, from, to)) }
+
+        /** «Cuentas ▾»: adds or removes one account; none chosen = all of them. */
+        fun toggleAccount(id: UUID) =
+            selection.update {
+                val ids = it.filter.accountIds
+                it.copy(filter = it.filter.copy(accountIds = if (id in ids) ids - id else ids + id))
+            }
+
+        fun allAccounts() = selection.update { it.copy(filter = it.filter.copy(accountIds = emptySet())) }
+
+        /** «Movimientos ▾»: null = gastos e ingresos. */
+        fun selectType(type: TransactionType?) = selection.update { it.copy(filter = it.filter.copy(type = type)) }
     }
