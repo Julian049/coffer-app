@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Nueva transacción por pasos and Nueva transferencia (#214, #215, changes-ui-2.3 §1–2): the amount loose on the background, the fields in two blocks (Qué fue: title, suggestion and four frequent categories in 48 dp circles; Cuándo y de dónde: a 60 dp date row that opens the picker, 40 dp account chips to the edge and tags), the transfer's Desde and Hacia in one block with ⇅ on the line between them and no balances, a 40 dp tab strip, and the main button fixed above the keyboard. «Siguiente» moves the focus to the title and scrolls its block under the header; picking a category, an account or the date hides the keyboard. `IconBubble`/`BubbleRow` take `large` for this form.
 - Draft sources are open (#211): `DraftSource` is gone, `TransactionDraft.source` is the server's text and `MailProviders` (the catalog of Proveedores de correo) gives its name; an unknown source shows as «Nuevo banco» instead of crashing (`DraftSource.valueOf`).
 
 ## [2.2.0] - 2026-10-29
