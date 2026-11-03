@@ -65,6 +65,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -430,22 +432,27 @@ private fun UpcomingPayments(
     val soon = closest.daysLeft <= RecurrenceCalculator.SOON_DAYS
     val shape = RoundedCornerShape(12.dp)
     val chevron by animateFloatAsState(if (expanded) 180f else 0f, tween(300), label = "chevron")
-    val accent = if (soon) Color(0xFFB03A2E) else Color(0xFF9C5F33)
+    val accent = if (soon) colors.expense else colors.iconOnContainer
+    // #224: Figma's pinks are light-only; in dark the warning tints the dark surface so the title stays readable
+    val dark = colors.background.luminance() < 0.5f
+    val soonFill = if (dark) lerp(colors.surface, colors.expense, 0.14f) else Color(0xFFFBEDEB)
+    val soonBorder = if (dark) lerp(colors.surface, colors.expense, 0.35f) else Color(0xFFEDC4BE)
+    val soonBubble = if (dark) lerp(colors.surface, colors.expense, 0.25f) else Color(0xFFF5D7D2)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 62.dp)
                 .clip(shape)
-                .background(if (soon) Color(0xFFFBEDEB) else colors.surface, shape)
-                .border(1.dp, if (soon) Color(0xFFEDC4BE) else Color(0xFFECEAE7), shape)
+                .background(if (soon) soonFill else colors.surface, shape)
+                .border(1.dp, if (soon) soonBorder else colors.border, shape)
                 .clickable(onClickLabel = if (expanded) "Plegar los próximos pagos" else "Ver los próximos pagos") { expanded = !expanded }
                 .padding(start = 12.dp, top = 12.dp, end = 14.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(
-                Modifier.size(36.dp).background(if (soon) Color(0xFFF5D7D2) else Color(0xFFF8F0E8), CircleShape),
+                Modifier.size(36.dp).background(if (soon) soonBubble else colors.iconContainer, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))

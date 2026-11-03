@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - A card payment below the estimated minimum covers its statement: any payment after the cut closes that period, so Próximos pagos no longer keeps the difference pending (#225).
+- Inicio's Próximos pagos notice is readable in dark mode: its warning colors tint the dark surface instead of Figma's light pinks (#224).
 
 ## [2.3.1] - 2026-11-03
 
