@@ -28,7 +28,6 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,11 +50,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dev.julian09.financeapp.R
 import com.dev.julian09.financeapp.domain.finance.BalanceCalculator
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.AccountImpact
@@ -386,20 +387,27 @@ private fun CardActions(
 ) {
     val colors = CofferTheme.colors
     HorizontalDivider(thickness = 1.dp, color = colors.border)
-    // Figma: a 44 dp row that reaches the card's bottom edge, so the card's own 16 dp of padding is taken back
+    // Figma: a 44 dp row right under the divider that reaches the card's bottom edge, so the card's 12 dp gap above it
+    // and its 16 dp of padding below are taken back (NAV-APP-009)
     Row(
         Modifier
             .fillMaxWidth()
             .height(44.dp)
             .layout { measurable, constraints ->
                 val placeable = measurable.measure(constraints)
-                layout(placeable.width, placeable.height - 16.dp.roundToPx()) { placeable.place(0, 0) }
+                val gap = 12.dp.roundToPx()
+                layout(placeable.width, placeable.height - 16.dp.roundToPx() - gap) { placeable.place(0, -gap) }
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         onPay?.let {
             TextButton(onClick = it, Modifier.weight(1f)) {
-                Icon(Icons.Outlined.Payments, contentDescription = null, tint = colors.textPrimary, modifier = Modifier.size(18.dp))
+                Icon(
+                    painterResource(R.drawable.ic_pay),
+                    contentDescription = null,
+                    tint = colors.textPrimary,
+                    modifier = Modifier.size(16.dp),
+                )
                 Text("  Pagar", color = colors.textPrimary, style = MaterialTheme.typography.labelLarge)
             }
             Box(Modifier.size(width = 1.dp, height = 20.dp).background(colors.border))
@@ -409,7 +417,7 @@ private fun CardActions(
                 Icons.AutoMirrored.Outlined.ReceiptLong,
                 contentDescription = null,
                 tint = colors.textPrimary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
             )
             Text("  Ver movimientos", color = colors.textPrimary, style = MaterialTheme.typography.labelLarge)
         }
