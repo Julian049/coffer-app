@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.domain
 import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.data.local.entity.SyncState
 import com.dev.julian09.financeapp.data.local.entity.TransactionDraftEntity
+import com.dev.julian09.financeapp.domain.model.MailProviders
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
@@ -32,25 +33,27 @@ import java.util.UUID
 class DraftsTest {
     private val f = LedgerFixture()
     private val sync = FakeSyncScheduler()
-    private val suggest = SuggestDraft(f.accounts, f.transactions)
+    private val suggest = SuggestDraft(f.accounts, f.transactions, f.mailRules)
     private val apply = ApplyDraft(f.drafts, suggest, TransactionValidator(f.accounts, f.categories), sync)
 
     @After
     fun close() = f.db.close()
 
     private suspend fun draft(
-        merchant: String,
+        merchant: String?,
         digits: String?,
         pesos: Long = 22_980,
+        source: String = "BANCOLOMBIA",
+        type: String = "EXPENSE",
+        at: Instant = Instant.parse("2026-10-26T00:16:04Z"),
     ): UUID {
         val id = UUID.randomUUID()
-        val at = Instant.parse("2026-10-26T00:16:04Z")
         f.db.drafts().upsert(
             listOf(
                 TransactionDraftEntity(
                     id,
-                    "RAPPICARD",
-                    "EXPENSE",
+                    source,
+                    type,
                     pesos * 10_000,
                     at,
                     merchant,
@@ -126,5 +129,71 @@ class DraftsTest {
 
             DiscardDraft(f.drafts, sync)(unknownCard)
             assertEquals(0, f.drafts.count())
+        }
+
+    @Test
+    fun aMailRuleWinsOverTheDigitsAndDigitsOnlyMatchTheProvidersAccountType() =
+        runBlocking {
+            val savings = f.account("Ahorros", 100_000)
+            SetLastDigits(f.accounts, sync)(savings, "6858")
+            val visa = f.account("Visa", type = "CREDIT_CARD")
+            val rappi = f.account("RappiCuenta", 0)
+            // T.Cred *6858 is a card: the savings account ending the same is not it
+            val card = draft("EXITO", "6858", source = "BANCOLOMBIA_TC")
+            assertNull(suggest(f.drafts.get(card)!!).accountId)
+            f.mailRules.save("BANCOLOMBIA_TC", "6858", visa)
+            assertEquals(visa, suggest(f.drafts.get(card)!!).accountId)
+            // A provider without digits only has its rule
+            val received = draft("Bancolombia", null, 50_000, source = "RAPPICUENTA", type = "INCOME")
+            assertNull(suggest(f.drafts.get(received)!!).accountId)
+            f.mailRules.save("RAPPICUENTA", null, rappi)
+            assertEquals(rappi, suggest(f.drafts.get(received)!!).accountId)
+            // Saving again replaces the provider's rule; removing it brings the digits back
+            f.mailRules.save("RAPPICUENTA", null, savings)
+            assertEquals(
+                listOf(savings),
+                f.mailRules
+                    .observeAll()
+                    .first()
+                    .filter { it.source == "RAPPICUENTA" }
+                    .map { it.accountId },
+            )
+            f.mailRules.remove("BANCOLOMBIA_TC")
+            assertNull(suggest(f.drafts.get(card)!!).accountId)
+        }
+
+    @Test
+    fun aTransferBetweenOwnAccountsIsOneDraftAndPaymentsToOthersAreNot() =
+        runBlocking {
+            val bancolombia = f.account("Bancolombia", 2_000_000)
+            SetLastDigits(f.accounts, sync)(bancolombia, "2309")
+            val rappi = f.account("RappiCuenta", 0)
+            f.mailRules.save("RAPPICUENTA", null, rappi)
+            val at = Instant.parse("2026-10-29T15:36:00Z")
+            val out = draft("@rp1077", "2309", 1_000_000, at = at)
+            draft("Bancolombia", null, 1_000_000, source = "RAPPICUENTA", type = "INCOME", at = at.plusSeconds(40))
+            // Two payments of the same amount to other people, a minute apart, stay two expenses
+            draft("Jorge", "2309", 50_000, at = at.plusSeconds(600))
+            draft("Ana", "2309", 50_000, at = at.plusSeconds(630))
+
+            val listed = f.drafts.observeAll().first()
+            assertEquals(3, listed.size)
+            val transfer = listed.single { it.type == TransactionType.TRANSFER }
+            assertEquals(out, transfer.id)
+            assertEquals("Bancolombia → RappiCuenta", "${transfer.sourceName} → ${transfer.destinationSource?.let(MailProviders::name)}")
+
+            val before = balance(bancolombia)
+            assertTrue(apply(out))
+            assertEquals(before - Money.ofPesos(1_000_000), balance(bancolombia))
+            assertEquals(Money.ofPesos(1_000_000), balance(rappi))
+            assertEquals(2, f.drafts.count())
+        }
+
+    @Test
+    fun anUnknownSourceShowsItsNameInsteadOfFailing() =
+        runBlocking {
+            val id = draft("Tienda", null, source = "NUEVO_BANCO")
+            assertEquals("Nuevo banco", f.drafts.get(id)!!.sourceName)
+            assertEquals("Uber", MailProviders.name("UBER"))
         }
 }

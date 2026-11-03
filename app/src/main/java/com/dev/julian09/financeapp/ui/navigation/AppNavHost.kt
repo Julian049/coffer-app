@@ -40,6 +40,7 @@ import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportScreen
 import com.dev.julian09.financeapp.ui.feature.loans.LoanFormScreen
 import com.dev.julian09.financeapp.ui.feature.mail.ConnectEmailScreen
+import com.dev.julian09.financeapp.ui.feature.mail.MailProvidersScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
 import com.dev.julian09.financeapp.ui.feature.reports.CalendarScreen
@@ -180,8 +181,10 @@ fun AppNavHost(
                     onOpenChangeHistory = { navController.navigate(ChangeHistoryRoute) },
                     onOpenCustomizeHome = { navController.navigate(CustomizeHomeRoute) },
                     onOpenConnectEmail = { navController.navigate(ConnectEmailRoute) },
+                    onOpenMailProviders = { navController.navigate(MailProvidersRoute) },
                 )
             }
+            composable<MailProvidersRoute> { MailProvidersScreen(onBack = navController::popBackStack) }
             composable<ConnectEmailRoute> { ConnectEmailScreen(onBack = navController::popBackStack) }
             composable<ChangeHistoryRoute> { ChangeHistoryScreen(onBack = navController::popBackStack) }
             composable<CustomizeHomeRoute> { CustomizeHomeScreen(onBack = navController::popBackStack) }

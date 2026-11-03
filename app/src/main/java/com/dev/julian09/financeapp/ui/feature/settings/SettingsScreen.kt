@@ -65,6 +65,7 @@ import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.feature.auth.rememberGoogleIdToken
+import com.dev.julian09.financeapp.ui.feature.mail.MailProvidersViewModel
 import com.dev.julian09.financeapp.ui.feature.recurring.days
 import com.dev.julian09.financeapp.ui.feature.recurring.rememberNotificationPermissionRequest
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
@@ -82,10 +83,13 @@ fun SettingsScreen(
     onOpenChangeHistory: () -> Unit = {},
     onOpenCustomizeHome: () -> Unit = {},
     onOpenConnectEmail: () -> Unit = {},
+    onOpenMailProviders: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
     reminderViewModel: ReminderSettingsViewModel = hiltViewModel(),
+    mailViewModel: MailProvidersViewModel = hiltViewModel(),
 ) {
+    val mail by mailViewModel.overview.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val syncStatus by syncViewModel.status.collectAsStateWithLifecycle()
     val reminders by reminderViewModel.settings.collectAsStateWithLifecycle()
@@ -126,6 +130,8 @@ fun SettingsScreen(
         onDecimals = reminderViewModel::setDecimals,
         onOpenCustomizeHome = onOpenCustomizeHome,
         onOpenConnectEmail = onOpenConnectEmail,
+        mailSummary = mail?.summary,
+        onOpenMailProviders = onOpenMailProviders,
     )
 }
 
@@ -157,6 +163,9 @@ fun SettingsContent(
     onDecimals: (Int) -> Unit = {},
     onOpenCustomizeHome: () -> Unit = {},
     onOpenConnectEmail: () -> Unit = {},
+    /** Ajustes → Correos (changes-ui-2.3 §3.1); null hides the group until the providers load. */
+    mailSummary: String? = null,
+    onOpenMailProviders: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     var showAbout by rememberSaveable { mutableStateOf(false) }
@@ -225,6 +234,7 @@ fun SettingsContent(
             reminders?.let { HomeCard(it, onBalanceView, onOpenCustomizeHome) }
             reminders?.let { RemindersCard(it, onNotifications, onLeadDays) }
             reminders?.let { AmountsCard(it, onDecimals) }
+            mailSummary?.let { MailCard(it, onOpenMailProviders) }
             AppCard {
                 LinkRow(Icons.AutoMirrored.Outlined.Label, "Categorías", onOpenCategories)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
@@ -293,6 +303,32 @@ private fun HomeCard(
         }
         HorizontalDivider(thickness = 1.dp, color = colors.border)
         LinkRow(Icons.Outlined.Dashboard, "Personalizar inicio", onOpenCustomizeHome)
+    }
+}
+
+/** Ajustes → Correos, between Montos and Datos (changes-ui-2.3 §3.1). */
+@Composable
+private fun MailCard(
+    summary: String,
+    onOpen: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Text("Correos", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
+    AppCard {
+        Row(
+            Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Proveedores de correo", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+                Text(summary, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            }
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.textSecondary)
+        }
     }
 }
 

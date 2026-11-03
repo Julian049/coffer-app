@@ -35,6 +35,10 @@ data object ForgotPasswordRoute
 @Serializable
 data object ConnectEmailRoute
 
+/** REQ-COR-11: Ajustes → Correos → Proveedores de correo. */
+@Serializable
+data object MailProvidersRoute
+
 @Serializable
 data object NewAccountRoute
 

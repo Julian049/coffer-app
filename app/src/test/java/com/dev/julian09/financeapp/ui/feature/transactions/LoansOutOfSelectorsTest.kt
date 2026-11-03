@@ -61,7 +61,7 @@ class LoansOutOfSelectorsTest {
             DeferCardPurchase(f.cards, register, validator, sync, f.clock),
             DeleteTransaction(f.transactions, sync),
             f.drafts,
-            SuggestDraft(f.accounts, f.transactions),
+            SuggestDraft(f.accounts, f.transactions, f.mailRules),
             DiscardDraft(f.drafts, sync),
             f.observeCards,
             f.clock,

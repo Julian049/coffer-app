@@ -11,6 +11,7 @@ import com.dev.julian09.financeapp.domain.model.DeferredPurchase
 import com.dev.julian09.financeapp.domain.model.Installment
 import com.dev.julian09.financeapp.domain.model.Loan
 import com.dev.julian09.financeapp.domain.model.LoanInstallment
+import com.dev.julian09.financeapp.domain.model.MailRule
 import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.Recurring
@@ -345,17 +346,32 @@ interface LoanRepository {
 
 /** REQ-COR-04, 05: transactions to review, from the bank emails the server read. */
 interface DraftRepository {
+    /** The drafts to review, with the two halves of a transfer between own accounts as one (REQ-COR-12, `pairTransfers`). */
     fun observeAll(): Flow<List<TransactionDraft>>
 
     suspend fun get(id: UUID): TransactionDraft?
 
     suspend fun count(): Int
 
-    /** Writes [transaction] and drops the draft in one database transaction. */
+    /** Writes [transaction] and drops the draft (and its paired half) in one database transaction. */
     suspend fun apply(
         draftId: UUID,
         transaction: Transaction,
     )
 
     suspend fun discard(id: UUID)
+}
+
+/** REQ-COR-11: the user's provider → account rules, one per provider from Proveedores de correo; synced as `mailRule`. */
+interface MailRuleRepository {
+    fun observeAll(): Flow<List<MailRule>>
+
+    /** Replaces the provider's rule, if any. */
+    suspend fun save(
+        source: String,
+        lastDigits: String?,
+        accountId: UUID,
+    )
+
+    suspend fun remove(source: String)
 }
