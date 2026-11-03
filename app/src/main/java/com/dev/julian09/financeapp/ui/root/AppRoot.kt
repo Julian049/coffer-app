@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -24,6 +25,13 @@ fun AppRoot(viewModel: SessionViewModel = hiltViewModel()) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     val initialSyncDone by viewModel.initialSyncDone.collectAsStateWithLifecycle()
     val needsLegalConsent by viewModel.needsLegalConsent.collectAsStateWithLifecycle()
+    val active = session is SessionState.Active
+    val blank =
+        session == SessionState.Loading ||
+            (active && (needsLegalConsent == null || (needsLegalConsent == false && initialSyncDone == null)))
+    // Inicio reports itself once its data is in (HomeScreen)
+    val home = active && needsLegalConsent == false && initialSyncDone == true
+    if (!blank && !home) SideEffect { FirstContent.shown = true }
     when (val state = session) {
         SessionState.Loading -> Blank()
         SessionState.SignedOut -> AuthNavHost(expiredUser = null)
@@ -40,6 +48,12 @@ fun AppRoot(viewModel: SessionViewModel = hiltViewModel()) {
                     }
             }
     }
+}
+
+/** #223: MainActivity keeps the system splash on screen until the first real screen can draw its content. */
+object FirstContent {
+    @Volatile
+    var shown = false
 }
 
 @Composable

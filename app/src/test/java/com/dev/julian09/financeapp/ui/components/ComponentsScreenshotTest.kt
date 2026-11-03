@@ -225,6 +225,10 @@ class ComponentsScreenshotTest {
     @Test
     fun homePendingLight() = capture("home_pending_light", dark = false) { Home(pending = true) }
 
+    // #224: the near-payment notice must stay readable in dark
+    @Test
+    fun homePendingDark() = capture("home_pending_dark", dark = true) { Home(pending = true) }
+
     @Test
     fun recurringLight() = capture("recurring_light", dark = false) { RecurringList() }
 
