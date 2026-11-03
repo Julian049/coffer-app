@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.ui.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
@@ -38,6 +39,8 @@ data class HomeUiState(
     val settings: Settings = Settings(),
     /** REQ-COR-04: transactions to review; Home only tells how many (changes-ui-2.0 §1). */
     val draftCount: Int = 0,
+    /** The icons of the recurring expenses in Próximos pagos (NAV-APP-016). */
+    val categories: List<Category> = emptyList(),
 ) {
     val balanceView: BalanceView get() = if (settings.homeBalanceView == BalanceView.NET.name) BalanceView.NET else BalanceView.AVAILABLE
 
@@ -78,6 +81,7 @@ class HomeViewModel
                     lines.filter { it.tag.pinned },
                     stored,
                     pending.size,
+                    cats,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

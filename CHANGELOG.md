@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Figma parity pass (PO report «Reporte 02», screen by screen against Figma `tiOOI1wfZyn2xaG9ENO9Wp`):
+  - Inicio: the Coffer mark in the header, the balance card with Figma's spacing (NAV-APP-001), Próximos pagos unfolded as one card with a row per payment, its due pill and status (NAV-APP-016), tighter debts in «Elegir deudas» (NAV-APP-003) and the fox's texts for a near payment and a good month (CMP-APP-001).
+  - Historial: no «Buscar» label (NAV-APP-004), Figma's filter icon (NAV-APP-007), the day's net in green or red (NAV-APP-005) and separators between the month totals (NAV-APP-006).
+  - Gestión de cuentas: «Ver movimientos» right under its divider (NAV-APP-009) and Figma's «Pagar» icon (NAV-APP-010). Hoja · Eliminar definitivamente with a filled red button and a stronger warning (ACC-APP-002); the account type boxes share one height (ACC-APP-003).
+  - Ajustes: the sync state lives in the server card instead of the header (NAV-APP-011), a narrower balance view selector (NAV-APP-012), a smaller switch (NAV-APP-013), a − n días + stepper for the reminder lead (NAV-APP-014), Proveedores de correo and Conectar correo together under Correos (COR-APP-001) and a «Datos» section in Figma's order (NAV-APP-015).
+  - Nueva transacción: Condiciones del crédito with Figma's stepper, chips and rate box (MOV-APP-001). Detalle de transacción · Pago de tarjeta: Desde/Hacia, the date only in its card, interest and charges in red and the note in a box (MOV-APP-003). Diálogo · Eliminar transacción names the movement and confirms with a filled red button (MOV-APP-004, `ButtonKind.DangerFilled`).
+  - Categorías: main categories in a rounded square (CAT-APP-002); Nueva categoría's labels share one style (CAT-APP-003).
+  - Nueva tarjeta de crédito redesigned after Figma: a live preview of the card, icons in the fields, the days picked from a list and «Primera cuota sin intereses» as a checkbox (TAR-APP-001). A new card keeps its last 4 digits (`CardDraft.lastDigits`).
+  - Editar préstamo: the loan's header on the background, a compact rate selector and both charges in one card (PRE-APP-001).
+  - Gastos recurrentes: a white summary with its two figures in boxes (REC-APP-001), cards with the urgency as their edge and small actions, Editar only on recurring expenses (REC-APP-002), Pagados este mes with Figma's marks (REC-APP-003) and Hoja · Pendiente's note in a box (REC-APP-004).
+
 ## [2.3.0] - 2026-11-03
 
 ### Added

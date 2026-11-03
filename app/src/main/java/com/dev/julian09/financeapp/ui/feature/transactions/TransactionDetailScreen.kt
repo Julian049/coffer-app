@@ -1,6 +1,8 @@
 package com.dev.julian09.financeapp.ui.feature.transactions
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,8 +31,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.model.Money
@@ -122,10 +128,15 @@ fun TransactionDetailContent(
                         )
                     }
                     Text(title, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary, textAlign = TextAlign.Center)
-                    MoneyText(t.amount, kind = kindOf(t.type), style = MaterialTheme.typography.displaySmall)
-                    Surface(shape = CofferShapes.pill, color = colors.background) {
+                    if (t.type == TransactionType.TRANSFER) {
+                        // MOV-APP-003 (Figma `20:428`): a transfer's amount in the main text color
+                        Text(formatMoney(t.amount), style = MaterialTheme.typography.displaySmall, color = colors.textPrimary)
+                    } else {
+                        MoneyText(t.amount, kind = kindOf(t.type), style = MaterialTheme.typography.displaySmall)
+                    }
+                    Surface(shape = CofferShapes.pill, color = colors.background, border = BorderStroke(1.dp, colors.border)) {
                         Text(
-                            typeLabel(t.type),
+                            if (t.type == TransactionType.TRANSFER) "Transferencia · no cuenta como gasto" else typeLabel(t.type),
                             Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelMedium,
                             color = colors.textSecondary,
@@ -135,19 +146,20 @@ fun TransactionDetailContent(
             }
             AppCard {
                 if (t.type == TransactionType.TRANSFER) {
-                    Line("Origen", d.accountName)
-                    Line("Destino", d.destinationName ?: "Cuenta")
+                    Line("Desde", d.accountName)
+                    Line("Hacia", d.destinationName ?: "Cuenta")
                 } else {
                     Line("Categoría", d.categoryLabel ?: "Sin categoría")
                     Line("Cuenta", d.accountName)
                 }
-                Line("Fecha y hora", dateTimeLabel(t.occurredAt, today, zone))
+                // a payment shows its date in the card below, where it can be changed
+                if (t.paymentKind == null) Line("Fecha y hora", dateTimeLabel(t.occurredAt, today, zone))
                 if (t.installments > 1) Line("Cuotas", "${t.installments} cuotas")
                 paymentKindLabel(t.paymentKind)?.let { Line("Tipo de pago", it) }
                 if (d.tagNames.isNotEmpty()) {
                     Line(if (d.tagNames.size == 1) "Etiqueta" else "Etiquetas", d.tagNames.joinToString(" ") { "#$it" })
                 }
-                t.note?.let { Line("Nota", it) }
+                t.note?.takeIf { it != title }?.let { Line("Nota", it) }
             }
             // S15-DOM04: the date of a registered payment can be corrected; the amount and its split stay
             if (t.paymentKind != null) DateTimeCard(t.occurredAt, onChangeDate, today, zone)
@@ -208,11 +220,18 @@ fun TransactionDetailContent(
 private fun Line(
     label: String,
     value: String,
+    valueColor: Color? = null,
 ) {
     val colors = CofferTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-        Text(value, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, textAlign = TextAlign.End)
+        Text(label, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 16.sp), color = colors.textSecondary)
+        Text(
+            value,
+            Modifier.weight(1f),
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 16.sp),
+            color = valueColor ?: colors.textPrimary,
+            textAlign = TextAlign.End,
+        )
     }
 }
 
@@ -229,16 +248,40 @@ private fun paymentKindLabel(kind: String?) =
 @Composable
 private fun PaymentBreakdownCard(t: Transaction) {
     val colors = CofferTheme.colors
+    // MOV-APP-003 (Figma `20:428`): interest and charges in red, a divider over the total and the note in a box
+    val charge = { m: Money? -> if ((m ?: Money.ZERO) > Money.ZERO) colors.expense else null }
     AppCard {
-        Text("Desglose del pago", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
-        Line("Capital", formatMoney(t.principal ?: Money.ZERO))
-        Line("Intereses", formatMoney(t.interest ?: Money.ZERO))
-        Line("Otros cargos", formatMoney(t.fees ?: Money.ZERO))
-        Line("Total", formatMoney(t.amount))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Desglose del pago", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+            Line("Capital", formatMoney(t.principal ?: Money.ZERO))
+            Line("Intereses", formatMoney(t.interest ?: Money.ZERO), charge(t.interest))
+            Line("Otros cargos", formatMoney(t.fees ?: Money.ZERO), charge(t.fees))
+            HorizontalDivider(thickness = 1.dp, color = colors.border)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Total", style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp), color = colors.textSecondary)
+                Text(
+                    formatMoney(t.amount),
+                    Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
+                    textAlign = TextAlign.End,
+                )
+            }
+        }
     }
-    Text(
-        "Intereses y cargos suman en la categoría «Intereses y cargos financieros» en la fecha de pago.",
-        style = MaterialTheme.typography.bodySmall,
-        color = colors.textSecondary,
-    )
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(colors.background, CofferShapes.card)
+            .border(1.dp, colors.border, CofferShapes.card)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(Icons.Outlined.Info, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(16.dp))
+        Text(
+            "Intereses y cargos suman en la categoría «Intereses y cargos financieros» en la fecha de pago.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+    }
 }

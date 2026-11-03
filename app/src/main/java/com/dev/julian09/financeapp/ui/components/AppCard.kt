@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -19,6 +20,8 @@ fun AppCard(
     highlight: Boolean = false,
     onClick: (() -> Unit)? = null,
     selected: Boolean = false,
+    /** Null = the usual 16 dp (20 dp highlighted); 0 for cards whose rows carry their own padding. */
+    contentPadding: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = CofferTheme.colors
@@ -33,8 +36,17 @@ fun AppCard(
         }
     val body: @Composable () -> Unit = {
         Column(
-            modifier = Modifier.padding(if (highlight) 20.dp else 16.dp),
-            verticalArrangement = Arrangement.spacedBy(if (highlight) 4.dp else 12.dp),
+            modifier = Modifier.padding(contentPadding ?: if (highlight) 20.dp else 16.dp),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    if (contentPadding == 0.dp) {
+                        0.dp
+                    } else if (highlight) {
+                        4.dp
+                    } else {
+                        12.dp
+                    },
+                ),
             content = content,
         )
     }

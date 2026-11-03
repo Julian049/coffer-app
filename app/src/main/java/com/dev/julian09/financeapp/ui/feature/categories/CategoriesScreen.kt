@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -258,7 +258,7 @@ private fun CategoryCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(
-                Modifier.size(48.dp).background(main.color?.let(::tagColor) ?: colors.primary, CircleShape),
+                Modifier.size(48.dp).background(main.color?.let(::tagColor) ?: colors.primary, RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(categoryIcon(main.icon), contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(24.dp))
@@ -384,7 +384,8 @@ private fun NewCategorySheet(
                     else -> sheet.error?.message()
                 },
         )
-        Text("Ubicación · dentro de qué categoría va", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+        // CAT-APP-003 (Figma `20:1212`): Ubicación, Color and Ícono share one small label style
+        Text("Ubicación · dentro de qué categoría va", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
         val chosen = ofKind.firstOrNull { it.id == sheet.parentId }
         val parents = (listOfNotNull(chosen) + ofKind).distinctBy { it.id }.take(3)
         BubbleRow(parents.size + 1, onMore = { morePlaces = true }) { i, cell ->
@@ -400,7 +401,7 @@ private fun NewCategorySheet(
             }
         }
         if (sheet.parentId == null) ColorPicker(sheet.color) { hex -> onEdit { it.copy(color = hex) } }
-        Text("Ícono", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+        Text("Ícono", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
         IconRow(sheet.icon, CATEGORY_ICONS.map { it.first }, onPick = { key -> onEdit { it.copy(icon = key) } })
         sheet.error?.takeIf { it == LedgerError.ONE_LEVEL_ONLY || it == LedgerError.KIND_MISMATCH }?.let {
             Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense)

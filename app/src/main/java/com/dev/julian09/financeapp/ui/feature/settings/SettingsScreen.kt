@@ -1,6 +1,7 @@
 package com.dev.julian09.financeapp.ui.feature.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,12 +14,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
@@ -29,25 +32,23 @@ import androidx.compose.material.icons.outlined.EventRepeat
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ImportExport
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Sell
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
@@ -63,14 +64,13 @@ import com.dev.julian09.financeapp.ui.components.Avatar
 import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
-import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.feature.auth.rememberGoogleIdToken
 import com.dev.julian09.financeapp.ui.feature.mail.MailProvidersViewModel
 import com.dev.julian09.financeapp.ui.feature.recurring.days
 import com.dev.julian09.financeapp.ui.feature.recurring.rememberNotificationPermissionRequest
 import com.dev.julian09.financeapp.ui.feature.sync.SyncStatusViewModel
+import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
-import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(
@@ -173,7 +173,8 @@ fun SettingsContent(
     if (showAbout) AboutSheet(state.appVersion, onDismiss = { showAbout = false })
     state.deleteAccount?.let { DeleteAccountDialog(it, onDeleteAccountConfirm, onDeleteAccountGoogle, onDeleteAccountDismiss) }
     Column(modifier.fillMaxSize()) {
-        AppHeader(title = "Ajustes", onBack = onBack, actions = { syncStatus?.let { SyncBadge(it) } })
+        // NAV-APP-011: the sync state lives in the card under the profile, not in the header
+        AppHeader(title = "Ajustes", onBack = onBack)
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -225,6 +226,9 @@ fun SettingsContent(
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
                         Text(detail, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                        syncStatus?.let {
+                            Text(syncLine(it), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                        }
                     }
                 }
                 if (state.server == ServerState.Unavailable) {
@@ -234,7 +238,10 @@ fun SettingsContent(
             reminders?.let { HomeCard(it, onBalanceView, onOpenCustomizeHome) }
             reminders?.let { RemindersCard(it, onNotifications, onLeadDays) }
             reminders?.let { AmountsCard(it, onDecimals) }
-            mailSummary?.let { MailCard(it, onOpenMailProviders) }
+            // COR-APP-001: Proveedores de correo and Conectar correo together under Correos
+            MailCard(mailSummary, onOpenMailProviders, onOpenConnectEmail)
+            // NAV-APP-015 (Figma `20:1541`): the section has its title and Figma's order
+            Text("Datos", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
             AppCard {
                 LinkRow(Icons.AutoMirrored.Outlined.Label, "Categorías", onOpenCategories)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
@@ -242,13 +249,11 @@ fun SettingsContent(
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.EventRepeat, "Gastos recurrentes", onOpenRecurring)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
-                LinkRow(Icons.Outlined.AccountBalance, "Cuentas desactivadas", onOpenDeactivated)
-                HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.ImportExport, "Importar y exportar", onOpenImportExport)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
-                LinkRow(Icons.Outlined.Email, "Conectar correo", onOpenConnectEmail)
-                HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.History, "Historial de cambios", onOpenChangeHistory)
+                HorizontalDivider(thickness = 1.dp, color = colors.border)
+                LinkRow(Icons.Outlined.AccountBalance, "Cuentas desactivadas", onOpenDeactivated)
                 HorizontalDivider(thickness = 1.dp, color = colors.border)
                 LinkRow(Icons.Outlined.Info, "Acerca de Coffer", { showAbout = true })
             }
@@ -298,7 +303,8 @@ private fun HomeCard(
                 listOf("Disponible", "Neto"),
                 selectedIndex = if (settings.homeBalanceView == "NET") 1 else 0,
                 onSelect = { onBalanceView(if (it == 1) "NET" else "AVAILABLE") },
-                modifier = Modifier.width(180.dp),
+                // NAV-APP-012: narrow enough for the explanation to read in two lines
+                modifier = Modifier.width(156.dp),
             )
         }
         HorizontalDivider(thickness = 1.dp, color = colors.border)
@@ -309,28 +315,56 @@ private fun HomeCard(
 /** Ajustes → Correos, between Montos and Datos (changes-ui-2.3 §3.1). */
 @Composable
 private fun MailCard(
-    summary: String,
-    onOpen: () -> Unit,
+    summary: String?,
+    onOpenProviders: () -> Unit,
+    onOpenConnect: () -> Unit,
 ) {
     val colors = CofferTheme.colors
     Text("Correos", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
     AppCard {
-        Row(
-            Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text("Proveedores de correo", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
-                Text(summary, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-            }
-            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.textSecondary)
-        }
+        MailRow("Proveedores de correo", summary, onOpenProviders)
+        HorizontalDivider(thickness = 1.dp, color = colors.border)
+        MailRow("Conectar correo", "Reenvía tus comprobantes a Coffer", onOpenConnect)
     }
 }
+
+@Composable
+private fun MailRow(
+    title: String,
+    detail: String?,
+    onClick: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        IconBox(Icons.Outlined.Email)
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+            detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary) }
+        }
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.textSecondary)
+    }
+}
+
+/** Figma `20:1541`: the row icons sit in a 32 dp rounded square. */
+@Composable
+private fun IconBox(icon: ImageVector) {
+    val colors = CofferTheme.colors
+    Box(Modifier.size(32.dp).background(colors.iconContainer, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(18.dp))
+    }
+}
+
+private fun syncLine(status: SyncStatus) =
+    when (status) {
+        is SyncStatus.Synced -> "Sincronizado · 0 cambios pendientes"
+        is SyncStatus.Pending -> if (status.count == 1) "1 cambio pendiente" else "${status.count} cambios pendientes"
+        SyncStatus.Syncing -> "Sincronizando…"
+        SyncStatus.Offline -> "Sin conexión · los cambios se guardan en el teléfono"
+    }
 
 /** Ajustes → Montos (RNF-13): 0 or 2 decimals in every amount; the currency is fixed. */
 @Composable
@@ -369,7 +403,6 @@ private fun RemindersCard(
     onLeadDays: (Int) -> Unit,
 ) {
     val colors = CofferTheme.colors
-    var choosing by rememberSaveable { mutableStateOf(false) }
     Text("Avisos", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
     AppCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -381,47 +414,43 @@ private fun RemindersCard(
                     color = colors.textSecondary,
                 )
             }
+            // NAV-APP-013: a little smaller, as in Figma
             Switch(
+                modifier = Modifier.scale(0.8f),
                 checked = settings.notificationsEnabled,
                 onCheckedChange = onNotifications,
                 colors = SwitchDefaults.colors(checkedTrackColor = colors.primary, checkedThumbColor = colors.onPrimary),
             )
         }
         HorizontalDivider(thickness = 1.dp, color = colors.border)
-        Row(
-            Modifier.fillMaxWidth().clickable { choosing = true }.padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Anticipación de avisos", style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
                 Text("Días antes del vencimiento", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
             }
-            Text(days(settings.reminderLeadDays), style = MaterialTheme.typography.bodyLarge, color = colors.primary)
+            // NAV-APP-014 (Figma `20:1541`): − n días + instead of a dialog; 0 to 30 days as before
+            Stepper(settings.reminderLeadDays, onLeadDays)
         }
     }
-    if (choosing) {
-        var value by remember { mutableFloatStateOf(settings.reminderLeadDays.toFloat()) }
-        AlertDialog(
-            onDismissRequest = { choosing = false },
-            title = { Text("Anticipación de avisos") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Los pagos aparecerán en Inicio ${days(value.roundToInt())} antes de vencer.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary,
-                    )
-                    Slider(value = value, onValueChange = { value = it }, valueRange = 0f..30f, steps = 29)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onLeadDays(value.roundToInt())
-                    choosing = false
-                }) { Text("Listo") }
-            },
-            dismissButton = { TextButton(onClick = { choosing = false }) { Text("Cancelar") } },
-        )
+}
+
+@Composable
+private fun Stepper(
+    value: Int,
+    onChange: (Int) -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Row(
+        Modifier.border(1.dp, colors.border, CofferShapes.pill),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = { onChange(value - 1) }, enabled = value > 0, modifier = Modifier.size(36.dp)) {
+            Icon(Icons.Outlined.Remove, contentDescription = "Un día menos", tint = colors.textPrimary, modifier = Modifier.size(18.dp))
+        }
+        Text(days(value), style = MaterialTheme.typography.labelLarge, color = colors.textPrimary)
+        IconButton(onClick = { onChange(value + 1) }, enabled = value < 30, modifier = Modifier.size(36.dp)) {
+            Icon(Icons.Outlined.Add, contentDescription = "Un día más", tint = colors.textPrimary, modifier = Modifier.size(18.dp))
+        }
     }
 }
 
@@ -464,7 +493,7 @@ private fun LinkRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
+        IconBox(icon)
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
         Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.textSecondary)
     }

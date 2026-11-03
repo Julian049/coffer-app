@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,7 +29,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -40,6 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,10 +59,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dev.julian09.financeapp.R
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.MailProviders
@@ -178,7 +182,12 @@ fun HistoryContent(
                 if (state != null) {
                     IconButton(onClick = { filtering = true }) {
                         BadgedBox(badge = { if (state.filters.count > 0) Badge { Text("${state.filters.count}") } }) {
-                            Icon(Icons.Outlined.FilterList, contentDescription = "Filtros", tint = colors.textPrimary)
+                            Icon(
+                                painterResource(R.drawable.ic_filter),
+                                contentDescription = "Filtros",
+                                tint = colors.textSecondary,
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                     }
                 }
@@ -222,7 +231,8 @@ fun HistoryContent(
                         query = it
                         actions.onQuery(it)
                     },
-                    label = "Buscar",
+                    // NAV-APP-004: no «Buscar» label over the field
+                    label = null,
                     placeholder = "Nota, categoría, cuenta o etiqueta",
                     leadingIcon = Icons.Outlined.Search,
                 )
@@ -315,9 +325,12 @@ private fun Summary(state: HistoryUiState) {
                 FoxMascot(it.state.name.lowercase(), size = 48.dp)
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        // NAV-APP-006 (Figma `1:1274`): thin separators between the three totals
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SummaryItem("Ingresos", state.totals.income, MoneyKind.Income, Modifier.weight(1f))
+            VerticalDivider(thickness = 1.dp, color = colors.border)
             SummaryItem("Gastos", state.totals.expense, MoneyKind.Expense, Modifier.weight(1f))
+            VerticalDivider(thickness = 1.dp, color = colors.border)
             SummaryItem("Balance neto", state.totals.income - state.totals.expense, MoneyKind.Neutral, Modifier.weight(1f))
         }
     }
