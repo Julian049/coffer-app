@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-11-03
+
 ### Added
 
 - Mail rules (#212): Room 12 adds `mail_rules`, synced as `mailRule` (server 2.3, V18). A provider, or a provider and its last 4 digits, sends its drafts to one account; the rule wins over the digits, and the digits only match the account types the provider accepts (`MailProvider.accepts`: a `T.Cred *6858` never lands in a savings account ending the same). `accountFor` in `domain/model/Mail.kt` holds the order.
