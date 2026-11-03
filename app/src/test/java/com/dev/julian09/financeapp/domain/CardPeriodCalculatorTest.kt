@@ -143,6 +143,22 @@ class CardPeriodCalculatorTest {
     }
 
     @Test
+    fun aPaymentBelowTheEstimatedMinimumStillCoversTheClosedPeriod() {
+        // #225: the bank asked for less than the estimate (174.000); nothing of the closed period stays pending
+        val moves =
+            listOf(
+                purchase(50_000, "2026-10-10"),
+                purchase(1_200_000, "2026-10-07", 12),
+                purchase(30_000, "2026-10-22"),
+                payment(169_000, "2026-10-26", interest = 24_000),
+            )
+        val s = statement(moves, debt = 1_135_000, today = "2026-10-27")
+        assertEquals(d("2026-12-05"), s.period.dueDate)
+        assertEquals(Money.ZERO, s.paid)
+        assertEquals(Money.ofPesos(30_000), s.minimum)
+    }
+
+    @Test
     fun theInitialDebtIsAPurchaseInOneInstallmentOfTheCreationPeriod() {
         val s = statement(emptyList(), debt = 800_000, today = "2026-10-25", account = account(800_000, created = "2026-10-12"))
         assertEquals(d("2026-11-05"), s.period.dueDate)

@@ -67,8 +67,8 @@ object CardPeriodCalculator {
     }
 
     /**
-     * The statement to pay now: the last closed period while it is not covered, then the open one. Payments made after
-     * a cut cover the period that cut closed; what is left over goes to the open period.
+     * The statement to pay now: the last closed period until a payment is made after its cut, then the open one.
+     * Payments made after a cut cover the period that cut closed; what is left over goes to the open period.
      */
     fun statement(
         card: CreditCard,
@@ -126,7 +126,8 @@ object CardPeriodCalculator {
         val owed = if (debt.isNegative) Money.ZERO else debt
 
         val last = charges(closed)
-        if (paid < last.due) {
+        // PO, 2026-11-03 (#225): the minimum is an estimate, so any payment after the cut covers the closed period
+        if (payments.isEmpty() && paid < last.due) {
             return CardStatement(
                 closed,
                 last.onePayment,
@@ -146,7 +147,7 @@ object CardPeriodCalculator {
             now.principal,
             now.interest,
             now.fees,
-            paid - last.due,
+            positive(paid - last.due),
             owed,
             pendingInterest = positive(now.interest - positive(paidInterest - last.interest)),
             pendingFees = positive(now.fees - positive(paidFees - last.fees)),
