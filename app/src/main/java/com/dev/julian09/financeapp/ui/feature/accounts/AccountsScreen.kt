@@ -54,6 +54,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.R
@@ -754,7 +755,8 @@ private fun RemoveSheet(
             when (sheet.mode) {
                 RemoveMode.DEACTIVATE -> "Desactivar cuenta" to ButtonKind.Primary
                 RemoveMode.MOVE -> "Mover transacciones" to ButtonKind.Primary
-                RemoveMode.DELETE_ALL -> "Eliminar definitivamente" to ButtonKind.Danger
+                // ACC-APP-002 (Figma `14:434`): the definitive delete is a filled red button
+                RemoveMode.DELETE_ALL -> "Eliminar definitivamente" to ButtonKind.DangerFilled
             }
         AppButton(
             label,
@@ -775,9 +777,11 @@ private fun Warning(
     val colors = CofferTheme.colors
     Surface(shape = CofferShapes.card, color = colors.surface, border = androidx.compose.foundation.BorderStroke(1.dp, colors.expense)) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = colors.expense)
-            Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = colors.expense)
+            Box(Modifier.size(40.dp).background(colors.background, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = colors.expense, modifier = Modifier.size(20.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 28.sp), color = colors.expense)
                 Text(message, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
             }
         }
