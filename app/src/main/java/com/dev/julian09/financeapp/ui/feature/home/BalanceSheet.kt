@@ -136,7 +136,8 @@ private fun DebtLine(
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 44.dp)
+            // NAV-APP-003 (Figma `214:432`): rows as close as the other lines; the whole row is the target
+            .heightIn(min = 24.dp)
             .toggleable(marked, role = Role.Checkbox, onValueChange = { onToggle() }),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),

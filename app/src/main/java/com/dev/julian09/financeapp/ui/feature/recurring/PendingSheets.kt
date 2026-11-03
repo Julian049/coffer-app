@@ -1,11 +1,13 @@
 package com.dev.julian09.financeapp.ui.feature.recurring
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -38,6 +40,7 @@ import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.message
 import com.dev.julian09.financeapp.ui.feature.transactions.AccountPicker
 import com.dev.julian09.financeapp.ui.feature.transactions.DateTimeCard
+import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.time.LocalDate
 import java.time.ZoneId
@@ -94,7 +97,15 @@ fun PendingSheets(
                     Text("Monto del último pago", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                     Text(formatMoney(r.suggestedAmount), style = MaterialTheme.typography.headlineSmall, color = colors.textPrimary)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // REC-APP-004 (Figma `20:202`): the note in a soft box
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(colors.background, CofferShapes.card)
+                        .border(1.dp, colors.border, CofferShapes.card)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Icon(Icons.Outlined.Info, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(16.dp))
                     Text(
                         "Este pendiente no afecta ningún saldo hasta que lo pagues.",

@@ -1,7 +1,9 @@
 package com.dev.julian09.financeapp.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,8 +27,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.dev.julian09.financeapp.R
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
 /** 64 dp screen header with a 1 dp bottom border: optional back button, title and trailing actions. */
@@ -39,6 +43,8 @@ fun AppHeader(
     subtitle: String? = null,
     /** Beside the title: a tag's colour dot in Detalle de etiqueta (changes-ui-2.0 §2). */
     titleTrailing: (@Composable () -> Unit)? = null,
+    /** Inicio (Figma `1:997`): the 36 dp Coffer mark instead of the title, which stays as its description. */
+    logo: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = CofferTheme.colors
@@ -54,14 +60,22 @@ fun AppHeader(
                 Spacer(Modifier.size(4.dp))
             }
             Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = colors.textPrimary,
-                        modifier = Modifier.weight(1f, fill = false),
+                if (logo) {
+                    Image(
+                        painterResource(if (isSystemInDarkTheme()) R.drawable.coffer_mark_dark else R.drawable.coffer_mark),
+                        contentDescription = title,
+                        modifier = Modifier.size(36.dp),
                     )
-                    titleTrailing?.invoke()
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = colors.textPrimary,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        titleTrailing?.invoke()
+                    }
                 }
                 subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary) }
             }

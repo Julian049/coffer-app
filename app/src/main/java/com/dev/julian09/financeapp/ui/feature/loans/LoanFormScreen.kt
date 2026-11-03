@@ -358,10 +358,28 @@ internal fun ChargeRow(
     digits: String,
     onCheck: (Boolean) -> Unit,
     onAmount: (String) -> Unit,
+    /** False when the caller already puts both charges in one card (Editar préstamo, Figma `100:326`). */
+    inCard: Boolean = true,
+) {
+    val insurance = title == "Seguro de vida"
+    if (inCard) {
+        AppCard { ChargeContent(title, insurance, checked, digits, onCheck, onAmount) }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { ChargeContent(title, insurance, checked, digits, onCheck, onAmount) }
+    }
+}
+
+@Composable
+private fun ChargeContent(
+    title: String,
+    insurance: Boolean,
+    checked: Boolean,
+    digits: String,
+    onCheck: (Boolean) -> Unit,
+    onAmount: (String) -> Unit,
 ) {
     val colors = CofferTheme.colors
-    val insurance = title == "Seguro de vida"
-    AppCard {
+    run {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)

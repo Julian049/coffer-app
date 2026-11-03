@@ -6,9 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -177,19 +182,22 @@ fun AccountFormContent(
                 Label("Tipo de cuenta")
                 // S12-UI05: a loan is not an account to create here; it has its own section in Gestión de cuentas
                 // Figma `1:2293`: three equal boxes, icon above and the name in two lines at most
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NEW_ACCOUNT_TYPES.forEach { type ->
                         val selected = state.type == type
+                        // ACC-APP-003: the three boxes share the tallest one's height (76 dp at least)
                         Column(
                             Modifier
                                 .weight(1f)
+                                .fillMaxHeight()
+                                .heightIn(min = 76.dp)
                                 .clip(CofferShapes.card)
                                 .background(if (selected) colors.primaryContainer else colors.surface)
                                 .border(1.dp, if (selected) colors.onPrimaryContainer else colors.border, CofferShapes.card)
                                 .selectable(selected, role = Role.RadioButton, onClick = { onType(type) })
                                 .padding(vertical = 12.dp, horizontal = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
                         ) {
                             Icon(
                                 accountIcon(null, type),
@@ -281,8 +289,10 @@ private fun Label(text: String) {
 internal fun LastDigitsField(
     value: String,
     onChange: (String) -> Unit,
+    leadingIcon: ImageVector? = null,
 ) {
     AppTextField(
+        leadingIcon = leadingIcon,
         value = value,
         onValueChange = onChange,
         label = "Últimos 4 dígitos · opcional",
