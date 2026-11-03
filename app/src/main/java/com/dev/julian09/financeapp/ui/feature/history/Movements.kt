@@ -160,12 +160,13 @@ fun DayGroup(
     val colors = CofferTheme.colors
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
-            Text(dayLabel(day.date, today), Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+            Text(dayLabel(day.date, today), Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = colors.textPrimary)
             if (day.net != Money.ZERO) {
+                // NAV-APP-005: the day's net in red when negative and green when positive
                 Text(
                     (if (day.net.isNegative) "" else "+") + formatMoney(day.net),
                     style = MaterialTheme.typography.labelLarge,
-                    color = colors.textSecondary,
+                    color = if (day.net.isNegative) colors.expense else colors.income,
                 )
             }
         }
