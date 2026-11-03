@@ -99,6 +99,16 @@ class CreditCardTest {
         }
 
     @Test
+    fun aNewCardKeepsItsLastFourDigitsOnlyWhenTheyAreFour() =
+        runBlocking {
+            assertEquals(emptyMap<Any, Any>(), createCard(draft().copy(lastDigits = "8412")))
+            assertEquals(emptyMap<Any, Any>(), createCard(draft().copy(name = "Otra", lastDigits = "84")))
+            val digits = f.accounts.observeBalances().first().associate { it.account.name to it.account.lastDigits }
+            assertEquals("8412", digits["Visa"])
+            assertEquals(null, digits["Otra"])
+        }
+
+    @Test
     fun aPurchaseIn12InstallmentsRaisesTheDebtButOnlyItsFirstInstallmentIsDue() =
         runBlocking {
             val id = card()

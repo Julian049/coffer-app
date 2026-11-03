@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -288,8 +289,10 @@ private fun Label(text: String) {
 internal fun LastDigitsField(
     value: String,
     onChange: (String) -> Unit,
+    leadingIcon: ImageVector? = null,
 ) {
     AppTextField(
+        leadingIcon = leadingIcon,
         value = value,
         onValueChange = onChange,
         label = "Últimos 4 dígitos · opcional",

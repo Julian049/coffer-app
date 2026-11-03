@@ -139,6 +139,7 @@ class CardFormViewModel
                     rate = rate,
                     rateType = s.rateType,
                     firstInstallmentInterestFree = s.firstInstallmentInterestFree,
+                    lastDigits = s.lastDigits,
                 )
             viewModelScope.launch {
                 val errors = if (s.editingId == null) createCard(draft) else updateCard(s.editingId, draft)

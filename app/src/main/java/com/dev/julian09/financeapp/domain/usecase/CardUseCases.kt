@@ -56,6 +56,8 @@ data class CardDraft(
     val firstInstallmentInterestFree: Boolean,
     val icon: String? = null,
     val color: String? = null,
+    /** REQ-COR-06: Nueva tarjeta asks for them too (TAR-APP-001); anything but four digits is none. */
+    val lastDigits: String? = null,
 )
 
 /** A rate the server takes (ck_ccd_rate, contract Rate), rounded to its 6 decimals. */
@@ -99,6 +101,7 @@ class CreateCard
                     icon = draft.icon,
                     color = draft.color,
                     sortOrder = last + 1,
+                    lastDigits = draft.lastDigits?.trim()?.takeIf { Regex("^[0-9]{4}$").matches(it) },
                 )
             cards.create(account, draft.terms(account.id))
             scheduler.requestSync()
