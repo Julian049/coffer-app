@@ -24,9 +24,11 @@ val FabClearance = 88.dp
 
 /**
  * One family of actions (design-system.md §2): `Primary` (espresso / latte), `Secondary` (surface with border),
- * `Ghost` (text only) and `Danger` (destructive, outlined in the expense color).
+ * `Ghost` (text only), `Danger` (destructive, outlined in the expense color) and `DangerFilled` (the confirm of a
+ * destructive dialog or sheet, Figma `20:487`, `14:434`).
  */
-enum class ButtonKind { Primary, Secondary, Ghost, Danger }
+
+enum class ButtonKind { Primary, Secondary, Ghost, Danger, DangerFilled }
 
 @Composable
 fun AppButton(
@@ -46,6 +48,7 @@ fun AppButton(
             ButtonKind.Secondary -> colors.surface to colors.textPrimary
             ButtonKind.Ghost -> Color.Transparent to colors.primary
             ButtonKind.Danger -> colors.surface to colors.danger
+            ButtonKind.DangerFilled -> colors.danger to Color.White
         }
     Button(
         onClick = onClick,

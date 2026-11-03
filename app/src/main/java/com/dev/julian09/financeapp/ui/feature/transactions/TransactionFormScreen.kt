@@ -32,6 +32,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +56,7 @@ import androidx.compose.material.icons.outlined.SouthEast
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -109,6 +111,7 @@ import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.CardOverview
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.CategoryKind
+import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.usecase.TransactionField
@@ -136,6 +139,7 @@ import com.dev.julian09.financeapp.ui.feature.history.tagColor
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -285,7 +289,10 @@ fun TransactionFormContent(
         if (confirming) {
             ConfirmDialog(
                 title = "¿Eliminar esta transacción?",
-                message = "Se quita del historial y de los saldos.",
+                // MOV-APP-004 (Figma `20:487`): which movement, as in its detail
+                message =
+                    "${state.note.ifBlank { "Transacción" }} · " +
+                        formatMoney(Money.of(state.amountDigits.toBigDecimalOrNull() ?: BigDecimal.ZERO), kindOf(state.type)) + ".",
                 confirmText = "Eliminar",
                 onConfirm = {
                     confirming = false
@@ -1078,12 +1085,22 @@ internal fun DateTimeCard(
     var date by remember { mutableStateOf(occurredAt.atZone(zone).toLocalDate()) }
     AppCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CircleIcon(Icons.Outlined.Schedule)
-            Column(Modifier.weight(1f)) {
-                Text("Fecha y hora", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-                Text(dateTimeLabel(occurredAt, today, zone), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
+            // Figma `20:428`: a 32 dp ring with the clock, the date in 14 Medium and a small «Modificar»
+            Box(
+                Modifier.size(32.dp).background(colors.background, CircleShape).border(1.dp, colors.border, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.Schedule, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(15.dp))
             }
-            TextButton(onClick = { step = 1 }) { Text("Modificar", color = colors.primary) }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Fecha y hora",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
+                    color = colors.textSecondary,
+                )
+                Text(dateTimeLabel(occurredAt, today, zone), style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+            }
+            TextButton(onClick = { step = 1 }) { Text("Modificar", style = MaterialTheme.typography.labelMedium, color = colors.primary) }
         }
     }
     if (step == 1) {
@@ -1248,44 +1265,163 @@ private fun CreditConditions(
     val count = state.installments
     val rateType = state.rateType ?: card.card.rateType
     val rateText = state.rateText ?: percentText(card.card.rate)
-    AppCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Condiciones del crédito", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
-            if (count > 1) Text("Diferido", style = MaterialTheme.typography.labelMedium, color = colors.warning)
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Número de cuotas", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-            IconButton(onClick = { actions.onInstallments(count - 1) }, enabled = count > 1) {
-                Icon(Icons.Outlined.Remove, contentDescription = "Menos cuotas", tint = colors.textPrimary)
+    // MOV-APP-001 (Figma `212:502`): icon and title over a divider, the count in a stepper box, four equal chips and the
+    // rate in a box with its «Editable» badge
+    AppCard(Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Outlined.Tune, contentDescription = null, tint = colors.primary, modifier = Modifier.size(14.dp))
+                Text(
+                    "Condiciones del crédito",
+                    Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
+                )
+                if (count > 1) Badge("Diferido")
             }
-            Text(
-                if (count == 1) "1 cuota" else "$count cuotas",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-            )
-            IconButton(onClick = { actions.onInstallments(count + 1) }, enabled = count < MAX_INSTALLMENTS) {
-                Icon(Icons.Outlined.Add, contentDescription = "Más cuotas", tint = colors.textPrimary)
-            }
+            HorizontalDivider(thickness = 1.dp, color = colors.border)
         }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(QUICK_INSTALLMENTS) { n ->
-                AppChip(if (n == 1) "1 cuota" else "$n cuotas", selected = count == n, onClick = { actions.onInstallments(n) })
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Número de cuotas", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+                Text(
+                    if (count == 1) "1 mes" else "$count meses",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.primary,
+                )
             }
-        }
-        state.errors[TransactionField.INSTALLMENTS]?.let {
-            Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense)
+            Row(
+                Modifier.fillMaxWidth().background(colors.background, CofferShapes.card).padding(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StepButton(Icons.Outlined.Remove, "Menos cuotas", count > 1) { actions.onInstallments(count - 1) }
+                Row(
+                    Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("$count", style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp), color = colors.textPrimary)
+                    Text(if (count == 1) "cuota" else "cuotas", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                }
+                StepButton(Icons.Outlined.Add, "Más cuotas", count < MAX_INSTALLMENTS) { actions.onInstallments(count + 1) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                QUICK_INSTALLMENTS.forEach { n ->
+                    val selected = count == n
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .clip(CofferShapes.card)
+                            .background(if (selected) colors.primaryContainer else colors.background)
+                            .border(1.dp, if (selected) colors.primary else colors.border, CofferShapes.card)
+                            .clickable(role = Role.Button) { actions.onInstallments(n) }
+                            .padding(vertical = 7.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            if (n == 1) "1 cuota" else "$n cuotas",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selected) colors.onPrimaryContainer else colors.textSecondary,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+            state.errors[TransactionField.INSTALLMENTS]?.let {
+                Text(it.message(), style = MaterialTheme.typography.bodySmall, color = colors.expense)
+            }
         }
         if (count > 1) {
-            AppTextField(
-                value = rateText,
-                onValueChange = actions.onRate,
-                label = "Tasa de interés pactada (% ${rateTypeLabel(rateType)})",
-                keyboardType = KeyboardType.Decimal,
-                error = state.errors[TransactionField.RATE]?.message(),
-                help =
-                    parsePercent(rateText)?.let { "Editable para convenios con tasa 0 o preferencial · " + rateLabel(it, rateType) }
-                        ?: "Editable para convenios con tasa 0 o preferencial",
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Tasa de interés pactada",
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.textSecondary,
+                    )
+                    Text(
+                        "Tasa de la tarjeta",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
+                        color = colors.textSecondary,
+                    )
+                }
+                val error = state.errors[TransactionField.RATE]
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(colors.background, CofferShapes.card)
+                        .border(1.dp, if (error != null) colors.expense else colors.border, CofferShapes.card)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("%", style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+                    BasicTextField(
+                        value = rateText,
+                        onValueChange = actions.onRate,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        textStyle = MaterialTheme.typography.titleSmall.copy(color = colors.textPrimary),
+                        cursorBrush = SolidColor(colors.primary),
+                        modifier =
+                            Modifier
+                                .width(64.dp)
+                                .background(colors.surface, RoundedCornerShape(8.dp))
+                                .border(1.dp, colors.textSecondary, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                    Text(
+                        "% ${rateTypeLabel(rateType)}",
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.textSecondary,
+                    )
+                    Badge("Editable")
+                }
+                Text(
+                    error?.message() ?: parsePercent(rateText)?.let { rateLabel(it, rateType) } ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (error != null) colors.expense else colors.textSecondary,
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun Badge(text: String) {
+    val colors = CofferTheme.colors
+    Text(
+        text,
+        Modifier.background(colors.primaryContainer, CofferShapes.pill).padding(horizontal = 8.dp, vertical = 2.dp),
+        style = MaterialTheme.typography.labelSmall,
+        color = colors.onPrimaryContainer,
+    )
+}
+
+@Composable
+private fun StepButton(
+    icon: ImageVector,
+    description: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    Box(
+        Modifier
+            .size(36.dp)
+            .clip(CofferShapes.card)
+            .background(colors.surface)
+            .border(1.dp, colors.border, CofferShapes.card)
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = description, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = description,
+            tint = if (enabled) colors.textPrimary else colors.borderHighlight,
+            modifier = Modifier.size(16.dp),
+        )
     }
 }

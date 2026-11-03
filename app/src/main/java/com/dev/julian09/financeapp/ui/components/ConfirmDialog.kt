@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 
@@ -29,8 +30,10 @@ fun ConfirmDialog(
     destructive: Boolean = false,
 ) {
     val colors = CofferTheme.colors
-    Dialog(onDismissRequest = onDismiss) {
+    // Figma `20:487`: 24 dp from the screen's edges, radius 20, the destructive action filled in red
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
+            modifier = Modifier.padding(horizontal = 24.dp).fillMaxWidth(),
             shape = CofferShapes.dialog,
             color = colors.surface,
             border = BorderStroke(1.dp, colors.border),
@@ -40,7 +43,7 @@ fun ConfirmDialog(
                 Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                     AppButton(dismissText, onDismiss, kind = ButtonKind.Ghost)
-                    AppButton(confirmText, onConfirm, kind = if (destructive) ButtonKind.Danger else ButtonKind.Primary)
+                    AppButton(confirmText, onConfirm, kind = if (destructive) ButtonKind.DangerFilled else ButtonKind.Primary)
                 }
             }
         }
