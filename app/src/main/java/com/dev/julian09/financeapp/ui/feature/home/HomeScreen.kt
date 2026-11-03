@@ -250,7 +250,7 @@ fun HomeContent(
                 }
                 StatusChip(dashboard.fox)
             }
-            FoxCard(dashboard.fox, dashboard.previousMonth)
+            FoxCard(dashboard.fox, dashboard.previousMonth, dashboard.monthlyChange)
             // REQ-INI-04: the cards in the order and with the visibility of Personalizar inicio
             val layout = homeLayout(state.settings.homeCards)
             val trend = layout.any { it.key == HomeSection.MONTHLY_TREND.name && it.visible }
@@ -595,6 +595,7 @@ private fun MonthlyIndicator(
 fun FoxCard(
     mood: FoxMood,
     previousMonth: YearMonth,
+    monthlyChange: BigDecimal? = null,
 ) {
     val colors = CofferTheme.colors
     val month = monthName(previousMonth)
@@ -614,11 +615,11 @@ fun FoxCard(
                 )
             FoxState.ATTENTIVE ->
                 mood.payment!!.let { p ->
+                    // CMP-APP-001 (Figma «Estado del zorro»): «Ojo con el arriendo · Vence mañana y son $900.000.»
                     Triple(
                         R.drawable.mascot_attentive,
-                        "Tienes un pago cerca",
-                        "${p.title}: ${dueSentence(p.daysLeft).replaceFirstChar { it.lowercase() }} · " +
-                            formatMoney(p.amount) + ".",
+                        "Ojo con ${p.title}",
+                        "${dueSentence(p.daysLeft)} y son ${formatMoney(p.amount)}.",
                     )
                 }
             FoxState.WORRIED ->
@@ -637,7 +638,8 @@ fun FoxCard(
                 Triple(
                     R.drawable.mascot_good,
                     "¡Vas muy bien!",
-                    "Este mes llevas ${formatMoney(mood.month!!.income - mood.month.expense)} más de ingresos que de gastos.",
+                    monthlyChange?.takeIf { it.signum() > 0 }?.let { "Llevas ${percent(it)} % más que en $month. Sigue así." }
+                        ?: "Este mes llevas ${formatMoney(mood.month!!.income - mood.month.expense)} más de ingresos que de gastos.",
                 )
             FoxState.NORMAL -> Triple(R.drawable.mascot_normal, "Todo en orden", "Tus gastos van como de costumbre este mes.")
         }
