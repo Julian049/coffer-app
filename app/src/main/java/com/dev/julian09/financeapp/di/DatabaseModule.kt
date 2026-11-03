@@ -43,6 +43,9 @@ object DatabaseModule {
     fun provideDraftDao(db: FinanceDatabase) = db.drafts()
 
     @Provides
+    fun provideMailRuleDao(db: FinanceDatabase) = db.mailRules()
+
+    @Provides
     fun provideTransactionDao(db: FinanceDatabase) = db.transactions()
 
     @Provides

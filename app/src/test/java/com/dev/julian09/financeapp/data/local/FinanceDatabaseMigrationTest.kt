@@ -208,4 +208,26 @@ class FinanceDatabaseMigrationTest {
             close()
         }
     }
+
+    @Test
+    fun version11To12KeepsTheDraftsAndAddsTheMailRules() {
+        helper.createDatabase(11).apply {
+            execSQL(
+                "INSERT INTO transaction_drafts (id, source, type, amount, occurredAt, createdAt, updatedAt, syncState) " +
+                    "VALUES ('d1', 'RAPPICARD', 'EXPENSE', 229800000, 0, 0, 0, 'SYNCED')",
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(12).apply {
+            prepare("SELECT COUNT(*) FROM transaction_drafts").use {
+                it.step()
+                assertEquals(1L, it.getLong(0))
+            }
+            prepare("SELECT COUNT(*) FROM mail_rules").use {
+                it.step()
+                assertEquals(0L, it.getLong(0))
+            }
+            close()
+        }
+    }
 }

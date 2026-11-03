@@ -253,21 +253,21 @@ enum class LedgerError {
     OVER_DEBT,
 }
 
-/** Who wrote the email a [TransactionDraft] came from (REQ-COR-02). */
-enum class DraftSource(
-    val bank: String,
-) {
-    BANCOLOMBIA("Bancolombia"),
-    RAPPICARD("RappiCard"),
-}
-
 /** A transaction to review (REQ-COR-04): it changes no balance, total or report until applied. */
 data class TransactionDraft(
     val id: UUID,
-    val source: DraftSource,
+    /** The server's reader (REQ-COR-02); open since 2.3, so a new provider needs no app version ([MailProviders]). */
+    val source: String,
     val type: TransactionType,
     val amount: Money,
     val occurredAt: Instant,
     val merchant: String? = null,
     val lastDigits: String? = null,
-)
+    /** REQ-COR-12: a TRANSFER is this expense and its income half, [pairedId], from [destinationSource]. */
+    val pairedId: UUID? = null,
+    val destinationSource: String? = null,
+    val destinationDigits: String? = null,
+) {
+    /** The provider as the user knows it, also for an unknown source. */
+    val sourceName: String get() = MailProviders.name(source)
+}

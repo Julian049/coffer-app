@@ -11,6 +11,7 @@ import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
 import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
 import com.dev.julian09.financeapp.data.local.entity.LoanDetailsEntity
+import com.dev.julian09.financeapp.data.local.entity.MailRuleEntity
 import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
@@ -618,6 +619,7 @@ interface SyncMetaDao {
             "(SELECT COUNT(*) FROM accounts WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM categories WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM tags WHERE syncState <> 'SYNCED') + " +
+            "(SELECT COUNT(*) FROM mail_rules WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM recurring_expenses WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM transactions WHERE syncState <> 'SYNCED')",
     )
@@ -901,6 +903,43 @@ interface DraftDao {
     ): Int
 
     @Query("UPDATE transaction_drafts SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailed(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
+}
+
+@Dao
+interface MailRuleDao {
+    @Upsert
+    suspend fun upsert(rules: List<MailRuleEntity>)
+
+    @Query("SELECT * FROM mail_rules WHERE deletedAt IS NULL ORDER BY createdAt")
+    fun observeAll(): Flow<List<MailRuleEntity>>
+
+    @Query("SELECT * FROM mail_rules WHERE source = :source AND deletedAt IS NULL")
+    suspend fun bySource(source: String): List<MailRuleEntity>
+
+    @Query("UPDATE mail_rules SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' WHERE source = :source AND deletedAt IS NULL")
+    suspend fun deleteBySource(
+        source: String,
+        now: Instant,
+    )
+
+    @Query("SELECT * FROM mail_rules WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pending(limit: Int): List<MailRuleEntity>
+
+    @Query("SELECT syncState, updatedAt FROM mail_rules WHERE id = :id")
+    suspend fun syncInfo(id: UUID): SyncInfo?
+
+    @Query("UPDATE mail_rules SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSynced(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE mail_rules SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
     suspend fun markFailed(
         id: UUID,
         sentUpdatedAt: Instant,

@@ -294,3 +294,17 @@ data class TransactionDraftEntity(
     val syncState: SyncState = SyncState.SYNCED,
     val syncError: String? = null,
 )
+
+/** REQ-COR-11: a provider (and maybe its last 4 digits) sent to one account (V18, Room 12). */
+@Entity(tableName = "mail_rules", indices = [Index("syncState")])
+data class MailRuleEntity(
+    @PrimaryKey val id: UUID,
+    val source: String,
+    val lastDigits: String? = null,
+    val accountId: UUID,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.PENDING,
+    val syncError: String? = null,
+)
