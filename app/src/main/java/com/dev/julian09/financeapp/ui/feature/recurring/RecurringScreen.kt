@@ -286,7 +286,7 @@ private fun SummaryFigure(
     }
 }
 
-private fun iconOf(
+internal fun iconOf(
     categoryId: UUID?,
     categories: List<Category>,
 ) = categories.firstOrNull { it.id == categoryId }?.let { c -> c.icon ?: categories.firstOrNull { it.id == c.parentId }?.icon }

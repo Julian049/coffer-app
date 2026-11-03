@@ -34,15 +34,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -63,7 +67,9 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -73,10 +79,12 @@ import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.CardDue
+import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.DuePayment
 import com.dev.julian09.financeapp.domain.model.HomeSection
 import com.dev.julian09.financeapp.domain.model.LoanDue
 import com.dev.julian09.financeapp.domain.model.NetBalanceMode
+import com.dev.julian09.financeapp.domain.model.PendingPayment
 import com.dev.julian09.financeapp.domain.model.SyncStatus
 import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.Urgency
@@ -92,6 +100,7 @@ import com.dev.julian09.financeapp.ui.components.FoxMascot
 import com.dev.julian09.financeapp.ui.components.MoneyText
 import com.dev.julian09.financeapp.ui.components.SyncBadge
 import com.dev.julian09.financeapp.ui.components.accountIcon
+import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.feature.cards.PayCardSheet
 import com.dev.julian09.financeapp.ui.feature.history.DayGroup
@@ -100,6 +109,7 @@ import com.dev.julian09.financeapp.ui.feature.loans.LoanSheet
 import com.dev.julian09.financeapp.ui.feature.recurring.PendingSheets
 import com.dev.julian09.financeapp.ui.feature.recurring.dayMonth
 import com.dev.julian09.financeapp.ui.feature.recurring.dueSentence
+import com.dev.julian09.financeapp.ui.feature.recurring.iconOf
 import com.dev.julian09.financeapp.ui.feature.recurring.urgencyTint
 import com.dev.julian09.financeapp.ui.feature.tags.TagRow
 import com.dev.julian09.financeapp.ui.navigation.PendingLink
@@ -215,6 +225,7 @@ fun HomeContent(
     Column(modifier.fillMaxSize()) {
         AppHeader(
             title = "Inicio",
+            logo = true,
             actions = {
                 syncStatus?.let { SyncBadge(it) }
                 Avatar(onClick = onOpenSettings, initial = userName?.firstOrNull())
@@ -253,17 +264,35 @@ fun HomeContent(
                         // REQ-CTA-09: the chosen view; a tap shows both
                         AppCard(Modifier.fillMaxWidth(), highlight = true, onClick = { balanceSheet = true }) {
                             val net = state.balanceView == BalanceView.NET
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    if (net) "Saldo neto" else "Saldo total disponible",
-                                    Modifier.weight(1f),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colors.textSecondary,
-                                )
-                                // Figma `1:997`: the eye hides the balance on the screen (a 44 dp target)
+                            // NAV-APP-001 (Figma `1:997`): 24 dp inside, label 12, amount 10 dp below, the indicator 8 dp below
+                            // it; the eye's 44 dp target overlaps the corner instead of making the label's row taller
+                            Box(Modifier.fillMaxWidth().padding(4.dp)) {
+                                Column {
+                                    Text(
+                                        if (net) "Saldo neto" else "Saldo total disponible",
+                                        Modifier.padding(end = 32.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = colors.textSecondary,
+                                    )
+                                    Box(Modifier.padding(top = 10.dp, bottom = 4.dp)) {
+                                        if (balanceHidden) {
+                                            Text("$ ••••••", style = MaterialTheme.typography.displaySmall, color = colors.textPrimary)
+                                        } else {
+                                            AnimatedMoneyText(
+                                                if (net) state.net else dashboard.available,
+                                                style = MaterialTheme.typography.displaySmall,
+                                            )
+                                        }
+                                    }
+                                    if (!balanceHidden && trend) {
+                                        dashboard.monthlyChange?.let {
+                                            Box(Modifier.padding(top = 4.dp)) { MonthlyIndicator(it, dashboard.previousMonth) }
+                                        }
+                                    }
+                                }
                                 IconButton(
                                     onClick = { balanceHidden = !balanceHidden },
-                                    Modifier.size(44.dp).offset(x = 12.dp, y = (-8).dp),
+                                    Modifier.align(Alignment.TopEnd).size(44.dp).offset(x = 12.dp, y = (-14).dp),
                                 ) {
                                     Icon(
                                         if (balanceHidden) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
@@ -272,15 +301,6 @@ fun HomeContent(
                                         modifier = Modifier.size(20.dp),
                                     )
                                 }
-                            }
-                            if (balanceHidden) {
-                                Text("$ ••••••", style = MaterialTheme.typography.displaySmall, color = colors.textPrimary)
-                            } else {
-                                AnimatedMoneyText(
-                                    if (net) state.net else dashboard.available,
-                                    style = MaterialTheme.typography.displaySmall,
-                                )
-                                if (trend) dashboard.monthlyChange?.let { MonthlyIndicator(it, dashboard.previousMonth) }
                             }
                         }
                         DraftsNotice(state.draftCount, onOpenHistory)
@@ -296,7 +316,14 @@ fun HomeContent(
                         }
                     }
                     HomeSection.PENDING ->
-                        if (dashboard.pending.isNotEmpty()) UpcomingPayments(dashboard.pending, onOpenRecurring, onOpenPending)
+                        if (dashboard.pending.isNotEmpty()) {
+                            UpcomingPayments(
+                                dashboard.pending,
+                                state.categories,
+                                onOpenRecurring,
+                                onOpenPending,
+                            )
+                        }
                     HomeSection.PINNED_TAGS ->
                         if (state.pinned.isNotEmpty()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -385,15 +412,23 @@ private fun paymentChip(daysLeft: Long) =
 @Composable
 private fun UpcomingPayments(
     pending: List<DuePayment>,
+    categories: List<Category>,
     onOpenRecurring: () -> Unit,
     onOpen: (DuePayment) -> Unit,
 ) {
     val colors = CofferTheme.colors
+    val icon = { p: DuePayment ->
+        when (p) {
+            is CardDue -> Icons.Outlined.CreditCard
+            is LoanDue -> Icons.Outlined.AccountBalance
+            is PendingPayment -> categoryIcon(iconOf(p.recurring.categoryId, categories))
+        }
+    }
     // 2.2: one summary card; a tap unfolds the list (the state is remembered between visits)
     var expanded by rememberSaveable { mutableStateOf(false) }
     val closest = pending.minBy { it.daysLeft }
     val soon = closest.daysLeft <= RecurrenceCalculator.SOON_DAYS
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(12.dp)
     val chevron by animateFloatAsState(if (expanded) 180f else 0f, tween(300), label = "chevron")
     val accent = if (soon) Color(0xFFB03A2E) else Color(0xFF9C5F33)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -405,7 +440,7 @@ private fun UpcomingPayments(
                 .background(if (soon) Color(0xFFFBEDEB) else colors.surface, shape)
                 .border(1.dp, if (soon) Color(0xFFEDC4BE) else Color(0xFFECEAE7), shape)
                 .clickable(onClickLabel = if (expanded) "Plegar los próximos pagos" else "Ver los próximos pagos") { expanded = !expanded }
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(start = 12.dp, top = 12.dp, end = 14.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -413,7 +448,7 @@ private fun UpcomingPayments(
                 Modifier.size(36.dp).background(if (soon) Color(0xFFF5D7D2) else Color(0xFFF8F0E8), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+                Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text("Próximos pagos · ${pending.size}", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
@@ -438,47 +473,96 @@ private fun UpcomingPayments(
             exit = shrinkVertically(tween(300)) + fadeOut(tween(300)),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Próximos pagos", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                    TextButton(onClick = onOpenRecurring) { Text("Gestionar recurrentes →", color = colors.primary) }
-                }
-                Text(
-                    "Avisos automáticos · No afectan tu saldo disponible",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.textSecondary,
-                )
-                pending.forEach { p ->
-                    AppCard(Modifier.fillMaxWidth(), onClick = { onOpen(p) }) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Box(Modifier.size(8.dp).background(urgencyTint(p), CircleShape))
-                            Column(Modifier.weight(1f)) {
-                                Text(p.title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
-                                Text(
-                                    "${dueSentence(p.daysLeft)} · ${dayMonth(p.dueDate)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = urgencyTint(p),
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    formatMoney(p.amount),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = colors.textPrimary,
-                                )
-                                Text(
-                                    when (p.urgency) {
-                                        Urgency.OVERDUE -> "Vencido"
-                                        Urgency.SOON -> "Pendiente"
-                                        Urgency.UPCOMING -> "Próximo"
-                                    },
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = colors.textSecondary,
-                                )
-                            }
-                        }
+                // NAV-APP-016 (Figma `182:1330`): one card with a row per payment, the notice and the link under it
+                AppCard(Modifier.fillMaxWidth(), contentPadding = 0.dp) {
+                    pending.forEachIndexed { i, p ->
+                        if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 12.dp), thickness = 1.dp, color = colors.border)
+                        UpcomingRow(p, icon(p), onClick = { onOpen(p) })
                     }
                 }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(
+                            colors.background,
+                            RoundedCornerShape(8.dp),
+                        ).padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(Icons.Outlined.Info, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(13.dp))
+                    Text(
+                        "Avisos automáticos",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
+                        color = colors.textSecondary,
+                    )
+                }
+                TextButton(onClick = onOpenRecurring, modifier = Modifier.align(Alignment.End)) {
+                    Text("Gestionar recurrentes →", style = MaterialTheme.typography.labelMedium, color = colors.primary)
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun UpcomingRow(
+    p: DuePayment,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    val tint = urgencyTint(p)
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.size(40.dp)) {
+            Box(Modifier.fillMaxSize().background(colors.iconContainer, CofferShapes.card), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+            }
+            // the urgency dot on the corner, only while the payment needs attention
+            if (tint != colors.textSecondary) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 3.dp, y = (-3).dp)
+                        .size(10.dp)
+                        .background(colors.surface, CircleShape)
+                        .padding(2.dp)
+                        .background(tint, CircleShape),
+                )
+            }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(p.title, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    dueSentence(p.daysLeft),
+                    Modifier.background(colors.background, CofferShapes.pill).padding(horizontal = 6.dp),
+                    style = MaterialTheme.typography.labelSmall.copy(lineHeight = 14.sp),
+                    color = tint,
+                )
+                Text(
+                    "· ${dayMonth(p.dueDate)}",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal, lineHeight = 14.sp),
+                    color = colors.textSecondary,
+                )
+            }
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(formatMoney(p.amount), style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+            Text(
+                when {
+                    p.urgency == Urgency.OVERDUE -> "Vencido"
+                    p.urgency == Urgency.SOON -> "Pendiente"
+                    p.inWindow -> "Próximo"
+                    else -> "Programado"
+                },
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal, lineHeight = 14.sp),
+                color = tint,
+            )
         }
     }
 }
