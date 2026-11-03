@@ -56,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -115,6 +116,7 @@ import com.dev.julian09.financeapp.ui.feature.recurring.iconOf
 import com.dev.julian09.financeapp.ui.feature.recurring.urgencyTint
 import com.dev.julian09.financeapp.ui.feature.tags.TagRow
 import com.dev.julian09.financeapp.ui.navigation.PendingLink
+import com.dev.julian09.financeapp.ui.root.FirstContent
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
 import java.math.BigDecimal
@@ -145,6 +147,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    if (state != null) SideEffect { FirstContent.shown = true }
     var pending by rememberSaveable { mutableStateOf<String?>(null) }
     var paying by rememberSaveable { mutableStateOf<String?>(null) }
     val link by PendingLink.recurringId.collectAsStateWithLifecycle()
