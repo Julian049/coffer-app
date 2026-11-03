@@ -174,8 +174,9 @@ class TransactionFormViewModel
                             occurredAt = draft.occurredAt,
                             note = draft.merchant.orEmpty(),
                             accountId = suggestion.accountId,
+                            destinationId = suggestion.destinationId,
                             categoryId = suggestion.categoryId,
-                            draftBank = draft.source.bank,
+                            draftBank = draft.sourceName,
                         )
                     }
                 } else if (id != null) {

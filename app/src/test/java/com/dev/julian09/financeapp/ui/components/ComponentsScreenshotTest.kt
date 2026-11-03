@@ -39,7 +39,6 @@ import com.dev.julian09.financeapp.domain.model.CategoryResolution
 import com.dev.julian09.financeapp.domain.model.ChangeAction
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
-import com.dev.julian09.financeapp.domain.model.DraftSource
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.HomeCard
 import com.dev.julian09.financeapp.domain.model.ImportPreview
@@ -446,7 +445,7 @@ class ComponentsScreenshotTest {
                         listOf(
                             TransactionDraft(
                                 UUID(9, 1),
-                                DraftSource.BANCOLOMBIA,
+                                "BANCOLOMBIA",
                                 TransactionType.EXPENSE,
                                 Money.ofPesos(86_400),
                                 Instant.parse("2026-10-17T18:10:00Z"),
@@ -455,7 +454,7 @@ class ComponentsScreenshotTest {
                             ),
                             TransactionDraft(
                                 UUID(9, 2),
-                                DraftSource.RAPPICARD,
+                                "RAPPICARD",
                                 TransactionType.EXPENSE,
                                 Money.ofPesos(32_900),
                                 Instant.parse("2026-10-16T21:00:00Z"),

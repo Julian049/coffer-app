@@ -12,6 +12,7 @@ import com.dev.julian09.financeapp.data.repository.ChangeLogRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ChangeLogWriter
 import com.dev.julian09.financeapp.data.repository.DraftRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.LoanRepositoryImpl
+import com.dev.julian09.financeapp.data.repository.MailRuleRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.RecurringRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.SettingsRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.TagRepositoryImpl
@@ -41,7 +42,8 @@ class LedgerFixture(
     val observeLoans = ObserveLoans(accounts, loans)
     val loanDues = ObserveLoanDues(observeLoans, loans, settings, clock)
     val changeLog = ChangeLogRepositoryImpl(db.changeLog())
-    val drafts = DraftRepositoryImpl(db, db.drafts(), transactions, clock)
+    val mailRules = MailRuleRepositoryImpl(db, db.mailRules(), clock)
+    val drafts = DraftRepositoryImpl(db, db.drafts(), transactions, accounts, mailRules, clock)
     private val past: Instant = Instant.parse("2026-01-01T00:00:00Z")
 
     suspend fun account(

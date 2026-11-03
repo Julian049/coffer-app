@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,6 +62,8 @@ fun IconBubble(
     outlined: Boolean = false,
     checked: Boolean = false,
     multiple: Boolean = false,
+    /** Nueva transacción por pasos (changes-ui-2.3 §1.4): 48 dp circles, 22 dp icons, one-line names, walnut when chosen. */
+    large: Boolean = false,
     onClick: () -> Unit,
 ) {
     val colors = CofferTheme.colors
@@ -81,7 +84,7 @@ fun IconBubble(
         Box {
             Box(
                 Modifier
-                    .size(44.dp)
+                    .size(if (large) 48.dp else 44.dp)
                     .background(
                         when {
                             selected -> colors.primary
@@ -96,7 +99,7 @@ fun IconBubble(
                     icon,
                     contentDescription = null,
                     tint = if (selected) colors.onPrimary else colors.iconOnContainer,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(if (large) 22.dp else 20.dp),
                 )
             }
             if (checked) {
@@ -115,9 +118,17 @@ fun IconBubble(
         }
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-            color = if (selected) colors.textPrimary else colors.textSecondary,
-            maxLines = 2,
+            style =
+                MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp).let {
+                    if (large && selected) it.copy(fontWeight = FontWeight.Medium) else it
+                },
+            color =
+                when {
+                    large && selected -> colors.primary
+                    selected -> colors.textPrimary
+                    else -> colors.textSecondary
+                },
+            maxLines = if (large) 1 else 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
@@ -128,8 +139,9 @@ fun IconBubble(
 @Composable
 fun MoreBubble(
     modifier: Modifier = Modifier.width(72.dp),
+    large: Boolean = false,
     onClick: () -> Unit,
-) = IconBubble("Más", Icons.Outlined.GridView, selected = false, outlined = true, modifier = modifier, onClick = onClick)
+) = IconBubble("Más", Icons.Outlined.GridView, selected = false, outlined = true, modifier = modifier, large = large, onClick = onClick)
 
 /**
  * S15-UI04: the quick row of a picker, five equal cells that share the width (a phone is 360 to 412 dp wide), with «Más»
@@ -139,11 +151,12 @@ fun MoreBubble(
 fun BubbleRow(
     count: Int,
     onMore: () -> Unit,
+    large: Boolean = false,
     cell: @Composable (index: Int, modifier: Modifier) -> Unit,
 ) {
     Row(Modifier.fillMaxWidth()) {
         repeat(QUICK_CELLS - 1) { i -> if (i < count) cell(i, Modifier.weight(1f)) else Spacer(Modifier.weight(1f)) }
-        MoreBubble(Modifier.weight(1f), onMore)
+        MoreBubble(Modifier.weight(1f), large, onMore)
     }
 }
 

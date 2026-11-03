@@ -9,6 +9,7 @@ import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
 import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
 import com.dev.julian09.financeapp.data.local.entity.LoanDetailsEntity
+import com.dev.julian09.financeapp.data.local.entity.MailRuleEntity
 import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SettingsEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
@@ -638,12 +639,65 @@ class SyncTables
                 },
             )
 
+        /** REQ-COR-11: after the accounts they point to. */
+        val mailRules =
+            SyncTable(
+                entity = "mailRule",
+                pending = { db.mailRules().pending(it) },
+                syncInfo = { db.mailRules().syncInfo(it) },
+                upsert = { db.mailRules().upsert(listOf(it)) },
+                markSynced = { id, at -> db.mailRules().markSynced(id, at) },
+                markFailed = { id, at, e -> db.mailRules().markFailed(id, at, e) },
+                idOf = MailRuleEntity::id,
+                updatedAtOf = MailRuleEntity::updatedAt,
+                encode = { r ->
+                    envelope(
+                        "mailRule",
+                        r.id,
+                        r.createdAt,
+                        r.updatedAt,
+                        r.deletedAt,
+                        buildJsonObject {
+                            put("source", r.source)
+                            put("lastDigits", r.lastDigits)
+                            put("accountId", r.accountId.toString())
+                        },
+                    )
+                },
+                decode = { c ->
+                    MailRuleEntity(
+                        id = UUID.fromString(c.id),
+                        source = c.data.text("source")!!,
+                        lastDigits = c.data.text("lastDigits"),
+                        accountId = UUID.fromString(c.data.text("accountId")!!),
+                        createdAt = Instant.parse(c.createdAt),
+                        updatedAt = Instant.parse(c.updatedAt),
+                        deletedAt = c.deletedAt?.let(Instant::parse),
+                        syncState = SyncState.SYNCED,
+                    )
+                },
+            )
+
         /**
          * Dependency order: settings, accounts and their card and loan terms, categories, tags, recurring expenses, transactions,
          * deferred purchases and their installments, then the history and the drafts, which follow the movement they became.
          */
         val all: List<SyncTable<*>> =
-            listOf(settings, accounts, cards, loans, categories, tags, recurring, transactions, deferred, installments, changeLog, drafts)
+            listOf(
+                settings,
+                accounts,
+                cards,
+                loans,
+                categories,
+                tags,
+                mailRules,
+                recurring,
+                transactions,
+                deferred,
+                installments,
+                changeLog,
+                drafts,
+            )
 
         val byEntity: Map<String, SyncTable<*>> = all.associateBy { it.entity }
     }

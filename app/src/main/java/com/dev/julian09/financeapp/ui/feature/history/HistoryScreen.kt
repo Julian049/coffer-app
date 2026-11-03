@@ -63,6 +63,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Category
+import com.dev.julian09.financeapp.domain.model.MailProviders
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionType
@@ -535,6 +536,11 @@ private fun DraftsSection(
 
 private val DRAFT_DAY = DateTimeFormatter.ofPattern("d MMM", ES_CO)
 
+// REQ-COR-12: the two halves of a transfer between own accounts read as one movement
+private fun TransactionDraft.title() = if (type == TransactionType.TRANSFER) "Transferencia" else merchant ?: sourceName
+
+private fun TransactionDraft.subtitle() = destinationSource?.let { "$sourceName → ${MailProviders.name(it)}" } ?: sourceName
+
 @Composable
 private fun DraftRow(
     d: TransactionDraft,
@@ -564,18 +570,22 @@ private fun DraftRow(
             Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(d.merchant ?: d.source.bank, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary, maxLines = 1)
+            Text(d.title(), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary, maxLines = 1)
             val day = d.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate()
             val digits = d.lastDigits?.let { " · *$it" }.orEmpty()
             Text(
-                "${d.source.bank}$digits · ${if (day == today) "Hoy" else DRAFT_DAY.format(day).replace(".", "")}",
+                "${d.subtitle()}$digits · ${if (day == today) "Hoy" else DRAFT_DAY.format(day).replace(".", "")}",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textSecondary,
             )
         }
         // Gray on purpose, whatever the type: it is not real yet
         Text(
-            (if (d.type == TransactionType.EXPENSE) "−" else "+") + formatMoney(d.amount),
+            when (d.type) {
+                TransactionType.EXPENSE -> "−"
+                TransactionType.INCOME -> "+"
+                TransactionType.TRANSFER -> ""
+            } + formatMoney(d.amount),
             style = MaterialTheme.typography.titleSmall,
             color = colors.textSecondary,
         )

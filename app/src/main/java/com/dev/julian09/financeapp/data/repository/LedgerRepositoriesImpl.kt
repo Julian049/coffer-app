@@ -8,6 +8,7 @@ import com.dev.julian09.financeapp.data.local.dao.CategoryDao
 import com.dev.julian09.financeapp.data.local.dao.ChangeLogDao
 import com.dev.julian09.financeapp.data.local.dao.DraftDao
 import com.dev.julian09.financeapp.data.local.dao.LoanDao
+import com.dev.julian09.financeapp.data.local.dao.MailRuleDao
 import com.dev.julian09.financeapp.data.local.dao.NoteRow
 import com.dev.julian09.financeapp.data.local.dao.RecurringDao
 import com.dev.julian09.financeapp.data.local.dao.SettingsDao
@@ -21,6 +22,7 @@ import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
 import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
 import com.dev.julian09.financeapp.data.local.entity.LoanDetailsEntity
+import com.dev.julian09.financeapp.data.local.entity.MailRuleEntity
 import com.dev.julian09.financeapp.data.local.entity.RecurringExpenseEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncMetaEntity
 import com.dev.julian09.financeapp.data.local.entity.SyncState
@@ -46,7 +48,6 @@ import com.dev.julian09.financeapp.domain.model.ChangeAction
 import com.dev.julian09.financeapp.domain.model.ChangeEntry
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
-import com.dev.julian09.financeapp.domain.model.DraftSource
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.HomeCard
 import com.dev.julian09.financeapp.domain.model.Installment
@@ -55,6 +56,7 @@ import com.dev.julian09.financeapp.domain.model.IntervalUnit
 import com.dev.julian09.financeapp.domain.model.Loan
 import com.dev.julian09.financeapp.domain.model.LoanInstallment
 import com.dev.julian09.financeapp.domain.model.LoanMode
+import com.dev.julian09.financeapp.domain.model.MailRule
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.NetBalanceMode
 import com.dev.julian09.financeapp.domain.model.NoteSuggestion
@@ -69,6 +71,8 @@ import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.model.accountFor
+import com.dev.julian09.financeapp.domain.model.pairTransfers
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CardRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
@@ -76,12 +80,14 @@ import com.dev.julian09.financeapp.domain.port.ChangeLogRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.DraftRepository
 import com.dev.julian09.financeapp.domain.port.LoanRepository
+import com.dev.julian09.financeapp.domain.port.MailRuleRepository
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import com.dev.julian09.financeapp.domain.usecase.OPENING_BALANCE
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -1169,29 +1175,72 @@ class DraftRepositoryImpl
         private val db: FinanceDatabase,
         private val dao: DraftDao,
         private val transactions: TransactionRepository,
+        private val accounts: AccountRepository,
+        private val rules: MailRuleRepository,
         private val clock: Clock,
     ) : DraftRepository {
-        override fun observeAll(): Flow<List<TransactionDraft>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+        override fun observeAll(): Flow<List<TransactionDraft>> =
+            combine(dao.observeAll(), accounts.observeActive(), rules.observeAll()) { rows, active, ruled ->
+                pairTransfers(rows.map { it.toDomain() }) { accountFor(it.source, it.lastDigits, active, ruled) }
+            }
 
-        override suspend fun get(id: UUID): TransactionDraft? = dao.get(id)?.toDomain()
+        override suspend fun get(id: UUID): TransactionDraft? = observeAll().first().firstOrNull { it.id == id }
 
         override suspend fun count(): Int = dao.count()
 
         override suspend fun apply(
             draftId: UUID,
             transaction: Transaction,
-        ) = db.withTransaction {
-            transactions.insert(transaction)
-            dao.delete(draftId, clock.now())
+        ) {
+            val paired = get(draftId)?.pairedId
+            db.withTransaction {
+                transactions.insert(transaction)
+                dao.delete(draftId, clock.now())
+                paired?.let { dao.delete(it, clock.now()) }
+            }
         }
 
-        override suspend fun discard(id: UUID) = dao.delete(id, clock.now())
+        override suspend fun discard(id: UUID) {
+            val paired = get(id)?.pairedId
+            db.withTransaction {
+                dao.delete(id, clock.now())
+                paired?.let { dao.delete(it, clock.now()) }
+            }
+        }
+    }
+
+class MailRuleRepositoryImpl
+    @Inject
+    constructor(
+        private val db: FinanceDatabase,
+        private val dao: MailRuleDao,
+        private val clock: Clock,
+    ) : MailRuleRepository {
+        override fun observeAll(): Flow<List<MailRule>> =
+            dao.observeAll().map { rows -> rows.map { MailRule(it.id, it.source, it.lastDigits, it.accountId) } }
+
+        override suspend fun save(
+            source: String,
+            lastDigits: String?,
+            accountId: UUID,
+        ) = db.withTransaction {
+            val now = clock.now()
+            // One rule per provider: the first one keeps its id, any other left by two phones goes
+            val kept = dao.bySource(source)
+            kept.drop(1).forEach { dao.upsert(listOf(it.copy(deletedAt = now, updatedAt = now, syncState = SyncState.PENDING))) }
+            val row =
+                kept.firstOrNull()?.copy(lastDigits = lastDigits, accountId = accountId, updatedAt = now, syncState = SyncState.PENDING)
+                    ?: MailRuleEntity(UUID.randomUUID(), source, lastDigits, accountId, createdAt = now, updatedAt = now)
+            dao.upsert(listOf(row))
+        }
+
+        override suspend fun remove(source: String) = dao.deleteBySource(source, clock.now())
     }
 
 internal fun TransactionDraftEntity.toDomain() =
     TransactionDraft(
         id = id,
-        source = DraftSource.valueOf(source),
+        source = source,
         type = TransactionType.valueOf(type),
         amount = Money(amount),
         occurredAt = occurredAt,

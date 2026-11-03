@@ -71,7 +71,7 @@ class HistoryViewModelTest {
             f.drafts,
             ApplyDraft(
                 f.drafts,
-                SuggestDraft(f.accounts, f.transactions),
+                SuggestDraft(f.accounts, f.transactions, f.mailRules),
                 TransactionValidator(f.accounts, f.categories),
                 FakeSyncScheduler(),
             ),
