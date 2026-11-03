@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mail rules (#212): Room 12 adds `mail_rules`, synced as `mailRule` (server 2.3, V18). A provider, or a provider and its last 4 digits, sends its drafts to one account; the rule wins over the digits, and the digits only match the account types the provider accepts (`MailProvider.accepts`: a `T.Cred *6858` never lands in a savings account ending the same). `accountFor` in `domain/model/Mail.kt` holds the order.
 - One draft per transfer between own accounts (#213, REQ-COR-12): an expense and an income of the same amount at most 60 s apart whose accounts are known and different show as one «Transferencia» draft (`pairTransfers`, applied in `DraftRepositoryImpl.observeAll`). Aplicar writes the transfer and drops both halves; Revisar opens the transfer form already filled.
 
+- Ajustes → Correos → Proveedores de correo (#212, changes-ui-2.3 §3): the providers of `MailProviders` grouped by Asociados and Sin asociar, with their logos (`mail_logo_*`, cropped to a circle), Hoja · Asociar proveedor and Hoja · Asociar tarjeta de crédito (only credit cards, the 4 digits taken from the card and editable). «Sugiere un proveedor» shows as «Próximamente» until its destination is decided.
+
 ### Changed
 
 - Draft sources are open (#211): `DraftSource` is gone, `TransactionDraft.source` is the server's text and `MailProviders` (the catalog of Proveedores de correo) gives its name; an unknown source shows as «Nuevo banco» instead of crashing (`DraftSource.valueOf`).

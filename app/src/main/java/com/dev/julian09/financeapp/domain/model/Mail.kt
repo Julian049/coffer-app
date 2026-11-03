@@ -47,7 +47,7 @@ object MailProviders {
                 "Bancolombia · Tarjeta de crédito",
                 MailProviderKind.BANK,
                 asksCard = true,
-                covers = "Compras con tus tarjetas de crédito Bancolombia",
+                covers = "Alertas de compras con tus tarjetas de crédito Bancolombia",
             ),
             MailProvider(
                 "RAPPICUENTA",
