@@ -481,7 +481,8 @@ private fun TypeTabs(
             val selected = TYPES[i] == type
             Row(
                 Modifier
-                    .weight(1f)
+                    // 2.4-06: the longest label gets more room, so «Transferencia» is centred in its tab and never wraps
+                    .weight(if (i == 2) 1.25f else 0.9f)
                     .fillMaxHeight()
                     .clip(CofferShapes.pill)
                     .background(if (selected) colors.primaryContainer else Color.Transparent)

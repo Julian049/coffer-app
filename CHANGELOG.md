@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Room 13 and the sync carry `sourceMerchant`, `draftId` and `splitGroupId` on movements (needs server V19) (#229).
+- `learn` (`DraftSuggester`): what earlier decisions say about a draft: unknown, probable or sure. A draft arrives with the title and category of the last movements of the same merchant and account; an income keeps an empty title (#229).
+- «Guardar solos los repetidos» in Conectar correo (on by default, phone-only): a sure draft (same merchant and amount, the last 3 ended the same) is saved on its own; never a transfer between own accounts or an unknown account. One notice says how many came in (#229).
+- Deshacer in Editar (↶, only on movements that came by email): back to «Por revisar», all parts of a split, and what is learned of that merchant restarts (#229).
+- «Llegó por correo» badge on every list row that came by email, Hoja · Movimientos registrados and the Home notice (alone or with «por revisar» in one card) (#230).
+- Dividir an expense: Mitad or Personalizado; the user's part stays the expense and each other part becomes a transfer from the paying account (#231).
+
+### Changed
+- Por revisar shows the level only by the circle: dotted and white, soft container, or espresso.
+
+### Fixed
+- The «Transferencia» tab is centred and never wraps (#232).
+
 ## [2.3.2] - 2026-11-03
 
 ### Fixed
