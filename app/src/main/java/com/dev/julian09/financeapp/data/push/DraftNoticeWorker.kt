@@ -61,7 +61,7 @@ class DraftNoticeWorker
                         .Builder(applicationContext, CHANNEL)
                         .setSmallIcon(R.drawable.ic_launcher_monochrome)
                         .setContentTitle(title)
-                        .setContentText("Ya están en tu historial. Puedes deshacerlos desde su detalle.")
+                        .setContentText("Ya están en tu historial. Puedes deshacerlos desde su detalle. Las etiquetas no se aplican.")
                         .setAutoCancel(true)
                         .build()
                 try {

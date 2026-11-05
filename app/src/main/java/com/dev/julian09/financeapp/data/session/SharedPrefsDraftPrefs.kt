@@ -50,6 +50,30 @@ class SharedPrefsDraftPrefs
                     }.toMap(),
             )
 
+        private val links =
+            MutableStateFlow(
+                prefs
+                    .getStringSet(LINKS, emptySet())
+                    .orEmpty()
+                    .mapNotNull {
+                        it.substringAfterLast('=', "").let { id -> runCatching { UUID.fromString(id) }.getOrNull() }?.let { id ->
+                            it.substringBeforeLast('=') to
+                                id
+                        }
+                    }.toMap(),
+            )
+
+        override fun observeRecurringLinks(): Flow<Map<String, UUID>> = links
+
+        override suspend fun linkRecurring(
+            key: String,
+            recurringId: UUID,
+        ) {
+            val all = links.value + (key to recurringId)
+            prefs.edit().putStringSet(LINKS, all.map { (k, v) -> "$k=$v" }.toSet()).apply()
+            links.value = all
+        }
+
         override fun observeResets(): Flow<Map<String, Instant>> = resets
 
         override suspend fun resetLearning(
@@ -70,5 +94,6 @@ class SharedPrefsDraftPrefs
             const val AUTO_SAVE = "autoSave"
             const val REGISTERED = "registered"
             const val RESETS = "resets"
+            const val LINKS = "recurringLinks"
         }
     }

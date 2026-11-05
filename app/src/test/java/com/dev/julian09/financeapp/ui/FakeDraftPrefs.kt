@@ -12,6 +12,16 @@ class FakeDraftPrefs(
     private val auto = MutableStateFlow(autoSave)
     private val registered = MutableStateFlow(emptyList<UUID>())
     private val resets = MutableStateFlow(emptyMap<String, Instant>())
+    private val links = MutableStateFlow(emptyMap<String, UUID>())
+
+    override fun observeRecurringLinks(): Flow<Map<String, UUID>> = links
+
+    override suspend fun linkRecurring(
+        key: String,
+        recurringId: UUID,
+    ) {
+        links.value += key to recurringId
+    }
 
     override fun observeAutoSave(): Flow<Boolean> = auto
 
@@ -38,3 +48,22 @@ class FakeDraftPrefs(
         resets.value += key to at
     }
 }
+
+/** The recurring-expense side of a draft, over the fixture's real repositories. */
+fun draftRecurring(
+    f: com.dev.julian09.financeapp.data.local.LedgerFixture,
+    prefs: DraftPrefs = FakeDraftPrefs(),
+    sync: com.dev.julian09.financeapp.domain.port.SyncScheduler = FakeSyncScheduler(),
+) = com.dev.julian09.financeapp.domain.usecase.DraftRecurring(
+    f.recurring,
+    f.drafts,
+    com.dev.julian09.financeapp.domain.usecase.PayPending(
+        f.recurring,
+        com.dev.julian09.financeapp.domain.usecase
+            .TransactionValidator(f.accounts, f.categories),
+        sync,
+    ),
+    prefs,
+    f.clock,
+    sync,
+)

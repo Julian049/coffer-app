@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- 2.4-07: an email draft that is the payment of a pending recurring expense (same account, exact amount, due date within 3 days) asks «¿Es el pago de X (vence mañana)?» in Revisar transacción. «Sí» pays the recurring expense with its own title and category, moves its next date and drops the draft; «No» goes on as a normal expense. The answer is learnt on the phone: the next email of that merchant in that account pays it by itself (with the «Guardar solos los repetidos» switch), and until then the ✓ never registers a second expense (#236).
+- Deshacer on such a payment also gives the recurring expense its previous date back.
+
+### Fixed
+- The circle of a probable or sure draft shows the icon of the category it suggests, as in Figma (#236).
+
+### Added
 - Room 13 and the sync carry `sourceMerchant`, `draftId` and `splitGroupId` on movements (needs server V19) (#229).
 - `learn` (`DraftSuggester`): what earlier decisions say about a draft: unknown, probable or sure. A draft arrives with the title and category of the last movements of the same merchant and account; an income keeps an empty title (#229).
 - «Guardar solos los repetidos» in Conectar correo (on by default, phone-only): a sure draft (same merchant and amount, the last 3 ended the same) is saved on its own; never a transfer between own accounts or an unknown account. One notice says how many came in (#229).

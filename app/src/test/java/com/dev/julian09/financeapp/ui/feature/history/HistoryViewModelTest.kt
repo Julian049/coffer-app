@@ -80,6 +80,8 @@ class HistoryViewModelTest {
                 ),
                 TransactionValidator(f.accounts, f.categories),
                 FakeSyncScheduler(),
+                com.dev.julian09.financeapp.ui
+                    .draftRecurring(f),
             ),
             SuggestDraft(
                 f.accounts,

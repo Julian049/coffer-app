@@ -117,6 +117,7 @@ import com.dev.julian09.financeapp.domain.model.CategoryKind
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.usecase.RecurringMatch
 import com.dev.julian09.financeapp.domain.usecase.TransactionField
 import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
@@ -125,6 +126,7 @@ import com.dev.julian09.financeapp.ui.components.AppChip
 import com.dev.julian09.financeapp.ui.components.AppHeader
 import com.dev.julian09.financeapp.ui.components.AppTextField
 import com.dev.julian09.financeapp.ui.components.BubbleRow
+import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.CategoryGridSheet
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.IconBubble
@@ -187,6 +189,8 @@ fun TransactionFormScreen(
                 onSave = viewModel::save,
                 onDelete = viewModel::delete,
                 onUndo = viewModel::undo,
+                onRecurringYes = viewModel::confirmRecurring,
+                onRecurringNo = viewModel::dismissRecurring,
                 onSplit = viewModel::split,
                 onDiscard = viewModel::discard,
                 onInstallments = viewModel::setInstallments,
@@ -213,6 +217,8 @@ class TransactionFormActions(
     val onSave: () -> Unit = {},
     val onDelete: () -> Unit = {},
     val onUndo: () -> Unit = {},
+    val onRecurringYes: () -> Unit = {},
+    val onRecurringNo: () -> Unit = {},
     val onSplit: (List<com.dev.julian09.financeapp.domain.usecase.SplitPart>) -> Unit = {},
     val onDiscard: () -> Unit = {},
     val onInstallments: (Int) -> Unit = {},
@@ -346,6 +352,7 @@ fun TransactionFormContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             state.draftBank?.let { DraftNote(it) }
+            state.recurringMatch?.let { RecurringQuestion(it, actions.onRecurringYes, actions.onRecurringNo) }
             TypeTabs(state.type, actions.onType)
             AmountBlock(state, actions.onAmount, focusOnOpen = state.editingId == null && state.draftId == null, onNext = toTitle)
             // 2.4 §6.1: only on an expense that is being edited or reviewed, never an installment purchase
@@ -1483,5 +1490,41 @@ private fun StepButton(
             tint = if (enabled) colors.textPrimary else colors.borderHighlight,
             modifier = Modifier.size(16.dp),
         )
+    }
+}
+
+/** 2.4-07: «¿Es el pago de Claude Pro (vence mañana)?» with Sí and No, above the amount of the review. */
+@Composable
+private fun RecurringQuestion(
+    match: RecurringMatch,
+    onYes: () -> Unit,
+    onNo: () -> Unit,
+) {
+    val colors = CofferTheme.colors
+    val due =
+        when {
+            match.daysLeft == 0L -> "vence hoy"
+            match.daysLeft == 1L -> "vence mañana"
+            match.daysLeft > 1 -> "vence en ${match.daysLeft} días"
+            match.daysLeft == -1L -> "venció ayer"
+            else -> "venció hace ${-match.daysLeft} días"
+        }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(CofferShapes.card)
+            .background(colors.primaryContainer)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            "¿Es el pago de ${match.recurring.name} ($due)?",
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.onPrimaryContainer,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AppButton("Sí", onClick = onYes, modifier = Modifier.weight(1f))
+            AppButton("No", onClick = onNo, kind = ButtonKind.Secondary, modifier = Modifier.weight(1f))
+        }
     }
 }
