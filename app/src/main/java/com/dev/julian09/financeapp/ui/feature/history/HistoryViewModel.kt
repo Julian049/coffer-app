@@ -2,6 +2,7 @@ package com.dev.julian09.financeapp.ui.feature.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dev.julian09.financeapp.domain.finance.DraftLevel
 import com.dev.julian09.financeapp.domain.finance.FoxMood
 import com.dev.julian09.financeapp.domain.model.AccountBalance
 import com.dev.julian09.financeapp.domain.model.Category
@@ -19,6 +20,7 @@ import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import com.dev.julian09.financeapp.domain.usecase.ApplyDraft
 import com.dev.julian09.financeapp.domain.usecase.ObserveMonthFox
 import com.dev.julian09.financeapp.domain.usecase.SearchTransactions
+import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
 import com.dev.julian09.financeapp.domain.usecase.isPickable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -76,6 +78,8 @@ data class HistoryUiState(
     val fox: FoxMood? = null,
     /** REQ-COR-04: what arrived by email and does not count yet, newest first. */
     val drafts: List<TransactionDraft> = emptyList(),
+    /** 2.4 §1: how well each draft is known; the row shows it only as the colour of its circle. */
+    val levels: Map<UUID, DraftLevel> = emptyMap(),
 )
 
 private data class Inputs(
@@ -103,6 +107,7 @@ class HistoryViewModel
         private val monthFox: ObserveMonthFox,
         drafts: DraftRepository,
         private val applyDraft: ApplyDraft,
+        private val suggest: SuggestDraft,
     ) : ViewModel() {
         private val inputs = MutableStateFlow(Inputs(YearMonth.from(clock.today()), "", HistoryFilters(), PAGE))
 
@@ -149,6 +154,7 @@ class HistoryViewModel
                     choices = ch,
                     fox = fox,
                     drafts = pending,
+                    levels = pending.associate { it.id to suggest(it).level },
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

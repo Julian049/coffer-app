@@ -114,6 +114,10 @@ data class Transaction(
     val paymentKind: String? = null,
     /** A transfer's note or concept, apart from its title [note] (S12-H01). */
     val concept: String? = null,
+    /** 2.4: the email's merchant, the draft it was applied from (the badge «Llegó por correo» and Deshacer) and its split group. */
+    val sourceMerchant: String? = null,
+    val draftId: UUID? = null,
+    val splitGroupId: UUID? = null,
     /** When it was registered; null until stored. */
     val createdAt: Instant? = null,
     /** Not yet in the cloud (shown in the detail). */

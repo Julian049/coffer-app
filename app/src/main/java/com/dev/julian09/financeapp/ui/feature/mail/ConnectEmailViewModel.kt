@@ -3,6 +3,7 @@ package com.dev.julian09.financeapp.ui.feature.mail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.domain.model.AuthFailure
+import com.dev.julian09.financeapp.domain.port.DraftPrefs
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.usecase.RefreshProfile
 import com.dev.julian09.financeapp.domain.usecase.UpdateSettings
@@ -23,6 +24,8 @@ data class ConnectEmailState(
     /** Gmail's code to accept the forward, once it arrived. */
     val confirmation: String? = null,
     val notifyDrafts: Boolean = true,
+    /** 2.4: «Guardar solos los repetidos», on until turned off. */
+    val autoSave: Boolean = true,
     val offline: Boolean = false,
 )
 
@@ -34,11 +37,16 @@ class ConnectEmailViewModel
         private val refreshProfile: RefreshProfile,
         settings: SettingsRepository,
         private val updateSettings: UpdateSettings,
+        private val prefs: DraftPrefs,
     ) : ViewModel() {
         private val profile = MutableStateFlow(ConnectEmailState())
 
         val state: StateFlow<ConnectEmailState> =
-            combine(profile, settings.observe()) { p, s -> p.copy(notifyDrafts = s.notifyDrafts) }
+            combine(
+                profile,
+                settings.observe(),
+                prefs.observeAutoSave(),
+            ) { p, s, auto -> p.copy(notifyDrafts = s.notifyDrafts, autoSave = auto) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ConnectEmailState())
 
         init {
@@ -60,6 +68,10 @@ class ConnectEmailViewModel
                     )
                 }
             }
+        }
+
+        fun setAutoSave(on: Boolean) {
+            viewModelScope.launch { prefs.setAutoSave(on) }
         }
 
         fun setNotifyDrafts(enabled: Boolean) {

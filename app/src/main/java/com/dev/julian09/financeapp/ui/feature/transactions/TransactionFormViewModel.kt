@@ -13,7 +13,9 @@ import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.Transaction
+import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionType
+import com.dev.julian09.financeapp.domain.model.isEditable
 import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
@@ -26,8 +28,12 @@ import com.dev.julian09.financeapp.domain.usecase.DeleteTransaction
 import com.dev.julian09.financeapp.domain.usecase.DiscardDraft
 import com.dev.julian09.financeapp.domain.usecase.ObserveCards
 import com.dev.julian09.financeapp.domain.usecase.RegisterTransaction
+import com.dev.julian09.financeapp.domain.usecase.SplitPart
+import com.dev.julian09.financeapp.domain.usecase.SplitTransaction
 import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
 import com.dev.julian09.financeapp.domain.usecase.TransactionErrors
+import com.dev.julian09.financeapp.domain.usecase.TransactionField
+import com.dev.julian09.financeapp.domain.usecase.UndoDraft
 import com.dev.julian09.financeapp.domain.usecase.UpdateTransaction
 import com.dev.julian09.financeapp.domain.usecase.isPickable
 import com.dev.julian09.financeapp.ui.feature.accounts.digitsOnly
@@ -59,6 +65,14 @@ const val CONCEPT_MAX = 200
 
 data class TransactionFormState(
     val editingId: UUID? = null,
+    /** Deshacer just ran: the list says «Volvió a Por revisar». */
+    val undone: Boolean = false,
+    /** 2.4: the movement came by email, so Editar offers Deshacer. */
+    val undoable: Boolean = false,
+    /** An editable expense that is not an installment purchase can be split. */
+    val splittable: Boolean = false,
+    /** 2.4-03: «Según tus N últimos…» under the title of a review; 0 = nothing learned. */
+    val learnedFrom: Int = 0,
     val type: TransactionType = TransactionType.EXPENSE,
     /** Whole pesos as typed, digits only. */
     val amountDigits: String = "",
@@ -120,11 +134,16 @@ class TransactionFormViewModel
         private val drafts: DraftRepository,
         private val suggestDraft: SuggestDraft,
         private val discardDraft: DiscardDraft,
+        private val undoDraft: UndoDraft,
+        private val splitTransaction: SplitTransaction,
         observeCards: ObserveCards,
         clock: Clock,
     ) : ViewModel() {
         /** The stored movement being edited: what the form does not show is kept as it was. */
         private var original: Transaction? = null
+
+        /** The draft being reviewed: its id and merchant stay on the movement it becomes. */
+        private var reviewing: TransactionDraft? = null
 
         private val _state =
             MutableStateFlow(
@@ -166,13 +185,16 @@ class TransactionFormViewModel
                 val draft = _state.value.draftId?.let { drafts.get(it) }
                 if (draft != null) {
                     // What the email said, with the account and category the suggestion found (REQ-COR-06, 08)
+                    reviewing = draft
                     val suggestion = suggestDraft(draft)
                     _state.update {
                         it.copy(
                             type = draft.type,
                             amountDigits = draft.amount.wholePesos(),
                             occurredAt = draft.occurredAt,
-                            note = draft.merchant.orEmpty(),
+                            note = (if (suggestion.titleLearned) suggestion.note else draft.merchant).orEmpty(),
+                            learnedFrom = suggestion.basedOn,
+                            splittable = draft.type == TransactionType.EXPENSE,
                             accountId = suggestion.accountId,
                             destinationId = suggestion.destinationId,
                             categoryId = suggestion.categoryId,
@@ -194,6 +216,8 @@ class TransactionFormViewModel
                                 tagIds = t.tagIds,
                                 note = t.note.orEmpty(),
                                 concept = t.concept.orEmpty(),
+                                undoable = t.draftId != null,
+                                splittable = t.type == TransactionType.EXPENSE && t.isEditable(),
                             )
                         }
                     }
@@ -304,8 +328,8 @@ class TransactionFormViewModel
             }
         }
 
-        fun save() {
-            val s = _state.value
+        /** The movement the form shows now, with what it does not show kept from the stored one or the draft. */
+        private fun current(s: TransactionFormState): Transaction {
             val kept = original
             val base =
                 Transaction(
@@ -334,8 +358,21 @@ class TransactionFormViewModel
             // An edit keeps what the form does not show, like the recurring expense a payment came from
             val transaction =
                 kept?.let {
-                    base.copy(installments = it.installments, recurringId = it.recurringId, installmentId = it.installmentId)
-                } ?: base
+                    base.copy(
+                        installments = it.installments,
+                        recurringId = it.recurringId,
+                        installmentId = it.installmentId,
+                        sourceMerchant = it.sourceMerchant,
+                        draftId = it.draftId,
+                        splitGroupId = it.splitGroupId,
+                    )
+                } ?: reviewing?.let { base.copy(sourceMerchant = it.merchant, draftId = it.id) } ?: base
+            return transaction
+        }
+
+        fun save() {
+            val s = _state.value
+            val transaction = current(s)
             val card = choices.value.cardOf(s)
             viewModelScope.launch {
                 val errors =
@@ -355,6 +392,33 @@ class TransactionFormViewModel
                 if (errors.isEmpty()) s.draftId?.let { discardDraft(it) }
                 if (errors.isEmpty() && s.editingId == null) NewRow.id = transaction.id
                 _state.update { if (errors.isEmpty()) it.copy(saved = true) else it.copy(errors = errors) }
+            }
+        }
+
+        /** 2.4-11 Dividir: from Editar or Revisar transacción; a draft is applied by this, so it goes too. */
+        fun split(parts: List<SplitPart>) {
+            val s = _state.value
+            viewModelScope.launch {
+                val error = splitTransaction(current(s), parts)
+                if (error == null) s.draftId?.let { discardDraft(it) }
+                _state.update {
+                    if (error ==
+                        null
+                    ) {
+                        it.copy(saved = true)
+                    } else {
+                        it.copy(errors = mapOf(TransactionField.AMOUNT to LedgerError.AMOUNT_REQUIRED))
+                    }
+                }
+            }
+        }
+
+        /** 2.4 Deshacer: back to «Por revisar», no confirmation (the trash still asks). */
+        fun undo() {
+            val t = original ?: return
+            viewModelScope.launch {
+                undoDraft(t)
+                _state.update { it.copy(saved = true, undone = true) }
             }
         }
 

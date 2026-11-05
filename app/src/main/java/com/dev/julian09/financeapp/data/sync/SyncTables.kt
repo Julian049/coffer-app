@@ -733,6 +733,9 @@ internal fun transactionData(t: TransactionEntity): JsonObject =
         put("recurringId", t.recurringId?.toString())
         put("paymentKind", t.paymentKind)
         put("concept", t.concept)
+        put("sourceMerchant", t.sourceMerchant)
+        put("draftId", t.draftId?.toString())
+        put("splitGroupId", t.splitGroupId?.toString())
     }
 
 /** The inverse of [transactionData]; the timestamps are the caller's to set. */
@@ -757,6 +760,9 @@ internal fun transactionFromData(
     recurringId = d.text("recurringId")?.let(UUID::fromString),
     paymentKind = d.text("paymentKind"),
     concept = d.text("concept"),
+    sourceMerchant = d.text("sourceMerchant"),
+    draftId = d.text("draftId")?.let(UUID::fromString),
+    splitGroupId = d.text("splitGroupId")?.let(UUID::fromString),
     createdAt = Instant.EPOCH,
     updatedAt = Instant.EPOCH,
 )

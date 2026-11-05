@@ -8,6 +8,7 @@ import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.Tag
 import com.dev.julian09.financeapp.domain.model.TagColors
 import com.dev.julian09.financeapp.domain.model.TransactionFilter
+import com.dev.julian09.financeapp.domain.usecase.AutoApplyDrafts
 import com.dev.julian09.financeapp.domain.usecase.CreateTag
 import com.dev.julian09.financeapp.domain.usecase.DeleteTag
 import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
@@ -16,6 +17,8 @@ import com.dev.julian09.financeapp.domain.usecase.PinTag
 import com.dev.julian09.financeapp.domain.usecase.RenameTag
 import com.dev.julian09.financeapp.domain.usecase.SetIncludeInNet
 import com.dev.julian09.financeapp.domain.usecase.SetTagColor
+import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
+import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
 import com.dev.julian09.financeapp.domain.usecase.UpdateSettings
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.feature.home.HomeViewModel
@@ -115,6 +118,9 @@ class TagSummaryTest {
             f.tx("EXPENSE", 182_000, cash, day("2026-10-10"), f.category("Entretenimiento"), tag = outings)
             PinTag(f.tags, sync)(outings, true)
 
+            val prefs =
+                com.dev.julian09.financeapp.ui
+                    .FakeDraftPrefs()
             val home =
                 HomeViewModel(
                     ObserveHomeDashboard(
@@ -132,6 +138,15 @@ class TagSummaryTest {
                     UpdateSettings(f.settings, FakeSyncScheduler()),
                     SetIncludeInNet(f.accounts, FakeSyncScheduler()),
                     f.drafts,
+                    f.transactions,
+                    prefs,
+                    AutoApplyDrafts(
+                        f.drafts,
+                        SuggestDraft(f.accounts, f.transactions, f.mailRules, prefs),
+                        TransactionValidator(f.accounts, f.categories),
+                        prefs,
+                        FakeSyncScheduler(),
+                    ),
                 ).state.filterNotNull().first()
             val line = home.pinned.single()
             assertEquals("Salidas", line.tag.name)

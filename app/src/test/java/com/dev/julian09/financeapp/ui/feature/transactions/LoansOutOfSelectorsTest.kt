@@ -7,8 +7,10 @@ import com.dev.julian09.financeapp.domain.usecase.DeferCardPurchase
 import com.dev.julian09.financeapp.domain.usecase.DeleteTransaction
 import com.dev.julian09.financeapp.domain.usecase.DiscardDraft
 import com.dev.julian09.financeapp.domain.usecase.RegisterTransaction
+import com.dev.julian09.financeapp.domain.usecase.SplitTransaction
 import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
 import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
+import com.dev.julian09.financeapp.domain.usecase.UndoDraft
 import com.dev.julian09.financeapp.domain.usecase.UpdateTransaction
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import kotlinx.coroutines.Dispatchers
@@ -61,8 +63,30 @@ class LoansOutOfSelectorsTest {
             DeferCardPurchase(f.cards, register, validator, sync, f.clock),
             DeleteTransaction(f.transactions, sync),
             f.drafts,
-            SuggestDraft(f.accounts, f.transactions, f.mailRules),
+            SuggestDraft(
+                f.accounts,
+                f.transactions,
+                f.mailRules,
+                com.dev.julian09.financeapp.ui
+                    .FakeDraftPrefs(),
+            ),
             DiscardDraft(f.drafts, sync),
+            UndoDraft(
+                f.transactions,
+                f.drafts,
+                com.dev.julian09.financeapp.ui
+                    .FakeDraftPrefs(),
+                f.clock,
+                sync,
+            ),
+            SplitTransaction(
+                f.transactions,
+                TransactionValidator(f.accounts, f.categories),
+                com.dev.julian09.financeapp.ui
+                    .FakeDraftPrefs(),
+                f.clock,
+                sync,
+            ),
             f.observeCards,
             f.clock,
         )
