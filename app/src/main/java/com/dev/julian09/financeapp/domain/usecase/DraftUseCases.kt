@@ -91,7 +91,12 @@ class SuggestDraft
             val category =
                 learned.categoryId
                     ?: draft.merchant?.let { merchant ->
-                        transactions.suggestNotes(draft.type, merchant).firstOrNull { it.note.equals(merchant, ignoreCase = true) }?.categoryId
+                        transactions
+                            .suggestNotes(
+                                draft.type,
+                                merchant,
+                            ).firstOrNull { it.note.equals(merchant, ignoreCase = true) }
+                            ?.categoryId
                     }
             return DraftSuggestion(
                 accountId = account,

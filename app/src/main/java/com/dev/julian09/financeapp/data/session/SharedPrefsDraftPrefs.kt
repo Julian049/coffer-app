@@ -42,8 +42,12 @@ class SharedPrefsDraftPrefs
                 prefs
                     .getStringSet(RESETS, emptySet())
                     .orEmpty()
-                    .mapNotNull { it.substringAfterLast('=', "").toLongOrNull()?.let { ms -> it.substringBeforeLast('=') to Instant.ofEpochMilli(ms) } }
-                    .toMap(),
+                    .mapNotNull {
+                        it.substringAfterLast('=', "").toLongOrNull()?.let { ms ->
+                            it.substringBeforeLast('=') to
+                                Instant.ofEpochMilli(ms)
+                        }
+                    }.toMap(),
             )
 
         override fun observeResets(): Flow<Map<String, Instant>> = resets

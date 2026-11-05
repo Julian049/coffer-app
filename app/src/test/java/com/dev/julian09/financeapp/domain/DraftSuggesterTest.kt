@@ -16,7 +16,7 @@ import java.util.UUID
 class DraftSuggesterTest {
     private val account = UUID.randomUUID()
     private val food = UUID.randomUUID()
-    private val fun_ = UUID.randomUUID()
+    private val leisure = UUID.randomUUID()
 
     private fun draft(
         merchant: String? = "Éxito Calle 80",
@@ -75,10 +75,10 @@ class DraftSuggesterTest {
 
     @Test
     fun mixedResultsAreProbableAndTheMostRecentWins() {
-        val learned = learn(draft(), listOf(past("Cine", fun_), past(), past()))
+        val learned = learn(draft(), listOf(past("Cine", leisure), past(), past()))
         assertEquals(DraftLevel.PROBABLE, learned.level)
         assertEquals("Cine", learned.note)
-        assertEquals(fun_, learned.categoryId)
+        assertEquals(leisure, learned.categoryId)
     }
 
     @Test
@@ -88,7 +88,11 @@ class DraftSuggesterTest {
 
     @Test
     fun anIncomeIsKnownByAccountAndTypeAndKeepsAnEmptyTitle() {
-        val learned = learn(draft(merchant = null, type = TransactionType.INCOME), List(3) { past(null, merchant = null, type = TransactionType.INCOME) })
+        val learned =
+            learn(
+                draft(merchant = null, type = TransactionType.INCOME),
+                List(3) { past(null, merchant = null, type = TransactionType.INCOME) },
+            )
         assertEquals(DraftLevel.SURE, learned.level)
         assertNull(learned.note)
         assertEquals(food, learned.categoryId)

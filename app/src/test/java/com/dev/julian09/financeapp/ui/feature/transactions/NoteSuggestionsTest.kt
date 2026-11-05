@@ -98,7 +98,13 @@ class NoteSuggestionsTest {
                     DeferCardPurchase(f.cards, register, validator, sync, f.clock),
                     DeleteTransaction(f.transactions, sync),
                     f.drafts,
-                    SuggestDraft(f.accounts, f.transactions, f.mailRules, com.dev.julian09.financeapp.ui.FakeDraftPrefs()),
+                    SuggestDraft(
+                        f.accounts,
+                        f.transactions,
+                        f.mailRules,
+                        com.dev.julian09.financeapp.ui
+                            .FakeDraftPrefs(),
+                    ),
                     DiscardDraft(f.drafts, sync),
                     f.observeCards,
                     f.clock,
@@ -158,7 +164,13 @@ class NoteSuggestionsTest {
                     DeferCardPurchase(f.cards, register, validator, sync, f.clock),
                     DeleteTransaction(f.transactions, sync),
                     f.drafts,
-                    SuggestDraft(f.accounts, f.transactions, f.mailRules, com.dev.julian09.financeapp.ui.FakeDraftPrefs()),
+                    SuggestDraft(
+                        f.accounts,
+                        f.transactions,
+                        f.mailRules,
+                        com.dev.julian09.financeapp.ui
+                            .FakeDraftPrefs(),
+                    ),
                     DiscardDraft(f.drafts, sync),
                     f.observeCards,
                     f.clock,

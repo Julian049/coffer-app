@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Search
@@ -57,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
@@ -65,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dev.julian09.financeapp.R
+import com.dev.julian09.financeapp.domain.finance.DraftLevel
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Category
 import com.dev.julian09.financeapp.domain.model.MailProviders
@@ -251,6 +254,7 @@ fun HistoryContent(
                 item(key = "drafts") {
                     DraftsSection(
                         state.drafts,
+                        state.levels,
                         actions,
                         today,
                         Modifier.animateItem(fadeInSpec = tween(400), fadeOutSpec = tween(400), placementSpec = tween(400)),
@@ -507,6 +511,7 @@ internal fun mostUsedAll(
 @Composable
 private fun DraftsSection(
     drafts: List<TransactionDraft>,
+    levels: Map<UUID, DraftLevel>,
     actions: HistoryActions,
     today: LocalDate,
     modifier: Modifier = Modifier,
@@ -540,7 +545,7 @@ private fun DraftsSection(
             drafts.forEachIndexed { i, d ->
                 key(d.id) {
                     if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = colors.border)
-                    DraftRow(d, actions, today)
+                    DraftRow(d, levels[d.id] ?: DraftLevel.UNKNOWN, actions, today)
                 }
             }
         }
@@ -557,6 +562,7 @@ private fun TransactionDraft.subtitle() = destinationSource?.let { "$sourceName 
 @Composable
 private fun DraftRow(
     d: TransactionDraft,
+    level: DraftLevel,
     actions: HistoryActions,
     today: LocalDate,
 ) {
@@ -575,13 +581,11 @@ private fun DraftRow(
         Modifier
             .fillMaxWidth()
             .clickable(onClickLabel = "Revisar", onClick = { actions.onReviewDraft(d.id) })
-            .padding(start = 16.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+            .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.iconOnContainer, modifier = Modifier.size(20.dp))
-        }
+        LevelCircle(level)
         Column(Modifier.weight(1f)) {
             Text(d.title(), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary, maxLines = 1)
             val day = d.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate()
@@ -624,5 +628,49 @@ private fun DraftRow(
                 )
             }
         }
+    }
+}
+
+/**
+ * 2.4 §1: the level is told only by the 40 dp circle, never in words. Unknown: white with a dotted border and an envelope;
+ * probable: the soft container with the category icon; sure: espresso with the icon in white (a sure one shows here only with
+ * «Guardar solos los repetidos» off).
+ */
+@Composable
+private fun LevelCircle(level: DraftLevel) {
+    val colors = CofferTheme.colors
+    val dotted = remember { PathEffect.dashPathEffect(floatArrayOf(4f, 4f)) }
+    val background =
+        when (level) {
+            DraftLevel.UNKNOWN -> colors.surface
+            DraftLevel.PROBABLE -> colors.iconContainer
+            DraftLevel.SURE -> colors.primary
+        }
+    Box(
+        Modifier
+            .size(40.dp)
+            .background(background, CircleShape)
+            .then(
+                if (level == DraftLevel.UNKNOWN) {
+                    Modifier.drawBehind {
+                        drawCircle(Color(0xFFC9C2BA), style = Stroke(1.dp.toPx(), pathEffect = dotted))
+                    }
+                } else {
+                    Modifier
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (level == DraftLevel.UNKNOWN) Icons.Outlined.Email else Icons.Outlined.Category,
+            contentDescription = null,
+            tint =
+                when (level) {
+                    DraftLevel.UNKNOWN -> colors.textSecondary
+                    DraftLevel.PROBABLE -> colors.iconOnContainer
+                    DraftLevel.SURE -> colors.onPrimary
+                },
+            modifier = Modifier.size(if (level == DraftLevel.UNKNOWN) 18.dp else 20.dp),
+        )
     }
 }

@@ -4,9 +4,12 @@ import com.dev.julian09.financeapp.data.local.FixedClock
 import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.domain.finance.FoxState
 import com.dev.julian09.financeapp.domain.model.Money
+import com.dev.julian09.financeapp.domain.usecase.AutoApplyDrafts
 import com.dev.julian09.financeapp.domain.usecase.ObserveHomeDashboard
 import com.dev.julian09.financeapp.domain.usecase.ObservePendingPayments
 import com.dev.julian09.financeapp.domain.usecase.SetIncludeInNet
+import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
+import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
 import com.dev.julian09.financeapp.domain.usecase.UpdateSettings
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +49,10 @@ class HomeViewModelTest {
         f.db.close()
     }
 
+    private val prefs =
+        com.dev.julian09.financeapp.ui
+            .FakeDraftPrefs()
+
     private suspend fun state() =
         HomeViewModel(
             ObserveHomeDashboard(
@@ -63,6 +70,15 @@ class HomeViewModelTest {
             UpdateSettings(f.settings, FakeSyncScheduler()),
             SetIncludeInNet(f.accounts, FakeSyncScheduler()),
             f.drafts,
+            f.transactions,
+            prefs,
+            AutoApplyDrafts(
+                f.drafts,
+                SuggestDraft(f.accounts, f.transactions, f.mailRules, prefs),
+                TransactionValidator(f.accounts, f.categories),
+                prefs,
+                FakeSyncScheduler(),
+            ),
         ).state.filterNotNull().first()
 
     private fun day(date: String) = Instant.parse("${date}T15:00:00Z")

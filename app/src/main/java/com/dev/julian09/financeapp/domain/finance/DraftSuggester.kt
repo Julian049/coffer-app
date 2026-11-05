@@ -25,7 +25,12 @@ private val ACCENTS = Regex("\\p{InCombiningDiacriticalMarks}+")
 
 /** A merchant without case, accents or extra spaces, so «Éxito  Calle 80» and «exito calle 80» are the same one. */
 fun normalizeMerchant(merchant: String): String =
-    Normalizer.normalize(merchant, Normalizer.Form.NFD).replace(ACCENTS, "").lowercase().trim().replace(Regex("\\s+"), " ")
+    Normalizer
+        .normalize(merchant, Normalizer.Form.NFD)
+        .replace(ACCENTS, "")
+        .lowercase()
+        .trim()
+        .replace(Regex("\\s+"), " ")
 
 /**
  * ADR-0010: learns from the movements the user already made from drafts. [history] holds the earlier movements of the same
@@ -55,4 +60,3 @@ fun learn(
         basedOn = matches.take(SURE_AFTER).size,
     )
 }
-

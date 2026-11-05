@@ -45,6 +45,7 @@ fun ConnectEmailScreen(
         onCopy = { clipboard.setText(AnnotatedString(it)) },
         onRefresh = viewModel::refresh,
         onNotify = viewModel::setNotifyDrafts,
+        onAutoSave = viewModel::setAutoSave,
     )
 }
 
@@ -56,6 +57,7 @@ fun ConnectEmailContent(
     onCopy: (String) -> Unit = {},
     onRefresh: () -> Unit = {},
     onNotify: (Boolean) -> Unit = {},
+    onAutoSave: (Boolean) -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     Column(Modifier.fillMaxSize()) {
@@ -113,6 +115,23 @@ fun ConnectEmailContent(
                     Switch(
                         checked = state.notifyDrafts,
                         onCheckedChange = onNotify,
+                        colors = SwitchDefaults.colors(checkedTrackColor = colors.primary, checkedThumbColor = colors.onPrimary),
+                    )
+                }
+            }
+            AppCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Guardar solos los repetidos", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                        Text(
+                            "Entran con aviso y puedes deshacerlos",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    Switch(
+                        checked = state.autoSave,
+                        onCheckedChange = onAutoSave,
                         colors = SwitchDefaults.colors(checkedTrackColor = colors.primary, checkedThumbColor = colors.onPrimary),
                     )
                 }

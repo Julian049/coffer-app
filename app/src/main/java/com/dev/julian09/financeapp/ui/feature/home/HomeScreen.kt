@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
@@ -59,6 +60,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -93,6 +95,7 @@ import com.dev.julian09.financeapp.domain.model.TransactionType
 import com.dev.julian09.financeapp.domain.model.Urgency
 import com.dev.julian09.financeapp.domain.model.homeLayout
 import com.dev.julian09.financeapp.ui.components.AnimatedMoneyText
+import com.dev.julian09.financeapp.ui.components.AppBottomSheet
 import com.dev.julian09.financeapp.ui.components.AppButton
 import com.dev.julian09.financeapp.ui.components.AppCard
 import com.dev.julian09.financeapp.ui.components.AppHeader
@@ -107,6 +110,7 @@ import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.feature.cards.PayCardSheet
 import com.dev.julian09.financeapp.ui.feature.history.DayGroup
+import com.dev.julian09.financeapp.ui.feature.history.HistoryDay
 import com.dev.julian09.financeapp.ui.feature.loans.LoanPaymentSheet
 import com.dev.julian09.financeapp.ui.feature.loans.LoanSheet
 import com.dev.julian09.financeapp.ui.feature.recurring.PendingSheets
@@ -189,6 +193,7 @@ fun HomeScreen(
         onOpenTags = onOpenTags,
         onOpenTag = onOpenTag,
         onBalanceView = viewModel::setBalanceView,
+        onRegisteredSeen = viewModel::markRegisteredSeen,
         onNetMode = viewModel::setNetMode,
         onIncludeInNet = viewModel::setIncludeInNet,
         onCustomize = onCustomize,
@@ -220,12 +225,19 @@ fun HomeContent(
     onOpenTag: (UUID) -> Unit = {},
     onOpenPending: (DuePayment) -> Unit = {},
     onBalanceView: (BalanceView) -> Unit = {},
+    onRegisteredSeen: () -> Unit = {},
     onNetMode: (NetBalanceMode) -> Unit = {},
     onIncludeInNet: (UUID, Boolean) -> Unit = { _, _ -> },
     onCustomize: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     var balanceSheet by rememberSaveable { mutableStateOf(false) }
+    // The sheet keeps what it opened with: opening it already marks the notice as seen
+    var registeredSheet by remember { mutableStateOf<List<HistoryDay>?>(null) }
+    val openRegistered = {
+        registeredSheet = state?.registered
+        onRegisteredSeen()
+    }
     var balanceHidden by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         AppHeader(
@@ -262,7 +274,7 @@ fun HomeContent(
             val visible = layout.filter { it.visible }
             // «Por revisar» goes under the balance whatever cards are shown (changes-ui-2.0 §1)
             val balanceShown = visible.any { it.key == HomeSection.BALANCE.name }
-            if (!balanceShown) DraftsNotice(state.draftCount, onOpenHistory)
+            if (!balanceShown) DraftsNotice(state.draftCount, state.registeredCount, onOpenHistory, openRegistered)
             visible.forEach { card ->
                 when (runCatching { HomeSection.valueOf(card.key) }.getOrNull()) {
                     HomeSection.BALANCE -> {
@@ -308,7 +320,7 @@ fun HomeContent(
                                 }
                             }
                         }
-                        DraftsNotice(state.draftCount, onOpenHistory)
+                        DraftsNotice(state.draftCount, state.registeredCount, onOpenHistory, openRegistered)
                     }
                     HomeSection.QUICK_ACTIONS -> {
                         QuickActions(onNewTransaction)
@@ -351,6 +363,9 @@ fun HomeContent(
                         }
                     HomeSection.MONTHLY_TREND, null -> Unit
                 }
+            }
+            registeredSheet?.let { days ->
+                RegisteredSheet(days, today, onOpenTransaction, onDismiss = { registeredSheet = null })
             }
             if (balanceSheet) {
                 BalanceSheet(
@@ -746,39 +761,102 @@ private fun AccountChipCard(
     }
 }
 
-/** «Aviso - Por revisar» (changes-ui-2.0 §1): only with at least one; it opens Historial, where they are listed. */
+/**
+ * «Aviso - Por revisar» and «Aviso - Registrados» (2.4 §8): under the balance, only with something to tell. Both at once are
+ * one card of one colour: to review above, saved on their own below, each with its own 44 dp touch area.
+ */
 @Composable
 private fun DraftsNotice(
     count: Int,
-    onOpen: () -> Unit,
+    registered: Int,
+    onOpenReview: () -> Unit,
+    onOpenRegistered: () -> Unit,
 ) {
     val colors = CofferTheme.colors
     // motion.md §7: it grows in and out, and its count cross-fades
     AnimatedVisibility(
-        count > 0,
+        count > 0 || registered > 0,
         enter = expandVertically(tween(400)) + fadeIn(tween(400)),
-        exit =
-            shrinkVertically(tween(400)) + fadeOut(tween(400)),
+        exit = shrinkVertically(tween(400)) + fadeOut(tween(400)),
     ) {
-        Row(
+        val both = count > 0 && registered > 0
+        Column(
             Modifier
                 .fillMaxWidth()
                 .clip(CofferShapes.card)
-                .background(colors.primaryContainer)
-                .clickable(role = Role.Button, onClick = onOpen)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .background(if (registered > 0 && count == 0) colors.iconContainer else colors.primaryContainer),
         ) {
-            Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(18.dp))
-            Crossfade(count, Modifier.weight(1f), animationSpec = tween(150), label = "drafts") { n ->
-                Text(
-                    if (n == 1) "1 movimiento por revisar" else "$n movimientos por revisar",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colors.onPrimaryContainer,
-                )
+            if (count > 0) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
+                        .clickable(role = Role.Button, onClick = onOpenReview)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(Icons.Outlined.Email, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(18.dp))
+                    Crossfade(count, Modifier.weight(1f), animationSpec = tween(150), label = "drafts") { n ->
+                        Text(
+                            if (n == 1) "1 movimiento por revisar" else "$n movimientos por revisar",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colors.onPrimaryContainer,
+                        )
+                    }
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.onPrimaryContainer)
+                }
             }
-            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.onPrimaryContainer)
+            if (both) HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = Color(0xFFE6D3C2))
+            if (registered > 0) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
+                        .clickable(role = Role.Button, onClick = onOpenRegistered)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(Icons.Outlined.Check, contentDescription = null, tint = Color(0xFF7A4520), modifier = Modifier.size(16.dp))
+                    Text(
+                        if (registered == 1) "1 movimiento registrado" else "$registered movimientos registrados",
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onPrimaryContainer,
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = Color(0xFF7A4520),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Hoja · Movimientos registrados (2.4 §3): what came in on its own, to look at without approving anything. */
+@Composable
+private fun RegisteredSheet(
+    days: List<HistoryDay>,
+    today: LocalDate,
+    onOpen: (UUID) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val count = days.sumOf { it.rows.size }
+    AppBottomSheet(
+        onDismiss = onDismiss,
+        title = if (count == 1) "1 movimiento registrado" else "$count movimientos registrados",
+        subtitle = "Llegaron por correo y ya están en tu historial.",
+        actions = { AppButton("Entendido", onClick = onDismiss, modifier = Modifier.fillMaxWidth()) },
+    ) {
+        days.forEach {
+            DayGroup(it, today, showTime = true, onOpen = { id ->
+                onDismiss()
+                onOpen(id)
+            })
         }
     }
 }
