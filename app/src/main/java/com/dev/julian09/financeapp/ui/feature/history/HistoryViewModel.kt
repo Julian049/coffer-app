@@ -164,7 +164,11 @@ class HistoryViewModel
                         pending.associate { d ->
                             val s = suggest(d)
                             val category = ch.categories.firstOrNull { it.id == s.categoryId }
-                            d.id to DraftHint(s.level, category?.icon ?: category?.parentId?.let { p -> ch.categories.firstOrNull { it.id == p }?.icon })
+                            d.id to
+                                DraftHint(
+                                    s.level,
+                                    category?.icon ?: category?.parentId?.let { p -> ch.categories.firstOrNull { it.id == p }?.icon },
+                                )
                         },
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
