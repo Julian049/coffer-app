@@ -248,6 +248,24 @@ fun HistoryContent(
                     }
                 }
             }
+            if (UndoNotice.show) {
+                item(key = "undone") {
+                    LaunchedEffect(Unit) {
+                        delay(3_000)
+                        UndoNotice.show = false
+                    }
+                    Text(
+                        "Volvió a Por revisar",
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(CofferShapes.card)
+                            .background(Color(0xFF4A3328))
+                            .padding(12.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White,
+                    )
+                }
+            }
             item { Summary(state) }
             // motion.md §7: the section and the days below move together when a draft is applied or discarded
             if (state.drafts.isNotEmpty()) {

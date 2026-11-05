@@ -202,6 +202,11 @@ fun DayGroup(
     }
 }
 
+/** 2.4 §4: Deshacer ran in the form; the first Historial that shows says so for a moment. */
+object UndoNotice {
+    var show by mutableStateOf(false)
+}
+
 /** INC-09: the movement the form just registered; the first list that draws it fades and slides it in, once. */
 object NewRow {
     var id by mutableStateOf<UUID?>(null)

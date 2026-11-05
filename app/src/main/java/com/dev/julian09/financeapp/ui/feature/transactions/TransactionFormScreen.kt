@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +39,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
@@ -135,6 +138,7 @@ import com.dev.julian09.financeapp.ui.feature.cards.parsePercent
 import com.dev.julian09.financeapp.ui.feature.cards.percentText
 import com.dev.julian09.financeapp.ui.feature.cards.rateLabel
 import com.dev.julian09.financeapp.ui.feature.cards.rateTypeLabel
+import com.dev.julian09.financeapp.ui.feature.history.UndoNotice
 import com.dev.julian09.financeapp.ui.feature.history.tagColor
 import com.dev.julian09.financeapp.ui.theme.CofferShapes
 import com.dev.julian09.financeapp.ui.theme.CofferTheme
@@ -157,7 +161,10 @@ fun TransactionFormScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val choices by viewModel.choices.collectAsStateWithLifecycle()
-    LaunchedEffect(state.saved) { if (state.saved) onBack() }
+    LaunchedEffect(state.saved) {
+        if (state.undone) UndoNotice.show = true
+        if (state.saved) onBack()
+    }
     TransactionFormContent(
         state = state,
         choices = choices,
@@ -179,6 +186,8 @@ fun TransactionFormScreen(
                 onSuggestion = viewModel::pickSuggestion,
                 onSave = viewModel::save,
                 onDelete = viewModel::delete,
+                onUndo = viewModel::undo,
+                onSplit = viewModel::split,
                 onDiscard = viewModel::discard,
                 onInstallments = viewModel::setInstallments,
                 onRate = viewModel::setRate,
@@ -203,6 +212,8 @@ class TransactionFormActions(
     val onSuggestion: (NoteSuggestion) -> Unit = {},
     val onSave: () -> Unit = {},
     val onDelete: () -> Unit = {},
+    val onUndo: () -> Unit = {},
+    val onSplit: (List<com.dev.julian09.financeapp.domain.usecase.SplitPart>) -> Unit = {},
     val onDiscard: () -> Unit = {},
     val onInstallments: (Int) -> Unit = {},
     val onRate: (String) -> Unit = {},
@@ -248,6 +259,7 @@ fun TransactionFormContent(
     // S12-UI09: the bottom button rides on the keyboard
     Column(modifier.fillMaxSize().imePadding()) {
         var confirming by rememberSaveable { mutableStateOf(false) }
+        var splitting by rememberSaveable { mutableStateOf(false) }
         // 2.2: the main button says «Siguiente» until only saving is left
         var pickingCategory by rememberSaveable { mutableStateOf(false) }
         var titleVisited by rememberSaveable { mutableStateOf(false) }
@@ -278,6 +290,17 @@ fun TransactionFormContent(
                 },
             onBack = actions.onBack,
             actions = {
+                if (state.editingId != null && state.undoable) {
+                    // 2.4 §4: only the arrow, 44 dp, no text; it sends the movement back to «Por revisar»
+                    IconButton(onClick = actions.onUndo) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.Undo,
+                            contentDescription = "Deshacer",
+                            tint = CofferTheme.colors.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
                 if (state.editingId != null) {
                     // Figma `70:250`: a red trash, a 44 dp target
                     IconButton(onClick = { confirming = true }) {
@@ -286,6 +309,17 @@ fun TransactionFormContent(
                 }
             },
         )
+        if (state.learnedFrom > 0) {
+            // 2.4-03: where the title and the category came from; tags never fill in by themselves
+            Text(
+                "Según tus ${if (state.learnedFrom == 1) "último movimiento" else "${state.learnedFrom} últimos movimientos"} " +
+                    "de este comercio. " +
+                    "Las etiquetas no se aplican.",
+                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = CofferTheme.colors.textSecondary,
+            )
+        }
         if (confirming) {
             ConfirmDialog(
                 title = "¿Eliminar esta transacción?",
@@ -314,6 +348,31 @@ fun TransactionFormContent(
             state.draftBank?.let { DraftNote(it) }
             TypeTabs(state.type, actions.onType)
             AmountBlock(state, actions.onAmount, focusOnOpen = state.editingId == null && state.draftId == null, onNext = toTitle)
+            // 2.4 §6.1: only on an expense that is being edited or reviewed, never an installment purchase
+            if (state.splittable && state.type == TransactionType.EXPENSE && (state.amountDigits.toLongOrNull() ?: 0) > 0) {
+                TextButton(onClick = { splitting = true }, Modifier.align(Alignment.CenterHorizontally).height(44.dp)) {
+                    Icon(Icons.AutoMirrored.Outlined.CallSplit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Dividir", style = MaterialTheme.typography.labelLarge, color = CofferTheme.colors.primary)
+                }
+            }
+            if (splitting) {
+                SplitSheet(
+                    total = Money.ofPesos(state.amountDigits.toLong()),
+                    title = state.note.ifBlank { "Transacción" },
+                    payerName =
+                        choices.accounts
+                            .firstOrNull { it.account.id == state.accountId }
+                            ?.account
+                            ?.name ?: "Cuenta",
+                    accounts = choices.accounts,
+                    onConfirm = {
+                        splitting = false
+                        actions.onSplit(it)
+                    },
+                    onDismiss = { splitting = false },
+                )
+            }
             val titleBlock = Modifier.onPlaced { titleBlockY = it.positionInParent().y.toInt() }
             if (transfer) {
                 FormBlock(titleBlock) { TitleRow(state, choices, actions, titleFocus, closeKeyboard) }

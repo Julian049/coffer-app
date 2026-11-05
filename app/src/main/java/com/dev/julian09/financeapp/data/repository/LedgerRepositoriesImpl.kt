@@ -1221,8 +1221,9 @@ class DraftRepositoryImpl
         override suspend fun discard(id: UUID) {
             val paired = get(id)?.pairedId
             db.withTransaction {
-                dao.delete(id, clock.now())
-                paired?.let { dao.delete(it, clock.now()) }
+                val now = clock.now()
+                dao.delete(id, now)
+                paired?.let { dao.delete(it, now) }
             }
         }
     }
