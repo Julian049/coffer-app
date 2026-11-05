@@ -362,6 +362,21 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun get(id: UUID): TransactionEntity?
 
+    /** 2.4: what the user made out of drafts in one account, newest first (the history [learn] reads). */
+    @Query(
+        "SELECT * FROM transactions WHERE deletedAt IS NULL AND draftId IS NOT NULL AND type = :type AND accountId = :accountId " +
+            "ORDER BY occurredAt DESC LIMIT :limit",
+    )
+    suspend fun fromDrafts(
+        accountId: UUID,
+        type: String,
+        limit: Int,
+    ): List<TransactionEntity>
+
+    /** Every live part that came from [draftId] (a split has several). */
+    @Query("SELECT * FROM transactions WHERE deletedAt IS NULL AND draftId = :draftId")
+    suspend fun byDraft(draftId: UUID): List<TransactionEntity>
+
     // SQLite takes the bare categoryId from the row that holds MAX(occurredAt): the latest use of each note
     @Query(
         "SELECT note, categoryId, accountId, COUNT(*) AS uses FROM transactions WHERE deletedAt IS NULL AND type = :type " +
@@ -886,6 +901,16 @@ interface DraftDao {
     /** Applied or discarded: the server learns it on the next push (REQ-COR-05). */
     @Query("UPDATE transaction_drafts SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' WHERE id = :id")
     suspend fun delete(
+        id: UUID,
+        now: Instant,
+    )
+
+    /** Deshacer: the draft, and the half it was paired with (both were deleted in the same instant), are back to review. */
+    @Query(
+        "UPDATE transaction_drafts SET deletedAt = NULL, updatedAt = :now, syncState = 'PENDING' " +
+            "WHERE deletedAt IS NOT NULL AND deletedAt = (SELECT deletedAt FROM transaction_drafts WHERE id = :id)",
+    )
+    suspend fun restore(
         id: UUID,
         now: Instant,
     )

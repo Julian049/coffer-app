@@ -6,6 +6,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,9 +14,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +70,8 @@ data class HistoryRow(
     val categoryName: String? = null,
     /** One 8 dp dot per tag, in its colour, after the title (changes-ui-2.0 §2). */
     val tagColors: List<String> = emptyList(),
+    /** 2.4 §2: it came by email, for ever; drawn as a small envelope on the icon. */
+    val fromMail: Boolean = false,
 )
 
 data class HistoryDay(
@@ -116,6 +122,7 @@ fun buildDays(
                         categoryId = tx.categoryId,
                         categoryName = category?.name,
                         tagColors = tx.tagIds.mapNotNull { tagById[it]?.shownColor },
+                        fromMail = tx.draftId != null,
                     )
                 },
             )
@@ -195,6 +202,11 @@ fun DayGroup(
     }
 }
 
+/** 2.4 §4: Deshacer ran in the form; the first Historial that shows says so for a moment. */
+object UndoNotice {
+    var show by mutableStateOf(false)
+}
+
 /** INC-09: the movement the form just registered; the first list that draws it fades and slides it in, once. */
 object NewRow {
     var id by mutableStateOf<UUID?>(null)
@@ -233,13 +245,17 @@ private fun MovementRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(
-                if (row.type == TransactionType.TRANSFER) TransferIcon else categoryIcon(row.icon),
-                contentDescription = null,
-                tint = colors.iconOnContainer,
-                modifier = Modifier.size(20.dp),
-            )
+        // The badge sticks out of the circle by 3 dp, so the circle does not clip (Figma «Distintivo · Llegó por correo»)
+        Box(Modifier.size(40.dp)) {
+            Box(Modifier.size(40.dp).background(colors.iconContainer, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(
+                    if (row.type == TransactionType.TRANSFER) TransferIcon else categoryIcon(row.icon),
+                    contentDescription = null,
+                    tint = colors.iconOnContainer,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            if (row.fromMail) MailBadge(Modifier.offset(x = 23.dp, y = 23.dp))
         }
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -285,3 +301,15 @@ fun TagDot(
 
 /** `#RRGGBB` of TagColors. */
 fun tagColor(hex: String): Color = Color(android.graphics.Color.parseColor(hex))
+
+/** «Llegó por correo»: a white 20 dp circle with a hairline border and a 12 dp envelope. */
+@Composable
+fun MailBadge(modifier: Modifier = Modifier) {
+    val colors = CofferTheme.colors
+    Box(
+        modifier.size(20.dp).background(colors.surface, CircleShape).border(1.dp, colors.border, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Outlined.Email, contentDescription = "Llegó por correo", tint = colors.textSecondary, modifier = Modifier.size(12.dp))
+    }
+}

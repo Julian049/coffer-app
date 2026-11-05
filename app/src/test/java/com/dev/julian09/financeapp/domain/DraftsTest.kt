@@ -33,7 +33,14 @@ import java.util.UUID
 class DraftsTest {
     private val f = LedgerFixture()
     private val sync = FakeSyncScheduler()
-    private val suggest = SuggestDraft(f.accounts, f.transactions, f.mailRules)
+    private val suggest =
+        SuggestDraft(
+            f.accounts,
+            f.transactions,
+            f.mailRules,
+            com.dev.julian09.financeapp.ui
+                .FakeDraftPrefs(),
+        )
     private val apply = ApplyDraft(f.drafts, suggest, TransactionValidator(f.accounts, f.categories), sync)
 
     @After

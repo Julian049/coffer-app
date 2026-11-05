@@ -17,6 +17,7 @@ import com.dev.julian09.financeapp.data.sync.SyncEngine
 import com.dev.julian09.financeapp.data.sync.SyncWorker
 import com.dev.julian09.financeapp.domain.port.DraftRepository
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
+import com.dev.julian09.financeapp.domain.usecase.AutoApplyDrafts
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
@@ -36,6 +37,7 @@ class DraftNoticeWorker
         private val drafts: DraftRepository,
         private val settings: SettingsRepository,
         private val notices: NotificationPublisher,
+        private val autoApply: AutoApplyDrafts,
     ) : CoroutineWorker(context, params) {
         override suspend fun doWork(): Result {
             try {
@@ -45,8 +47,29 @@ class DraftNoticeWorker
             } catch (e: Exception) {
                 return SyncWorker.resultFor(e)
             }
+            // 2.4-04: what the app is sure of goes in by itself, before counting what is left to review
+            val saved = runCatching { autoApply() }.getOrDefault(0)
             val count = drafts.count()
             val manager = NotificationManagerCompat.from(applicationContext)
+            if (saved > 0 && settings.observe().first().notifyDrafts && notices.canNotify()) {
+                manager.createNotificationChannel(
+                    NotificationChannel(CHANNEL, "Movimientos por revisar", NotificationManager.IMPORTANCE_DEFAULT),
+                )
+                val title = if (saved == 1) "1 movimiento entró solo" else "$saved movimientos entraron solos"
+                val notice =
+                    NotificationCompat
+                        .Builder(applicationContext, CHANNEL)
+                        .setSmallIcon(R.drawable.ic_launcher_monochrome)
+                        .setContentTitle(title)
+                        .setContentText("Ya están en tu historial. Puedes deshacerlos desde su detalle.")
+                        .setAutoCancel(true)
+                        .build()
+                try {
+                    manager.notify(SAVED_NOTICE_ID, notice)
+                } catch (_: SecurityException) {
+                    // The permission was revoked between the check and the call
+                }
+            }
             if (count == 0 || !settings.observe().first().notifyDrafts || !notices.canNotify()) {
                 manager.cancel(NOTICE_ID)
                 return Result.success()
@@ -85,5 +108,6 @@ class DraftNoticeWorker
             const val NAME = "draft-notice"
             private const val CHANNEL = "drafts"
             private const val NOTICE_ID = 2_000_001
+            private const val SAVED_NOTICE_ID = 2_000_002
         }
     }

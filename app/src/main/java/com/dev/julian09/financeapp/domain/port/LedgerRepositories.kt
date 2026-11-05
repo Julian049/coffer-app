@@ -178,6 +178,16 @@ interface TransactionRepository {
     /** Undeletes a movement and logs RESTORE in the same database transaction (REQ-HIS-03); false when it is not deleted. */
     suspend fun restore(id: UUID): Boolean
 
+    /** 2.4: the movements of [accountId] and [type] made from drafts, newest first, for `learn`. */
+    suspend fun fromDrafts(
+        accountId: UUID,
+        type: TransactionType,
+        limit: Int = 30,
+    ): List<Transaction>
+
+    /** Every live movement that came from the draft [draftId]; a split has several. */
+    suspend fun byDraft(draftId: UUID): List<Transaction>
+
     /** M5: notes of earlier movements of [type] that contain [text], latest use first, each with its latest category. */
     suspend fun suggestNotes(
         type: TransactionType,
@@ -360,6 +370,9 @@ interface DraftRepository {
     )
 
     suspend fun discard(id: UUID)
+
+    /** Deshacer: the draft (and its paired half) returns to review. */
+    suspend fun restore(id: UUID)
 }
 
 /** REQ-COR-11: the user's provider → account rules, one per provider from Proveedores de correo; synced as `mailRule`. */

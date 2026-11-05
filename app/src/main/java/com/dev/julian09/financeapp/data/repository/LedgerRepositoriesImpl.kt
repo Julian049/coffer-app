@@ -539,6 +539,14 @@ class TransactionRepositoryImpl
             return rankNotes(text, dao.notes(type.name, pattern, NOTE_CANDIDATES)).take(limit)
         }
 
+        override suspend fun fromDrafts(
+            accountId: UUID,
+            type: TransactionType,
+            limit: Int,
+        ): List<Transaction> = dao.fromDrafts(accountId, type.name, limit).map { it.toDomain() }
+
+        override suspend fun byDraft(draftId: UUID): List<Transaction> = dao.byDraft(draftId).map { it.toDomain() }
+
         override fun observeSince(from: Instant): Flow<List<Transaction>> =
             dao.observeSince(from).map { rows -> rows.map { it.toDomain() } }
 
@@ -1055,6 +1063,9 @@ internal fun Transaction.toEntity(
     recurringId = recurringId,
     paymentKind = paymentKind,
     concept = concept,
+    sourceMerchant = sourceMerchant,
+    draftId = draftId,
+    splitGroupId = splitGroupId,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -1120,6 +1131,9 @@ internal fun TransactionEntity.toDomain() =
         recurringId = recurringId,
         paymentKind = paymentKind,
         concept = concept,
+        sourceMerchant = sourceMerchant,
+        draftId = draftId,
+        splitGroupId = splitGroupId,
         createdAt = createdAt,
         pendingSync = syncState != SyncState.SYNCED,
     )
@@ -1195,16 +1209,21 @@ class DraftRepositoryImpl
             val paired = get(draftId)?.pairedId
             db.withTransaction {
                 transactions.insert(transaction)
-                dao.delete(draftId, clock.now())
-                paired?.let { dao.delete(it, clock.now()) }
+                // One instant for both halves: Deshacer finds the pair by it
+                val now = clock.now()
+                dao.delete(draftId, now)
+                paired?.let { dao.delete(it, now) }
             }
         }
+
+        override suspend fun restore(id: UUID) = dao.restore(id, clock.now())
 
         override suspend fun discard(id: UUID) {
             val paired = get(id)?.pairedId
             db.withTransaction {
-                dao.delete(id, clock.now())
-                paired?.let { dao.delete(it, clock.now()) }
+                val now = clock.now()
+                dao.delete(id, now)
+                paired?.let { dao.delete(it, now) }
             }
         }
     }
