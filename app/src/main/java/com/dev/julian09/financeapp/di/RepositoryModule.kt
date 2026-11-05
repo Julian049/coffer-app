@@ -59,6 +59,9 @@ abstract class RepositoryModule {
     abstract fun bindClock(impl: SystemClock): Clock
 
     @Binds
+    abstract fun bindDraftPrefs(impl: com.dev.julian09.financeapp.data.session.SharedPrefsDraftPrefs): com.dev.julian09.financeapp.domain.port.DraftPrefs
+
+    @Binds
     abstract fun bindCalendarAccountsStore(impl: SharedPrefsCalendarAccountsStore): CalendarAccountsStore
 
     @Binds

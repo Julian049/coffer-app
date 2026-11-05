@@ -54,9 +54,9 @@ import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
         TransactionDraftEntity::class,
         MailRuleEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
-    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7), 4 → 5 categories.excludeFromReports (S9), 5 → 6 loan_details (S10), 6 → 7 transactions.concept and settings.netBalanceMode (S12), 7 → 8 settings.loanPaymentCategoryId and accounts.includeInNet (S15), 8 → 9 tags.color and transactions.tagIds (S18, 2.0), 9 → 10 transaction_drafts, accounts.lastDigits and settings.notifyDrafts (S19, S20), 10 → 11 categories.color (S24, 2.2), 11 → 12 mail_rules (S25, 2.3);
+    // 1 → 2 adds change_log (S5), 2 → 3 recurring_expenses (S6), 3 → 4 the card tables (S7), 4 → 5 categories.excludeFromReports (S9), 5 → 6 loan_details (S10), 6 → 7 transactions.concept and settings.netBalanceMode (S12), 7 → 8 settings.loanPaymentCategoryId and accounts.includeInNet (S15), 8 → 9 tags.color and transactions.tagIds (S18, 2.0), 9 → 10 transaction_drafts, accounts.lastDigits and settings.notifyDrafts (S19, S20), 10 → 11 categories.color (S24, 2.2), 11 → 12 mail_rules (S25, 2.3), 12 → 13 transactions.sourceMerchant, draftId and splitGroupId (S26, 2.4);
     // FinanceDatabaseMigrationTest checks them
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -70,6 +70,7 @@ import com.dev.julian09.financeapp.data.local.entity.TransactionEntity
         AutoMigration(from = 9, to = 10),
         AutoMigration(from = 10, to = 11),
         AutoMigration(from = 11, to = 12),
+        AutoMigration(from = 12, to = 13),
     ],
 )
 @TypeConverters(Converters::class)

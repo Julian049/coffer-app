@@ -131,6 +131,10 @@ data class TransactionEntity(
     val paymentKind: String? = null,
     /** A transfer's note, apart from its title [note] (V13, Room 7). */
     val concept: String? = null,
+    /** 2.4 (V19, Room 13): the email's merchant, the draft it was applied from and the group of a split. */
+    val sourceMerchant: String? = null,
+    val draftId: UUID? = null,
+    val splitGroupId: UUID? = null,
     /** Every tag as `,id1,id2,` or empty (ADR-0015, Room 9); [tagId] is the pre-2.0 column, kept only so old rows migrate. */
     @ColumnInfo(defaultValue = "") val tagIds: String = "",
     val createdAt: Instant,

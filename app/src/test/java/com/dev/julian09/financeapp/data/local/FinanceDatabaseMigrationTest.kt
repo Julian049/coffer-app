@@ -230,4 +230,26 @@ class FinanceDatabaseMigrationTest {
             close()
         }
     }
+
+    @Test
+    fun version12To13KeepsTheDraftsAndLeavesTheOriginEmpty() {
+        helper.createDatabase(12).apply {
+            execSQL(
+                "INSERT INTO transaction_drafts (id, source, type, amount, occurredAt, createdAt, updatedAt, syncState) " +
+                    "VALUES ('d1', 'RAPPICARD', 'EXPENSE', 229800000, 0, 0, 0, 'SYNCED')",
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(13).apply {
+            prepare("SELECT COUNT(*) FROM transaction_drafts").use {
+                it.step()
+                assertEquals(1L, it.getLong(0))
+            }
+            prepare("SELECT COUNT(sourceMerchant) + COUNT(draftId) + COUNT(splitGroupId) FROM transactions").use {
+                it.step()
+                assertEquals(0L, it.getLong(0))
+            }
+            close()
+        }
+    }
 }
