@@ -26,7 +26,9 @@ import com.dev.julian09.financeapp.domain.usecase.CreateTag
 import com.dev.julian09.financeapp.domain.usecase.DeferCardPurchase
 import com.dev.julian09.financeapp.domain.usecase.DeleteTransaction
 import com.dev.julian09.financeapp.domain.usecase.DiscardDraft
+import com.dev.julian09.financeapp.domain.usecase.DraftRecurring
 import com.dev.julian09.financeapp.domain.usecase.ObserveCards
+import com.dev.julian09.financeapp.domain.usecase.RecurringMatch
 import com.dev.julian09.financeapp.domain.usecase.RegisterTransaction
 import com.dev.julian09.financeapp.domain.usecase.SplitPart
 import com.dev.julian09.financeapp.domain.usecase.SplitTransaction
@@ -73,6 +75,8 @@ data class TransactionFormState(
     val splittable: Boolean = false,
     /** 2.4-03: «Según tus N últimos…» under the title of a review; 0 = nothing learned. */
     val learnedFrom: Int = 0,
+    /** 2.4-07: the recurring expense this draft may be the payment of; asked once, «No» hides it. */
+    val recurringMatch: RecurringMatch? = null,
     val type: TransactionType = TransactionType.EXPENSE,
     /** Whole pesos as typed, digits only. */
     val amountDigits: String = "",
@@ -136,6 +140,7 @@ class TransactionFormViewModel
         private val discardDraft: DiscardDraft,
         private val undoDraft: UndoDraft,
         private val splitTransaction: SplitTransaction,
+        private val draftRecurring: DraftRecurring,
         observeCards: ObserveCards,
         clock: Clock,
     ) : ViewModel() {
@@ -195,6 +200,7 @@ class TransactionFormViewModel
                             note = (if (suggestion.titleLearned) suggestion.note else draft.merchant).orEmpty(),
                             learnedFrom = suggestion.basedOn,
                             splittable = draft.type == TransactionType.EXPENSE,
+                            recurringMatch = draftRecurring.match(draft, suggestion.accountId),
                             accountId = suggestion.accountId,
                             destinationId = suggestion.destinationId,
                             categoryId = suggestion.categoryId,
@@ -412,6 +418,21 @@ class TransactionFormViewModel
                 }
             }
         }
+
+        /** 2.4-07 «Sí»: the recurring expense is paid with its own title and category and the draft goes. */
+        fun confirmRecurring() {
+            val s = _state.value
+            val match = s.recurringMatch ?: return
+            val draftId = s.draftId ?: return
+            val account = s.accountId ?: return
+            viewModelScope.launch {
+                val paid = draftRecurring.pay(draftId, match.recurring.id, account)
+                _state.update { if (paid != null) it.copy(saved = true) else it.copy(recurringMatch = null) }
+            }
+        }
+
+        /** 2.4-07 «No»: it goes on as a normal expense. */
+        fun dismissRecurring() = _state.update { it.copy(recurringMatch = null) }
 
         /** 2.4 Deshacer: back to «Por revisar», no confirmation (the trash still asks). */
         fun undo() {

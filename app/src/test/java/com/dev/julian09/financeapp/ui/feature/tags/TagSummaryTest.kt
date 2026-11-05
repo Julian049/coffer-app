@@ -146,6 +146,8 @@ class TagSummaryTest {
                         TransactionValidator(f.accounts, f.categories),
                         prefs,
                         FakeSyncScheduler(),
+                        com.dev.julian09.financeapp.ui
+                            .draftRecurring(f),
                     ),
                 ).state.filterNotNull().first()
             val line = home.pinned.single()

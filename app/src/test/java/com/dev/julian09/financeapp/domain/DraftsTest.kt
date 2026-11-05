@@ -41,7 +41,15 @@ class DraftsTest {
             com.dev.julian09.financeapp.ui
                 .FakeDraftPrefs(),
         )
-    private val apply = ApplyDraft(f.drafts, suggest, TransactionValidator(f.accounts, f.categories), sync)
+    private val apply =
+        ApplyDraft(
+            f.drafts,
+            suggest,
+            TransactionValidator(f.accounts, f.categories),
+            sync,
+            com.dev.julian09.financeapp.ui
+                .draftRecurring(f),
+        )
 
     @After
     fun close() = f.db.close()

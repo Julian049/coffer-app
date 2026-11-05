@@ -115,6 +115,7 @@ class NoteSuggestionsTest {
                             .FakeDraftPrefs(),
                         f.clock,
                         sync,
+                        f.recurring,
                     ),
                     SplitTransaction(
                         f.transactions,
@@ -124,6 +125,8 @@ class NoteSuggestionsTest {
                         f.clock,
                         sync,
                     ),
+                    com.dev.julian09.financeapp.ui
+                        .draftRecurring(f),
                     f.observeCards,
                     f.clock,
                 )
@@ -197,6 +200,7 @@ class NoteSuggestionsTest {
                             .FakeDraftPrefs(),
                         f.clock,
                         sync,
+                        f.recurring,
                     ),
                     SplitTransaction(
                         f.transactions,
@@ -206,6 +210,8 @@ class NoteSuggestionsTest {
                         f.clock,
                         sync,
                     ),
+                    com.dev.julian09.financeapp.ui
+                        .draftRecurring(f),
                     f.observeCards,
                     f.clock,
                 )
