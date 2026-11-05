@@ -224,11 +224,15 @@ class PayPending
             amount: Money,
             occurredAt: Instant,
             accountId: UUID,
+            /** 2.4-07: set when the payment is an email's draft, so its movement keeps where it came from. */
+            draftId: UUID? = null,
+            sourceMerchant: String? = null,
+            paymentId: UUID = UUID.randomUUID(),
         ): TransactionErrors {
             val r = recurring.observe(id).first() ?: return emptyMap()
             val payment =
                 Transaction(
-                    id = UUID.randomUUID(),
+                    id = paymentId,
                     type = TransactionType.EXPENSE,
                     amount = amount,
                     occurredAt = occurredAt,
@@ -236,6 +240,8 @@ class PayPending
                     categoryId = r.categoryId,
                     note = r.name,
                     recurringId = r.id,
+                    sourceMerchant = sourceMerchant,
+                    draftId = draftId,
                 )
             validator.check(payment).takeIf { it.isNotEmpty() }?.let { return it }
             recurring.pay(

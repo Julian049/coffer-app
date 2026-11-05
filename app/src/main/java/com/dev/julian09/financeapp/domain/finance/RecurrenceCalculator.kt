@@ -64,6 +64,18 @@ object RecurrenceCalculator {
         after: LocalDate,
     ): LocalDate = firstOnOrAfter(r, after.plusDays(1))
 
+    /** The date before [due] in the schedule, or null when [due] is the start (Deshacer of a payment rewinds to it). */
+    fun previous(
+        r: Recurring,
+        due: LocalDate,
+    ): LocalDate? {
+        val step = step(r)
+        var k = if (due.isAfter(r.startDate)) step.unit.between(r.startDate, due) / step.amount else 0
+        while (occurrence(r, step, k).isBefore(due)) k++
+        while (k > 0 && !occurrence(r, step, k - 1).isBefore(due)) k--
+        return if (k == 0L) null else occurrence(r, step, k - 1)
+    }
+
     /** Every date of the schedule in [from, to], both included. */
     fun between(
         r: Recurring,

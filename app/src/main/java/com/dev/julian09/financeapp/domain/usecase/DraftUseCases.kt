@@ -2,8 +2,12 @@ package com.dev.julian09.financeapp.domain.usecase
 
 import com.dev.julian09.financeapp.domain.finance.DraftLevel
 import com.dev.julian09.financeapp.domain.finance.Learned
+import com.dev.julian09.financeapp.domain.finance.RECURRING_WINDOW_DAYS
+import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
 import com.dev.julian09.financeapp.domain.finance.learn
+import com.dev.julian09.financeapp.domain.finance.matchRecurring
 import com.dev.julian09.financeapp.domain.finance.normalizeMerchant
+import com.dev.julian09.financeapp.domain.model.Recurring
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionType
@@ -13,10 +17,12 @@ import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.DraftPrefs
 import com.dev.julian09.financeapp.domain.port.DraftRepository
 import com.dev.julian09.financeapp.domain.port.MailRuleRepository
+import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
 import kotlinx.coroutines.flow.first
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.Inject
 
@@ -110,6 +116,57 @@ class SuggestDraft
         }
     }
 
+/** The recurring expense a draft pays, and whether the user already said so for this merchant (then it needs no question). */
+data class RecurringMatch(
+    val recurring: Recurring,
+    val linked: Boolean,
+    /** Days to its due date: negative once past. */
+    val daysLeft: Long,
+)
+
+/**
+ * 2.4-07: an expense draft that is the payment of a pending recurring expense. «Sí» pays the recurring expense (with ITS title
+ * and category, and the next date) instead of registering a second expense, and learns «this merchant in this account is that
+ * recurring expense»: from then on it needs no question and may enter by itself.
+ */
+class DraftRecurring
+    @Inject
+    constructor(
+        private val recurring: RecurringRepository,
+        private val drafts: DraftRepository,
+        private val payPending: PayPending,
+        private val prefs: DraftPrefs,
+        private val clock: Clock,
+        private val scheduler: SyncScheduler,
+    ) {
+        suspend fun match(
+            draft: TransactionDraft,
+            accountId: UUID?,
+        ): RecurringMatch? {
+            accountId ?: return null
+            val day = draft.occurredAt.atZone(clock.zone()).toLocalDate()
+            val found = matchRecurring(draft, accountId, day, recurring.observeAll().first()) ?: return null
+            val linked = prefs.observeRecurringLinks().first()[learningKey(accountId, draft.merchant)] == found.id
+            return RecurringMatch(found, linked, ChronoUnit.DAYS.between(clock.today(), found.nextDueDate))
+        }
+
+        /** The id of the payment it registered, or null when it did not. */
+        suspend fun pay(
+            draftId: UUID,
+            recurringId: UUID,
+            accountId: UUID,
+        ): UUID? {
+            val draft = drafts.get(draftId) ?: return null
+            val paymentId = UUID.randomUUID()
+            val errors = payPending(recurringId, draft.amount, draft.occurredAt, accountId, draftId, draft.merchant, paymentId)
+            if (errors.isNotEmpty()) return null
+            drafts.discard(draftId)
+            prefs.linkRecurring(learningKey(accountId, draft.merchant), recurringId)
+            scheduler.requestSync()
+            return paymentId
+        }
+    }
+
 /** REQ-COR-05 «Aplicar»: the draft as it came, when [SuggestDraft] found both its account and its category. */
 class ApplyDraft
     @Inject
@@ -118,11 +175,17 @@ class ApplyDraft
         private val suggest: SuggestDraft,
         private val validator: TransactionValidator,
         private val scheduler: SyncScheduler,
+        private val draftRecurring: DraftRecurring,
     ) {
         /** False when something is missing: the caller opens Revisar transacción instead. */
         suspend operator fun invoke(draftId: UUID): Boolean {
             val draft = drafts.get(draftId) ?: return false
-            val transaction = draft.toTransaction(suggest(draft))?.normalized() ?: return false
+            val suggestion = suggest(draft)
+            // A payment of a recurring expense is never registered twice: known, it pays that one; not known yet, Revisar asks
+            draftRecurring.match(draft, suggestion.accountId)?.let { m ->
+                return m.linked && draftRecurring.pay(draftId, m.recurring.id, suggestion.accountId!!) != null
+            }
+            val transaction = draft.toTransaction(suggestion)?.normalized() ?: return false
             if (validator.check(transaction).isNotEmpty()) return false
             drafts.apply(draftId, transaction)
             scheduler.requestSync()
@@ -143,6 +206,7 @@ class AutoApplyDrafts
         private val validator: TransactionValidator,
         private val prefs: DraftPrefs,
         private val scheduler: SyncScheduler,
+        private val draftRecurring: DraftRecurring,
     ) {
         /** How many movements were saved. */
         suspend operator fun invoke(): Int {
@@ -151,6 +215,17 @@ class AutoApplyDrafts
             for (draft in drafts.observeAll().first()) {
                 if (draft.type == TransactionType.TRANSFER) continue
                 val suggestion = suggest(draft)
+                // The payment of a recurring expense: by itself only once the user said yes for this merchant; else it waits
+                val match = draftRecurring.match(draft, suggestion.accountId)
+                if (match != null) {
+                    if (match.linked) {
+                        draftRecurring.pay(draft.id, match.recurring.id, suggestion.accountId!!)?.let {
+                            prefs.addRegistered(it)
+                            saved++
+                        }
+                    }
+                    continue
+                }
                 if (suggestion.level != DraftLevel.SURE) continue
                 val transaction = draft.toTransaction(suggestion)?.normalized() ?: continue
                 if (validator.check(transaction).isNotEmpty()) continue
@@ -172,12 +247,23 @@ class UndoDraft
         private val prefs: DraftPrefs,
         private val clock: Clock,
         private val scheduler: SyncScheduler,
+        private val recurring: RecurringRepository,
     ) {
         /** False when [transaction] did not come from a draft. */
         suspend operator fun invoke(transaction: Transaction): Boolean {
             val draftId = transaction.draftId ?: return false
             val parts = transactions.byDraft(draftId).ifEmpty { listOf(transaction) }
             parts.forEach { transactions.delete(it.id) }
+            // The payment of a recurring expense also gives its date back
+            transaction.recurringId?.let { id ->
+                recurring.observe(id).first()?.let { r ->
+                    val before = RecurrenceCalculator.previous(r, r.nextDueDate)
+                    val paidDay = transaction.occurredAt.atZone(clock.zone()).toLocalDate()
+                    if (before != null && ChronoUnit.DAYS.between(paidDay, before) in -RECURRING_WINDOW_DAYS..RECURRING_WINDOW_DAYS) {
+                        recurring.update(r.copy(nextDueDate = before))
+                    }
+                }
+            }
             drafts.restore(draftId)
             prefs.resetLearning(learningKey(transaction.accountId, transaction.sourceMerchant), clock.now())
             scheduler.requestSync()

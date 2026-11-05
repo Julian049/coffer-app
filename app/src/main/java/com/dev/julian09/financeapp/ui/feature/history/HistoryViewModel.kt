@@ -79,7 +79,13 @@ data class HistoryUiState(
     /** REQ-COR-04: what arrived by email and does not count yet, newest first. */
     val drafts: List<TransactionDraft> = emptyList(),
     /** 2.4 §1: how well each draft is known; the row shows it only as the colour of its circle. */
-    val levels: Map<UUID, DraftLevel> = emptyMap(),
+    val levels: Map<UUID, DraftHint> = emptyMap(),
+)
+
+/** The level of a draft and the icon key of the category it suggests, for the circle of its row (2.4 §1). */
+data class DraftHint(
+    val level: DraftLevel,
+    val icon: String? = null,
 )
 
 private data class Inputs(
@@ -154,7 +160,16 @@ class HistoryViewModel
                     choices = ch,
                     fox = fox,
                     drafts = pending,
-                    levels = pending.associate { it.id to suggest(it).level },
+                    levels =
+                        pending.associate { d ->
+                            val s = suggest(d)
+                            val category = ch.categories.firstOrNull { it.id == s.categoryId }
+                            d.id to
+                                DraftHint(
+                                    s.level,
+                                    category?.icon ?: category?.parentId?.let { p -> ch.categories.firstOrNull { it.id == p }?.icon },
+                                )
+                        },
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

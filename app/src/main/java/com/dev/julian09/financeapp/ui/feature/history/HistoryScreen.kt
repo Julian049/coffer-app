@@ -27,7 +27,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Search
@@ -90,6 +89,7 @@ import com.dev.julian09.financeapp.ui.components.FoxMascot
 import com.dev.julian09.financeapp.ui.components.IconBubble
 import com.dev.julian09.financeapp.ui.components.MoneyKind
 import com.dev.julian09.financeapp.ui.components.MoneyText
+import com.dev.julian09.financeapp.ui.components.categoryIcon
 import com.dev.julian09.financeapp.ui.components.formatMoney
 import com.dev.julian09.financeapp.ui.components.iconOf
 import com.dev.julian09.financeapp.ui.navigation.HistoryLink
@@ -529,7 +529,7 @@ internal fun mostUsedAll(
 @Composable
 private fun DraftsSection(
     drafts: List<TransactionDraft>,
-    levels: Map<UUID, DraftLevel>,
+    levels: Map<UUID, DraftHint>,
     actions: HistoryActions,
     today: LocalDate,
     modifier: Modifier = Modifier,
@@ -563,7 +563,7 @@ private fun DraftsSection(
             drafts.forEachIndexed { i, d ->
                 key(d.id) {
                     if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 1.dp, color = colors.border)
-                    DraftRow(d, levels[d.id] ?: DraftLevel.UNKNOWN, actions, today)
+                    DraftRow(d, levels[d.id] ?: DraftHint(DraftLevel.UNKNOWN), actions, today)
                 }
             }
         }
@@ -580,7 +580,7 @@ private fun TransactionDraft.subtitle() = destinationSource?.let { "$sourceName 
 @Composable
 private fun DraftRow(
     d: TransactionDraft,
-    level: DraftLevel,
+    hint: DraftHint,
     actions: HistoryActions,
     today: LocalDate,
 ) {
@@ -603,7 +603,7 @@ private fun DraftRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        LevelCircle(level)
+        LevelCircle(hint)
         Column(Modifier.weight(1f)) {
             Text(d.title(), style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary, maxLines = 1)
             val day = d.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate()
@@ -655,7 +655,8 @@ private fun DraftRow(
  * «Guardar solos los repetidos» off).
  */
 @Composable
-private fun LevelCircle(level: DraftLevel) {
+private fun LevelCircle(hint: DraftHint) {
+    val level = hint.level
     val colors = CofferTheme.colors
     val dotted = remember { PathEffect.dashPathEffect(floatArrayOf(4f, 4f)) }
     val background =
@@ -680,7 +681,7 @@ private fun LevelCircle(level: DraftLevel) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            if (level == DraftLevel.UNKNOWN) Icons.Outlined.Email else Icons.Outlined.Category,
+            if (level == DraftLevel.UNKNOWN) Icons.Outlined.Email else categoryIcon(hint.icon),
             contentDescription = null,
             tint =
                 when (level) {
