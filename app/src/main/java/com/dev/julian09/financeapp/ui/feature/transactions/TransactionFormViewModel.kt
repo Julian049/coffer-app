@@ -296,12 +296,13 @@ class TransactionFormViewModel
                     s.type != TransactionType.TRANSFER &&
                         category != null &&
                         (category.kind == CategoryKind.EXPENSE) == (s.type == TransactionType.EXPENSE)
-                // The account it was paid with last time, while it is still active (S13)
+                // The account it was paid with last time, while it is still active (S13); a draft keeps the email's (#241)
                 val account = suggestion.accountId?.takeIf { id -> choices.value.accounts.any { it.account.id == id } }
+                val keepAccount = s.type == TransactionType.TRANSFER || s.draftId != null
                 s.copy(
                     note = suggestion.note,
                     categoryId = if (fits) category.id else s.categoryId,
-                    accountId = if (s.type == TransactionType.TRANSFER) s.accountId else account ?: s.accountId,
+                    accountId = if (keepAccount) s.accountId else account ?: s.accountId,
                     suggestions = emptyList(),
                 )
             }
