@@ -2,6 +2,8 @@ package com.dev.julian09.financeapp.ui.feature.transactions
 
 import androidx.lifecycle.SavedStateHandle
 import com.dev.julian09.financeapp.data.local.LedgerFixture
+import com.dev.julian09.financeapp.data.local.entity.SyncState
+import com.dev.julian09.financeapp.data.local.entity.TransactionDraftEntity
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionType
@@ -15,7 +17,9 @@ import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
 import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
 import com.dev.julian09.financeapp.domain.usecase.UndoDraft
 import com.dev.julian09.financeapp.domain.usecase.UpdateTransaction
+import com.dev.julian09.financeapp.ui.FakeDraftPrefs
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
+import com.dev.julian09.financeapp.ui.draftRecurring
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -138,6 +142,80 @@ class NoteSuggestionsTest {
             assertEquals(restaurants, vm.state.value.categoryId)
             assertEquals(emptyList<Any>(), vm.state.value.suggestions)
         }
+
+    @Test
+    fun onADraftPickingASuggestionKeepsTheAccountTheEmailCameFrom() =
+        runBlocking {
+            val cash = f.account("Efectivo", 500_000)
+            val nu =
+                f.account("Nu", 0, type = "SAVINGS").also {
+                    f.db.accounts().upsert(
+                        listOf(
+                            f.db
+                                .accounts()
+                                .get(it)!!
+                                .copy(lastDigits = "2309"),
+                        ),
+                    )
+                }
+            val food = f.category("Comida")
+            spend("Almuerzo", food, cash, daysAgo = 1)
+            val draftId = UUID.randomUUID()
+            val at = f.clock.now()
+            f.db.drafts().upsert(
+                listOf(
+                    TransactionDraftEntity(
+                        draftId,
+                        "BANCOLOMBIA",
+                        "EXPENSE",
+                        20_000L * 10_000,
+                        at,
+                        "RESTAURANTE EL CORRAL",
+                        "2309",
+                        at,
+                        at,
+                        syncState = SyncState.SYNCED,
+                    ),
+                ),
+            )
+
+            val vm = formViewModel(mapOf("type" to "EXPENSE", "draftId" to draftId.toString()))
+            vm.choices.first { it.categories.isNotEmpty() }
+            vm.state.first { it.accountId == nu }
+            vm.setNote("Almu")
+            vm.pickSuggestion(
+                vm.state
+                    .first { it.suggestions.isNotEmpty() }
+                    .suggestions
+                    .first(),
+            )
+            assertEquals("Almuerzo", vm.state.value.note)
+            assertEquals(food, vm.state.value.categoryId)
+            // The email says which account paid; the last «Almuerzo» was cash (PO, 2026-11-08)
+            assertEquals(nu, vm.state.value.accountId)
+        }
+
+    private fun formViewModel(args: Map<String, Any>) =
+        TransactionFormViewModel(
+            SavedStateHandle(args),
+            f.accounts,
+            f.categories,
+            f.tags,
+            f.transactions,
+            register,
+            UpdateTransaction(f.transactions, validator, sync),
+            CreateTag(f.tags, sync),
+            DeferCardPurchase(f.cards, register, validator, sync, f.clock),
+            DeleteTransaction(f.transactions, sync),
+            f.drafts,
+            SuggestDraft(f.accounts, f.transactions, f.mailRules, FakeDraftPrefs()),
+            DiscardDraft(f.drafts, sync),
+            UndoDraft(f.transactions, f.drafts, FakeDraftPrefs(), f.clock, sync, f.recurring),
+            SplitTransaction(f.transactions, validator, FakeDraftPrefs(), f.clock, sync),
+            draftRecurring(f),
+            f.observeCards,
+            f.clock,
+        )
 
     @Test
     fun theBestMatchComesFirstAndNotesDifferingInCaseAreOne() =
