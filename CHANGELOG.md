@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-11-10
+
+### Fixed
+- Revisar transacción: picking a title suggestion fills the title and the category but keeps the account the email came from; it used to switch to the account of the last movement with that title (#241).
+
 ## [2.4.1] - 2026-11-04
 
 ### Added
