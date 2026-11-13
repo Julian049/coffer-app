@@ -143,7 +143,7 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.4.0")
     val navVersion = "2.10.2"
     implementation("androidx.navigation:navigation-compose:$navVersion")
-    testImplementation("io.mockk:mockk:1.14.11")
+    testImplementation("io.mockk:mockk:1.14.12")
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.androidx.room.testing)
