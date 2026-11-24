@@ -828,7 +828,7 @@ private fun DateTimeRow(
 ) {
     val colors = CofferTheme.colors
     var step by remember { mutableStateOf(0) } // 0 closed, 1 date, 2 time
-    var date by remember { mutableStateOf(occurredAt.atZone(zone).toLocalDate()) }
+    var date by remember(occurredAt) { mutableStateOf(occurredAt.atZone(zone).toLocalDate()) }
     Row(
         Modifier
             .fillMaxWidth()
@@ -855,7 +855,7 @@ private fun DateTimeRow(
     }
     if (step == 1) {
         // The date picker works in UTC midnights
-        val picker = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
+        val picker = rememberDatePickerState(initialSelectedDateMillis = datePickerMillis(occurredAt, zone))
         DatePickerDialog(
             onDismissRequest = { step = 0 },
             confirmButton = {
@@ -883,6 +883,18 @@ private fun DateTimeRow(
         )
     }
 }
+
+/** The date picker works in UTC midnights: the movement's local day, so it opens on its own date. */
+internal fun datePickerMillis(
+    occurredAt: Instant,
+    zone: ZoneId,
+): Long =
+    occurredAt
+        .atZone(zone)
+        .toLocalDate()
+        .atStartOfDay(ZoneOffset.UTC)
+        .toInstant()
+        .toEpochMilli()
 
 private val SHORT_DATE = DateTimeFormatter.ofPattern("d 'de' MMM", ES_CO)
 private val SHORT_DATE_YEAR = DateTimeFormatter.ofPattern("d 'de' MMM 'de' yyyy", ES_CO)
@@ -1149,7 +1161,7 @@ internal fun DateTimeCard(
 ) {
     val colors = CofferTheme.colors
     var step by remember { mutableStateOf(0) } // 0 closed, 1 date, 2 time
-    var date by remember { mutableStateOf(occurredAt.atZone(zone).toLocalDate()) }
+    var date by remember(occurredAt) { mutableStateOf(occurredAt.atZone(zone).toLocalDate()) }
     AppCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             // Figma `20:428`: a 32 dp ring with the clock, the date in 14 Medium and a small «Modificar»
@@ -1172,7 +1184,7 @@ internal fun DateTimeCard(
     }
     if (step == 1) {
         // The date picker works in UTC midnights
-        val picker = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
+        val picker = rememberDatePickerState(initialSelectedDateMillis = datePickerMillis(occurredAt, zone))
         DatePickerDialog(
             onDismissRequest = { step = 0 },
             confirmButton = {
