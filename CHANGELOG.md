@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Editing a movement: the date and time picker opens on the movement's own date and time instead of today; the remembered date was captured before the saved movement finished loading (#247).
+
 ## [2.4.2] - 2026-11-10
 
 ### Fixed
