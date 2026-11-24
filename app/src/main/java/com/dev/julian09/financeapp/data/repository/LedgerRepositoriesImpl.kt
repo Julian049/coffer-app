@@ -7,6 +7,7 @@ import com.dev.julian09.financeapp.data.local.dao.CardDao
 import com.dev.julian09.financeapp.data.local.dao.CategoryDao
 import com.dev.julian09.financeapp.data.local.dao.ChangeLogDao
 import com.dev.julian09.financeapp.data.local.dao.DraftDao
+import com.dev.julian09.financeapp.data.local.dao.DraftRuleDao
 import com.dev.julian09.financeapp.data.local.dao.LoanDao
 import com.dev.julian09.financeapp.data.local.dao.MailRuleDao
 import com.dev.julian09.financeapp.data.local.dao.NoteRow
@@ -20,6 +21,7 @@ import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
 import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
+import com.dev.julian09.financeapp.data.local.entity.DraftRuleEntity
 import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
 import com.dev.julian09.financeapp.data.local.entity.LoanDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.MailRuleEntity
@@ -48,6 +50,7 @@ import com.dev.julian09.financeapp.domain.model.ChangeAction
 import com.dev.julian09.financeapp.domain.model.ChangeEntry
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
+import com.dev.julian09.financeapp.domain.model.DraftRule
 import com.dev.julian09.financeapp.domain.model.Frequency
 import com.dev.julian09.financeapp.domain.model.HomeCard
 import com.dev.julian09.financeapp.domain.model.Installment
@@ -63,6 +66,8 @@ import com.dev.julian09.financeapp.domain.model.NoteSuggestion
 import com.dev.julian09.financeapp.domain.model.PeriodTotals
 import com.dev.julian09.financeapp.domain.model.RateType
 import com.dev.julian09.financeapp.domain.model.Recurring
+import com.dev.julian09.financeapp.domain.model.RuleLevel
+import com.dev.julian09.financeapp.domain.model.RuleOrigin
 import com.dev.julian09.financeapp.domain.model.SearchTotals
 import com.dev.julian09.financeapp.domain.model.Settings
 import com.dev.julian09.financeapp.domain.model.Tag
@@ -79,6 +84,7 @@ import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.ChangeLogRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.DraftRepository
+import com.dev.julian09.financeapp.domain.port.DraftRuleRepository
 import com.dev.julian09.financeapp.domain.port.LoanRepository
 import com.dev.julian09.financeapp.domain.port.MailRuleRepository
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
@@ -1255,6 +1261,62 @@ class MailRuleRepositoryImpl
 
         override suspend fun remove(source: String) = dao.deleteBySource(source, clock.now())
     }
+
+class DraftRuleRepositoryImpl
+    @Inject
+    constructor(
+        private val db: FinanceDatabase,
+        private val dao: DraftRuleDao,
+        private val clock: Clock,
+    ) : DraftRuleRepository {
+        override fun observeAll(): Flow<List<DraftRule>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
+        override suspend fun get(id: UUID): DraftRule? = dao.byId(id)?.takeIf { it.deletedAt == null }?.toDomain()
+
+        override suspend fun saveAll(rules: List<DraftRule>) =
+            db.withTransaction {
+                val now = clock.now()
+                dao.upsert(
+                    rules.map { r ->
+                        DraftRuleEntity(
+                            id = r.id,
+                            merchant = r.merchant,
+                            merchantKey = r.merchantKey,
+                            amount = r.amount?.scaled,
+                            accountId = r.accountId,
+                            note = r.note,
+                            categoryId = r.categoryId,
+                            level = r.level.name,
+                            origin = r.origin.name,
+                            enabled = r.enabled,
+                            learnedSince = r.learnedSince,
+                            position = r.position,
+                            createdAt = dao.byId(r.id)?.createdAt ?: now,
+                            updatedAt = now,
+                        )
+                    },
+                )
+            }
+
+        override suspend fun delete(id: UUID) = dao.delete(id, clock.now())
+    }
+
+internal fun DraftRuleEntity.toDomain() =
+    DraftRule(
+        id = id,
+        merchant = merchant,
+        merchantKey = merchantKey,
+        amount = amount?.let(::Money),
+        accountId = accountId,
+        note = note,
+        categoryId = categoryId,
+        level = RuleLevel.valueOf(level),
+        origin = RuleOrigin.valueOf(origin),
+        enabled = enabled,
+        learnedSince = learnedSince,
+        position = position,
+        updatedAt = updatedAt,
+    )
 
 internal fun TransactionDraftEntity.toDomain() =
     TransactionDraft(
