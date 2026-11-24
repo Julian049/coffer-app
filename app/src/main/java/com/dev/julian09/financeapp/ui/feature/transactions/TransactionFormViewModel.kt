@@ -27,6 +27,7 @@ import com.dev.julian09.financeapp.domain.usecase.DeferCardPurchase
 import com.dev.julian09.financeapp.domain.usecase.DeleteTransaction
 import com.dev.julian09.financeapp.domain.usecase.DiscardDraft
 import com.dev.julian09.financeapp.domain.usecase.DraftRecurring
+import com.dev.julian09.financeapp.domain.usecase.LearnRules
 import com.dev.julian09.financeapp.domain.usecase.ObserveCards
 import com.dev.julian09.financeapp.domain.usecase.RecurringMatch
 import com.dev.julian09.financeapp.domain.usecase.RegisterTransaction
@@ -141,6 +142,7 @@ class TransactionFormViewModel
         private val undoDraft: UndoDraft,
         private val splitTransaction: SplitTransaction,
         private val draftRecurring: DraftRecurring,
+        private val learnRules: LearnRules,
         observeCards: ObserveCards,
         clock: Clock,
     ) : ViewModel() {
@@ -397,6 +399,8 @@ class TransactionFormViewModel
                     }
                 // The draft goes only once its movement was saved
                 if (errors.isEmpty()) s.draftId?.let { discardDraft(it) }
+                // 2.5: a movement from an email teaches the rules; an edit of its title or category may turn one off
+                if (errors.isEmpty()) learnRules(transaction, original)
                 if (errors.isEmpty() && s.editingId == null) NewRow.id = transaction.id
                 _state.update { if (errors.isEmpty()) it.copy(saved = true) else it.copy(errors = errors) }
             }

@@ -374,6 +374,16 @@ interface TransactionDao {
         limit: Int,
     ): List<TransactionEntity>
 
+    /** 2.5: live movements of [type] that came by email (merchant kept), newest first, for the draft rules. */
+    @Query(
+        "SELECT * FROM transactions WHERE deletedAt IS NULL AND sourceMerchant IS NOT NULL AND type = :type " +
+            "ORDER BY occurredAt DESC, createdAt DESC LIMIT :limit",
+    )
+    suspend fun fromMail(
+        type: String,
+        limit: Int,
+    ): List<TransactionEntity>
+
     /** Every live part that came from [draftId] (a split has several). */
     @Query("SELECT * FROM transactions WHERE deletedAt IS NULL AND draftId = :draftId")
     suspend fun byDraft(draftId: UUID): List<TransactionEntity>

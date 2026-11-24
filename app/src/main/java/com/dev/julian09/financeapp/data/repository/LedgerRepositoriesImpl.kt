@@ -553,6 +553,11 @@ class TransactionRepositoryImpl
 
         override suspend fun byDraft(draftId: UUID): List<Transaction> = dao.byDraft(draftId).map { it.toDomain() }
 
+        override suspend fun fromMail(
+            type: TransactionType,
+            limit: Int,
+        ): List<Transaction> = dao.fromMail(type.name, limit).map { it.toDomain() }
+
         override fun observeSince(from: Instant): Flow<List<Transaction>> =
             dao.observeSince(from).map { rows -> rows.map { it.toDomain() } }
 

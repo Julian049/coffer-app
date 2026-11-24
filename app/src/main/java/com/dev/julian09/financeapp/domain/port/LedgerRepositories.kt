@@ -186,6 +186,12 @@ interface TransactionRepository {
         limit: Int = 30,
     ): List<Transaction>
 
+    /** 2.5: the movements of [type] that came by email (sourceMerchant set), any account, newest first, for the draft rules. */
+    suspend fun fromMail(
+        type: TransactionType,
+        limit: Int = 500,
+    ): List<Transaction>
+
     /** Every live movement that came from the draft [draftId]; a split has several. */
     suspend fun byDraft(draftId: UUID): List<Transaction>
 
