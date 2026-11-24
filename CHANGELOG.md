@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - 2.5: what was learned without a rule (`learn`) only suggests now: it never registers a draft by itself, so incomes no longer register alone (#248).
 
+### Fixed
+- Editing a movement: the date and time picker opens on the movement's own date and time instead of today; the remembered date was captured before the saved movement finished loading (#247).
+
 ## [2.4.2] - 2026-11-10
 
 ### Fixed
