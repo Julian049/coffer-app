@@ -39,6 +39,16 @@ data object ConnectEmailRoute
 @Serializable
 data object MailProvidersRoute
 
+/** 2.5: Ajustes → Correos → Registro automático. */
+@Serializable
+data object DraftRulesRoute
+
+/** Nueva regla, or Editar regla when [id] is set. */
+@Serializable
+data class DraftRuleFormRoute(
+    val id: String? = null,
+)
+
 @Serializable
 data object NewAccountRoute
 
