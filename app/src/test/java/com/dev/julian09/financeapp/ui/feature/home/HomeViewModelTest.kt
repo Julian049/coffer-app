@@ -1,5 +1,6 @@
 package com.dev.julian09.financeapp.ui.feature.home
 
+import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.data.local.FixedClock
 import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.domain.finance.FoxState
@@ -15,6 +16,7 @@ import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.learnRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -47,8 +49,12 @@ class HomeViewModelTest {
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
+    private val created = mutableListOf<HomeViewModel>()
+
+    // The view models' Room flows keep emitting on Main; stop them before Main is reset, or a late emission races the reset
     @After
     fun tearDown() {
+        created.forEach { it.viewModelScope.cancel() }
         Dispatchers.resetMain()
         f.db.close()
     }
@@ -89,7 +95,7 @@ class HomeViewModelTest {
                 learnRules(f),
             ),
             netPrefs,
-        ).state.filterNotNull().first()
+        ).also { created += it }.state.filterNotNull().first()
 
     private fun day(date: String) = Instant.parse("${date}T15:00:00Z")
 
