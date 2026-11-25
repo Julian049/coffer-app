@@ -66,6 +66,11 @@ abstract class RepositoryModule {
     ): com.dev.julian09.financeapp.domain.port.DraftPrefs
 
     @Binds
+    abstract fun bindNetBalancePrefs(
+        impl: com.dev.julian09.financeapp.data.session.SharedPrefsNetBalancePrefs,
+    ): com.dev.julian09.financeapp.domain.port.NetBalancePrefs
+
+    @Binds
     abstract fun bindCalendarAccountsStore(impl: SharedPrefsCalendarAccountsStore): CalendarAccountsStore
 
     @Binds

@@ -1,5 +1,6 @@
 package com.dev.julian09.financeapp.ui.feature.home
 
+import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.data.local.FixedClock
 import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.domain.finance.FoxState
@@ -15,6 +16,7 @@ import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.learnRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -40,12 +42,19 @@ import java.time.LocalDate
 class HomeViewModelTest {
     // Friday 2026-10-16 at noon UTC
     private val f = LedgerFixture(FixedClock(Instant.parse("2026-10-16T12:00:00Z")))
+    private val netPrefs =
+        com.dev.julian09.financeapp.ui
+            .FakeNetBalancePrefs()
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
+    private val created = mutableListOf<HomeViewModel>()
+
+    // The view models' Room flows keep emitting on Main; stop them before Main is reset, or a late emission races the reset
     @After
     fun tearDown() {
+        created.forEach { it.viewModelScope.cancel() }
         Dispatchers.resetMain()
         f.db.close()
     }
@@ -63,6 +72,8 @@ class HomeViewModelTest {
                 f.cardDues,
                 f.loanDues,
                 f.clock,
+                f.observeCards,
+                netPrefs,
             ),
             f.categories,
             f.tags,
@@ -83,7 +94,8 @@ class HomeViewModelTest {
                     .draftRecurring(f),
                 learnRules(f),
             ),
-        ).state.filterNotNull().first()
+            netPrefs,
+        ).also { created += it }.state.filterNotNull().first()
 
     private fun day(date: String) = Instant.parse("${date}T15:00:00Z")
 
