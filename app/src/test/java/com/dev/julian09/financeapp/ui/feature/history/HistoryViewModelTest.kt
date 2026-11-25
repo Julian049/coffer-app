@@ -65,6 +65,9 @@ class HistoryViewModelTest {
                     f.cardDues,
                     f.loanDues,
                     f.clock,
+                    f.observeCards,
+                    com.dev.julian09.financeapp.ui
+                        .FakeNetBalancePrefs(),
                 ),
                 f.clock,
             ),

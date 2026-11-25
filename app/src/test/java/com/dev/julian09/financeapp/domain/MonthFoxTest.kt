@@ -29,6 +29,9 @@ class MonthFoxTest {
             f.cardDues,
             f.loanDues,
             f.clock,
+            f.observeCards,
+            com.dev.julian09.financeapp.ui
+                .FakeNetBalancePrefs(),
         )
     private val monthFox = ObserveMonthFox(f.accounts, f.transactions, home, f.clock)
 

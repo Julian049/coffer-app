@@ -163,7 +163,8 @@ class ObserveCards
                         own
                             .filter { d -> plan.any { it.deferredPurchaseId == d.id && it.status == InstallmentStatus.SCHEDULED } }
                             .sortedByDescending { it.firstDueDate }
-                    CardOverview(card, account, statement, live, plan)
+                    val notes = live.associate { d -> d.id to moves.firstOrNull { it.id == d.purchaseTransactionId }?.note.orEmpty() }
+                    CardOverview(card, account, statement, live, plan, notes)
                 }
             }
     }

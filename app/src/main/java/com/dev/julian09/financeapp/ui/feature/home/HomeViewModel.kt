@@ -10,6 +10,7 @@ import com.dev.julian09.financeapp.domain.port.CategoryRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.DraftPrefs
 import com.dev.julian09.financeapp.domain.port.DraftRepository
+import com.dev.julian09.financeapp.domain.port.NetBalancePrefs
 import com.dev.julian09.financeapp.domain.port.SettingsRepository
 import com.dev.julian09.financeapp.domain.port.TagRepository
 import com.dev.julian09.financeapp.domain.port.TransactionRepository
@@ -81,6 +82,7 @@ class HomeViewModel
         transactions: TransactionRepository,
         private val prefs: DraftPrefs,
         private val autoApply: AutoApplyDrafts,
+        private val netPrefs: NetBalancePrefs,
     ) : ViewModel() {
         init {
             // 2.4-04: what is sure enters by itself whenever a draft arrives (the setting is read inside)
@@ -136,6 +138,22 @@ class HomeViewModel
             include: Boolean,
         ) {
             viewModelScope.launch { setIncludeInNet.invoke(accountId, include) }
+        }
+
+        /** «Personalizado»: a card counts its whole debt or only this period's payment (2.5, #253). */
+        fun setPeriodOnly(
+            cardId: UUID,
+            periodOnly: Boolean,
+        ) {
+            viewModelScope.launch { netPrefs.setPeriodOnly(cardId, periodOnly) }
+        }
+
+        /** «Personalizado»: an installment purchase counts in its card or not (2.5, #253). */
+        fun setPurchaseIncluded(
+            purchaseId: UUID,
+            included: Boolean,
+        ) {
+            viewModelScope.launch { netPrefs.setPurchaseIncluded(purchaseId, included) }
         }
 
         /** Hoja · Detalle del saldo: what the net balance subtracts (S12-H03). */

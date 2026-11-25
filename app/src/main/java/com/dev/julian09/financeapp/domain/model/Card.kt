@@ -99,6 +99,8 @@ data class CardOverview(
     /** Not deleted, with installments still to pay, newest first. */
     val deferred: List<DeferredPurchase> = emptyList(),
     val installments: List<Installment> = emptyList(),
+    /** The title of each [deferred] purchase, by its id (2.5: Saldo neto «Personalizado»). */
+    val purchaseNotes: Map<UUID, String> = emptyMap(),
 ) {
     val debt: Money get() = statement.debt
 

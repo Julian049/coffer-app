@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- 2.5 Saldo neto «Personalizado» (formerly «Elegir deudas»): each marked card counts its whole debt or only this period's payment, and its installment purchases unfold under it, each with its own mark; a purchase left out stops subtracting what is left to pay of it (or its installment of the period). These choices stay on the phone (`NetBalancePrefs`) (#253).
+
 ### Fixed
 - Editing a movement: the date and time picker opens on the movement's own date and time instead of today; the remembered date was captured before the saved movement finished loading (#247).
 

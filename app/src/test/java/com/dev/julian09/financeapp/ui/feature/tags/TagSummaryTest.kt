@@ -130,6 +130,9 @@ class TagSummaryTest {
                         f.cardDues,
                         f.loanDues,
                         f.clock,
+                        f.observeCards,
+                        com.dev.julian09.financeapp.ui
+                            .FakeNetBalancePrefs(),
                     ),
                     f.categories,
                     f.tags,
@@ -149,6 +152,8 @@ class TagSummaryTest {
                         com.dev.julian09.financeapp.ui
                             .draftRecurring(f),
                     ),
+                    com.dev.julian09.financeapp.ui
+                        .FakeNetBalancePrefs(),
                 ).state.filterNotNull().first()
             val line = home.pinned.single()
             assertEquals("Salidas", line.tag.name)

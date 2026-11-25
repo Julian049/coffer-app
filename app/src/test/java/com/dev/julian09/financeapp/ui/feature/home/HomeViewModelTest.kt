@@ -39,6 +39,9 @@ import java.time.LocalDate
 class HomeViewModelTest {
     // Friday 2026-10-16 at noon UTC
     private val f = LedgerFixture(FixedClock(Instant.parse("2026-10-16T12:00:00Z")))
+    private val netPrefs =
+        com.dev.julian09.financeapp.ui
+            .FakeNetBalancePrefs()
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -62,6 +65,8 @@ class HomeViewModelTest {
                 f.cardDues,
                 f.loanDues,
                 f.clock,
+                f.observeCards,
+                netPrefs,
             ),
             f.categories,
             f.tags,
@@ -81,6 +86,7 @@ class HomeViewModelTest {
                 com.dev.julian09.financeapp.ui
                     .draftRecurring(f),
             ),
+            netPrefs,
         ).state.filterNotNull().first()
 
     private fun day(date: String) = Instant.parse("${date}T15:00:00Z")
