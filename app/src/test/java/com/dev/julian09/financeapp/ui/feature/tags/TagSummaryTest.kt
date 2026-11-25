@@ -1,6 +1,7 @@
 package com.dev.julian09.financeapp.ui.feature.tags
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.data.local.FixedClock
 import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.domain.model.LedgerError
@@ -22,8 +23,10 @@ import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
 import com.dev.julian09.financeapp.domain.usecase.UpdateSettings
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.feature.home.HomeViewModel
+import com.dev.julian09.financeapp.ui.learnRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -53,8 +56,12 @@ class TagSummaryTest {
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
+    private val created = mutableListOf<HomeViewModel>()
+
+    // The view models' Room flows keep emitting on Main; stop them before Main is reset, or a late emission races the reset
     @After
     fun tearDown() {
+        created.forEach { it.viewModelScope.cancel() }
         Dispatchers.resetMain()
         f.db.close()
     }
@@ -130,6 +137,9 @@ class TagSummaryTest {
                         f.cardDues,
                         f.loanDues,
                         f.clock,
+                        f.observeCards,
+                        com.dev.julian09.financeapp.ui
+                            .FakeNetBalancePrefs(),
                     ),
                     f.categories,
                     f.tags,
@@ -142,14 +152,17 @@ class TagSummaryTest {
                     prefs,
                     AutoApplyDrafts(
                         f.drafts,
-                        SuggestDraft(f.accounts, f.transactions, f.mailRules, prefs),
+                        SuggestDraft(f.accounts, f.transactions, f.mailRules, prefs, f.draftRules),
                         TransactionValidator(f.accounts, f.categories),
                         prefs,
                         FakeSyncScheduler(),
                         com.dev.julian09.financeapp.ui
                             .draftRecurring(f),
+                        learnRules(f),
                     ),
-                ).state.filterNotNull().first()
+                    com.dev.julian09.financeapp.ui
+                        .FakeNetBalancePrefs(),
+                ).also { created += it }.state.filterNotNull().first()
             val line = home.pinned.single()
             assertEquals("Salidas", line.tag.name)
             assertEquals(Money.ofPesos(-182_000), line.net)

@@ -172,9 +172,18 @@ enum class NetBalanceMode {
     /** What falls due this period: each card's statement and each loan's next installment. */
     PERIOD,
 
-    /** The debts of cards and loans the user marks (Account.includeInNet), as if paid today. */
+    /** «Personalizado»: the debts of cards and loans the user marks (Account.includeInNet), refined by [NetChoices]. */
     CUSTOM,
 }
+
+/**
+ * 2.5 «Personalizado», kept on the phone (PO, 2026-11-24): the cards counted by this period's payment instead of their
+ * whole debt, and the installment purchases left out.
+ */
+data class NetChoices(
+    val periodCards: Set<UUID> = emptySet(),
+    val excludedPurchases: Set<UUID> = emptySet(),
+)
 
 /** Sums of what moved through an account, all positive (detailed-design §6.9.5). */
 data class AccountFlows(

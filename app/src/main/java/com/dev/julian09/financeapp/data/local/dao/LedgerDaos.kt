@@ -9,6 +9,7 @@ import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
 import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
+import com.dev.julian09.financeapp.data.local.entity.DraftRuleEntity
 import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
 import com.dev.julian09.financeapp.data.local.entity.LoanDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.MailRuleEntity
@@ -373,6 +374,16 @@ interface TransactionDao {
         limit: Int,
     ): List<TransactionEntity>
 
+    /** 2.5: live movements of [type] that came by email (merchant kept), newest first, for the draft rules. */
+    @Query(
+        "SELECT * FROM transactions WHERE deletedAt IS NULL AND sourceMerchant IS NOT NULL AND type = :type " +
+            "ORDER BY occurredAt DESC, createdAt DESC LIMIT :limit",
+    )
+    suspend fun fromMail(
+        type: String,
+        limit: Int,
+    ): List<TransactionEntity>
+
     /** Every live part that came from [draftId] (a split has several). */
     @Query("SELECT * FROM transactions WHERE deletedAt IS NULL AND draftId = :draftId")
     suspend fun byDraft(draftId: UUID): List<TransactionEntity>
@@ -635,6 +646,7 @@ interface SyncMetaDao {
             "(SELECT COUNT(*) FROM categories WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM tags WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM mail_rules WHERE syncState <> 'SYNCED') + " +
+            "(SELECT COUNT(*) FROM draft_rules WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM recurring_expenses WHERE syncState <> 'SYNCED') + " +
             "(SELECT COUNT(*) FROM transactions WHERE syncState <> 'SYNCED')",
     )
@@ -965,6 +977,43 @@ interface MailRuleDao {
     ): Int
 
     @Query("UPDATE mail_rules SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markFailed(
+        id: UUID,
+        sentUpdatedAt: Instant,
+        error: String,
+    ): Int
+}
+
+@Dao
+interface DraftRuleDao {
+    @Upsert
+    suspend fun upsert(rules: List<DraftRuleEntity>)
+
+    @Query("SELECT * FROM draft_rules WHERE deletedAt IS NULL ORDER BY position, id")
+    fun observeAll(): Flow<List<DraftRuleEntity>>
+
+    @Query("SELECT * FROM draft_rules WHERE id = :id")
+    suspend fun byId(id: UUID): DraftRuleEntity?
+
+    @Query("UPDATE draft_rules SET deletedAt = :now, updatedAt = :now, syncState = 'PENDING' WHERE id = :id AND deletedAt IS NULL")
+    suspend fun delete(
+        id: UUID,
+        now: Instant,
+    )
+
+    @Query("SELECT * FROM draft_rules WHERE syncState = 'PENDING' ORDER BY updatedAt LIMIT :limit")
+    suspend fun pending(limit: Int): List<DraftRuleEntity>
+
+    @Query("SELECT syncState, updatedAt FROM draft_rules WHERE id = :id")
+    suspend fun syncInfo(id: UUID): SyncInfo?
+
+    @Query("UPDATE draft_rules SET syncState = 'SYNCED', syncError = NULL WHERE id = :id AND updatedAt = :sentUpdatedAt")
+    suspend fun markSynced(
+        id: UUID,
+        sentUpdatedAt: Instant,
+    ): Int
+
+    @Query("UPDATE draft_rules SET syncState = 'FAILED', syncError = :error WHERE id = :id AND updatedAt = :sentUpdatedAt")
     suspend fun markFailed(
         id: UUID,
         sentUpdatedAt: Instant,

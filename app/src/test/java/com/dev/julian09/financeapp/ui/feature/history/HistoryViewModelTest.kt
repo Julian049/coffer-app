@@ -1,5 +1,6 @@
 package com.dev.julian09.financeapp.ui.feature.history
 
+import androidx.lifecycle.viewModelScope
 import com.dev.julian09.financeapp.data.local.LedgerFixture
 import com.dev.julian09.financeapp.domain.model.Money
 import com.dev.julian09.financeapp.domain.model.TransactionType
@@ -11,8 +12,10 @@ import com.dev.julian09.financeapp.domain.usecase.SearchTransactions
 import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
 import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
+import com.dev.julian09.financeapp.ui.learnRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -41,13 +44,19 @@ class HistoryViewModelTest {
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
+    private val created = mutableListOf<HistoryViewModel>()
+
+    // The view models' Room flows keep emitting on Main; stop them before Main is reset, or a late emission races the reset
     @After
     fun tearDown() {
+        created.forEach { it.viewModelScope.cancel() }
         Dispatchers.resetMain()
         f.db.close()
     }
 
-    private fun viewModel() =
+    private fun viewModel() = newViewModel().also { created += it }
+
+    private fun newViewModel() =
         HistoryViewModel(
             SearchTransactions(f.transactions, f.categories),
             f.transactions,
@@ -65,6 +74,9 @@ class HistoryViewModelTest {
                     f.cardDues,
                     f.loanDues,
                     f.clock,
+                    f.observeCards,
+                    com.dev.julian09.financeapp.ui
+                        .FakeNetBalancePrefs(),
                 ),
                 f.clock,
             ),
@@ -77,11 +89,13 @@ class HistoryViewModelTest {
                     f.mailRules,
                     com.dev.julian09.financeapp.ui
                         .FakeDraftPrefs(),
+                    f.draftRules,
                 ),
                 TransactionValidator(f.accounts, f.categories),
                 FakeSyncScheduler(),
                 com.dev.julian09.financeapp.ui
                     .draftRecurring(f),
+                learnRules(f),
             ),
             SuggestDraft(
                 f.accounts,
@@ -89,6 +103,7 @@ class HistoryViewModelTest {
                 f.mailRules,
                 com.dev.julian09.financeapp.ui
                     .FakeDraftPrefs(),
+                f.draftRules,
             ),
         )
 

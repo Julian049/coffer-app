@@ -252,4 +252,29 @@ class FinanceDatabaseMigrationTest {
             close()
         }
     }
+
+    @Test
+    fun version13To14KeepsTheDraftsAndAddsTheDraftRules() {
+        helper.createDatabase(13).apply {
+            execSQL(
+                "INSERT INTO transaction_drafts (id, source, type, amount, occurredAt, createdAt, updatedAt, syncState) " +
+                    "VALUES ('d1', 'RAPPICARD', 'EXPENSE', 229800000, 0, 0, 0, 'SYNCED')",
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(14).apply {
+            prepare("SELECT COUNT(*) FROM transaction_drafts").use {
+                it.step()
+                assertEquals(1L, it.getLong(0))
+            }
+            prepare(
+                "SELECT COUNT(merchant) + COUNT(merchantKey) + COUNT(amount) + COUNT(accountId) + COUNT(note) + COUNT(categoryId) + " +
+                    "COUNT(level) + COUNT(origin) + COUNT(enabled) + COUNT(learnedSince) + COUNT(position) FROM draft_rules",
+            ).use {
+                it.step()
+                assertEquals(0L, it.getLong(0))
+            }
+            close()
+        }
+    }
 }

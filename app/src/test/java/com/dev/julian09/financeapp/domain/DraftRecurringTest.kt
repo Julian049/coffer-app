@@ -15,6 +15,7 @@ import com.dev.julian09.financeapp.domain.usecase.UndoDraft
 import com.dev.julian09.financeapp.ui.FakeDraftPrefs
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.draftRecurring
+import com.dev.julian09.financeapp.ui.learnRules
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -39,11 +40,11 @@ class DraftRecurringTest {
     private val prefs = FakeDraftPrefs()
     private val sync = FakeSyncScheduler()
     private val dr = draftRecurring(f, prefs, sync)
-    private val suggest = SuggestDraft(f.accounts, f.transactions, f.mailRules, prefs)
+    private val suggest = SuggestDraft(f.accounts, f.transactions, f.mailRules, prefs, f.draftRules)
     private val validator = TransactionValidator(f.accounts, f.categories)
-    private val apply = ApplyDraft(f.drafts, suggest, validator, sync, dr)
-    private val auto = AutoApplyDrafts(f.drafts, suggest, validator, prefs, sync, dr)
-    private val undo = UndoDraft(f.transactions, f.drafts, prefs, f.clock, sync, f.recurring)
+    private val apply = ApplyDraft(f.drafts, suggest, validator, sync, dr, learnRules(f))
+    private val auto = AutoApplyDrafts(f.drafts, suggest, validator, prefs, sync, dr, learnRules(f))
+    private val undo = UndoDraft(f.transactions, f.drafts, prefs, f.clock, sync, f.recurring, learnRules(f))
 
     @After
     fun close() = f.db.close()

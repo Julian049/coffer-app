@@ -196,6 +196,8 @@ fun HomeScreen(
         onRegisteredSeen = viewModel::markRegisteredSeen,
         onNetMode = viewModel::setNetMode,
         onIncludeInNet = viewModel::setIncludeInNet,
+        onPeriodOnly = viewModel::setPeriodOnly,
+        onPurchaseIncluded = viewModel::setPurchaseIncluded,
         onCustomize = onCustomize,
         onOpenPending = { p ->
             when (p) {
@@ -229,6 +231,8 @@ fun HomeContent(
     onNetMode: (NetBalanceMode) -> Unit = {},
     onIncludeInNet: (UUID, Boolean) -> Unit = { _, _ -> },
     onCustomize: () -> Unit = {},
+    onPeriodOnly: (UUID, Boolean) -> Unit = { _, _ -> },
+    onPurchaseIncluded: (UUID, Boolean) -> Unit = { _, _ -> },
 ) {
     val colors = CofferTheme.colors
     var balanceSheet by rememberSaveable { mutableStateOf(false) }
@@ -376,6 +380,8 @@ fun HomeContent(
                     onNetMode,
                     onIncludeInNet,
                     onDismiss = { balanceSheet = false },
+                    onPeriodOnly = onPeriodOnly,
+                    onPurchaseIncluded = onPurchaseIncluded,
                 )
             }
             AppButton(
