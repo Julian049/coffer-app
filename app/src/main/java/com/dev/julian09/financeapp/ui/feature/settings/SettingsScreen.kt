@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CloudSync
@@ -65,6 +66,7 @@ import com.dev.julian09.financeapp.ui.components.ButtonKind
 import com.dev.julian09.financeapp.ui.components.ConfirmDialog
 import com.dev.julian09.financeapp.ui.components.SegmentedSelector
 import com.dev.julian09.financeapp.ui.feature.auth.rememberGoogleIdToken
+import com.dev.julian09.financeapp.ui.feature.mail.DraftRulesViewModel
 import com.dev.julian09.financeapp.ui.feature.mail.MailProvidersViewModel
 import com.dev.julian09.financeapp.ui.feature.recurring.days
 import com.dev.julian09.financeapp.ui.feature.recurring.rememberNotificationPermissionRequest
@@ -84,12 +86,15 @@ fun SettingsScreen(
     onOpenCustomizeHome: () -> Unit = {},
     onOpenConnectEmail: () -> Unit = {},
     onOpenMailProviders: () -> Unit = {},
+    onOpenDraftRules: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
     reminderViewModel: ReminderSettingsViewModel = hiltViewModel(),
     mailViewModel: MailProvidersViewModel = hiltViewModel(),
+    rulesViewModel: DraftRulesViewModel = hiltViewModel(),
 ) {
     val mail by mailViewModel.overview.collectAsStateWithLifecycle()
+    val rules by rulesViewModel.state.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val syncStatus by syncViewModel.status.collectAsStateWithLifecycle()
     val reminders by reminderViewModel.settings.collectAsStateWithLifecycle()
@@ -132,6 +137,8 @@ fun SettingsScreen(
         onOpenConnectEmail = onOpenConnectEmail,
         mailSummary = mail?.summary,
         onOpenMailProviders = onOpenMailProviders,
+        rulesSummary = rules.summary.takeIf { rules.loaded },
+        onOpenDraftRules = onOpenDraftRules,
     )
 }
 
@@ -166,6 +173,9 @@ fun SettingsContent(
     /** Ajustes → Correos (changes-ui-2.3 §3.1); null hides the group until the providers load. */
     mailSummary: String? = null,
     onOpenMailProviders: () -> Unit = {},
+    /** Ajustes → Correos → Registro automático (changes-ui-2.5 §1). */
+    rulesSummary: String? = null,
+    onOpenDraftRules: () -> Unit = {},
 ) {
     val colors = CofferTheme.colors
     var showAbout by rememberSaveable { mutableStateOf(false) }
@@ -239,7 +249,7 @@ fun SettingsContent(
             reminders?.let { RemindersCard(it, onNotifications, onLeadDays) }
             reminders?.let { AmountsCard(it, onDecimals) }
             // COR-APP-001: Proveedores de correo and Conectar correo together under Correos
-            MailCard(mailSummary, onOpenMailProviders, onOpenConnectEmail)
+            MailCard(mailSummary, onOpenMailProviders, onOpenConnectEmail, rulesSummary, onOpenDraftRules)
             // NAV-APP-015 (Figma `20:1541`): the section has its title and Figma's order
             Text("Datos", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
             AppCard {
@@ -318,6 +328,8 @@ private fun MailCard(
     summary: String?,
     onOpenProviders: () -> Unit,
     onOpenConnect: () -> Unit,
+    rulesSummary: String?,
+    onOpenRules: () -> Unit,
 ) {
     val colors = CofferTheme.colors
     Text("Correos", style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
@@ -325,6 +337,8 @@ private fun MailCard(
         MailRow("Proveedores de correo", summary, onOpenProviders)
         HorizontalDivider(thickness = 1.dp, color = colors.border)
         MailRow("Conectar correo", "Reenvía tus comprobantes a Coffer", onOpenConnect)
+        HorizontalDivider(thickness = 1.dp, color = colors.border)
+        MailRow("Registro automático", rulesSummary, onOpenRules, Icons.Outlined.Bolt)
     }
 }
 
@@ -333,6 +347,7 @@ private fun MailRow(
     title: String,
     detail: String?,
     onClick: () -> Unit,
+    icon: ImageVector = Icons.Outlined.Email,
 ) {
     val colors = CofferTheme.colors
     Row(
@@ -340,7 +355,7 @@ private fun MailRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconBox(Icons.Outlined.Email)
+        IconBox(icon)
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, color = colors.textPrimary)
             detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary) }

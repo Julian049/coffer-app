@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 2.5 Registro automático: an expense draft that matches a rule (merchant, optional exact amount and account) takes its title and category; a sure rule registers it by itself when the switch is on, a probable one only fills it (`matchRule`, `SuggestDraft`, `AutoApplyDrafts`) (#248).
 - 2.5: `LearnRules` learns rules from the movements saved out of email drafts (the last 3 equal → sure, the last 2 → probable; any amount first, then an exact amount), and turns a learned rule off when Deshacer or an edit of the title or category shows it was wrong (#248).
 - 2.5: `SaveDraftRule`, `DeleteDraftRule`, `ReorderDraftRules`, `ObserveDraftRules` and `MerchantSuggestions` for the rule screens; new rules go above the less specific ones (#248).
+- 2.5 screens: Ajustes → Correos → Registro automático (sure rules dragged into order, probable ones apart, the «Creada por Coffer» badge), Nueva regla with merchant suggestions and the spellings seen in the emails, the «Ya existe» error with «Ver regla», and Editar regla with Eliminar; saving a probable rule makes it the user's and sure (#249).
 - 2.5 Saldo neto «Personalizado» (formerly «Elegir deudas»): each marked card counts its whole debt or only this period's payment, and its installment purchases unfold under it, each with its own mark; a purchase left out stops subtracting what is left to pay of it (or its installment of the period). These choices stay on the phone (`NetBalancePrefs`) (#253).
 
 ### Changed
