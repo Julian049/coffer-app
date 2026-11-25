@@ -40,6 +40,8 @@ import com.dev.julian09.financeapp.ui.feature.home.HomeScreen
 import com.dev.julian09.financeapp.ui.feature.importexport.ImportExportScreen
 import com.dev.julian09.financeapp.ui.feature.loans.LoanFormScreen
 import com.dev.julian09.financeapp.ui.feature.mail.ConnectEmailScreen
+import com.dev.julian09.financeapp.ui.feature.mail.DraftRuleFormScreen
+import com.dev.julian09.financeapp.ui.feature.mail.DraftRulesScreen
 import com.dev.julian09.financeapp.ui.feature.mail.MailProvidersScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringFormScreen
 import com.dev.julian09.financeapp.ui.feature.recurring.RecurringScreen
@@ -182,6 +184,25 @@ fun AppNavHost(
                     onOpenCustomizeHome = { navController.navigate(CustomizeHomeRoute) },
                     onOpenConnectEmail = { navController.navigate(ConnectEmailRoute) },
                     onOpenMailProviders = { navController.navigate(MailProvidersRoute) },
+                    onOpenDraftRules = { navController.navigate(DraftRulesRoute) },
+                )
+            }
+            composable<DraftRulesRoute> {
+                DraftRulesScreen(
+                    onBack = navController::popBackStack,
+                    onNewRule = { navController.navigate(DraftRuleFormRoute()) },
+                    onOpenRule = { navController.navigate(DraftRuleFormRoute(it.toString())) },
+                )
+            }
+            composable<DraftRuleFormRoute> {
+                DraftRuleFormScreen(
+                    onBack = navController::popBackStack,
+                    // «Ver regla» replaces the form with the rule it repeats
+                    onOpenRule = {
+                        navController.navigate(DraftRuleFormRoute(it.toString())) {
+                            popUpTo<DraftRuleFormRoute> { inclusive = true }
+                        }
+                    },
                 )
             }
             composable<MailProvidersRoute> { MailProvidersScreen(onBack = navController::popBackStack) }
