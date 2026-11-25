@@ -13,6 +13,7 @@ import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
 import com.dev.julian09.financeapp.domain.usecase.UndoDraft
 import com.dev.julian09.financeapp.domain.usecase.UpdateTransaction
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
+import com.dev.julian09.financeapp.ui.learnRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -69,6 +70,7 @@ class LoansOutOfSelectorsTest {
                 f.mailRules,
                 com.dev.julian09.financeapp.ui
                     .FakeDraftPrefs(),
+                f.draftRules,
             ),
             DiscardDraft(f.drafts, sync),
             UndoDraft(
@@ -79,6 +81,7 @@ class LoansOutOfSelectorsTest {
                 f.clock,
                 sync,
                 f.recurring,
+                learnRules(f),
             ),
             SplitTransaction(
                 f.transactions,
@@ -90,6 +93,7 @@ class LoansOutOfSelectorsTest {
             ),
             com.dev.julian09.financeapp.ui
                 .draftRecurring(f),
+            learnRules(f),
             f.observeCards,
             f.clock,
         )

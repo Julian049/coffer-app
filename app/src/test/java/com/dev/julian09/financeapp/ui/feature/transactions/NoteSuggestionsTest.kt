@@ -20,6 +20,7 @@ import com.dev.julian09.financeapp.domain.usecase.UpdateTransaction
 import com.dev.julian09.financeapp.ui.FakeDraftPrefs
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
 import com.dev.julian09.financeapp.ui.draftRecurring
+import com.dev.julian09.financeapp.ui.learnRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -110,6 +111,7 @@ class NoteSuggestionsTest {
                         f.mailRules,
                         com.dev.julian09.financeapp.ui
                             .FakeDraftPrefs(),
+                        f.draftRules,
                     ),
                     DiscardDraft(f.drafts, sync),
                     UndoDraft(
@@ -120,6 +122,7 @@ class NoteSuggestionsTest {
                         f.clock,
                         sync,
                         f.recurring,
+                        learnRules(f),
                     ),
                     SplitTransaction(
                         f.transactions,
@@ -131,6 +134,7 @@ class NoteSuggestionsTest {
                     ),
                     com.dev.julian09.financeapp.ui
                         .draftRecurring(f),
+                    learnRules(f),
                     f.observeCards,
                     f.clock,
                 )
@@ -208,11 +212,12 @@ class NoteSuggestionsTest {
             DeferCardPurchase(f.cards, register, validator, sync, f.clock),
             DeleteTransaction(f.transactions, sync),
             f.drafts,
-            SuggestDraft(f.accounts, f.transactions, f.mailRules, FakeDraftPrefs()),
+            SuggestDraft(f.accounts, f.transactions, f.mailRules, FakeDraftPrefs(), f.draftRules),
             DiscardDraft(f.drafts, sync),
-            UndoDraft(f.transactions, f.drafts, FakeDraftPrefs(), f.clock, sync, f.recurring),
+            UndoDraft(f.transactions, f.drafts, FakeDraftPrefs(), f.clock, sync, f.recurring, learnRules(f)),
             SplitTransaction(f.transactions, validator, FakeDraftPrefs(), f.clock, sync),
             draftRecurring(f),
+            learnRules(f),
             f.observeCards,
             f.clock,
         )
@@ -269,6 +274,7 @@ class NoteSuggestionsTest {
                         f.mailRules,
                         com.dev.julian09.financeapp.ui
                             .FakeDraftPrefs(),
+                        f.draftRules,
                     ),
                     DiscardDraft(f.drafts, sync),
                     UndoDraft(
@@ -279,6 +285,7 @@ class NoteSuggestionsTest {
                         f.clock,
                         sync,
                         f.recurring,
+                        learnRules(f),
                     ),
                     SplitTransaction(
                         f.transactions,
@@ -290,6 +297,7 @@ class NoteSuggestionsTest {
                     ),
                     com.dev.julian09.financeapp.ui
                         .draftRecurring(f),
+                    learnRules(f),
                     f.observeCards,
                     f.clock,
                 )

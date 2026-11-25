@@ -67,3 +67,7 @@ fun draftRecurring(
     f.clock,
     sync,
 )
+
+fun learnRules(f: com.dev.julian09.financeapp.data.local.LedgerFixture) =
+    com.dev.julian09.financeapp.domain.usecase
+        .LearnRules(f.transactions, f.draftRules, f.clock)

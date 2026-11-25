@@ -13,6 +13,7 @@ import com.dev.julian09.financeapp.data.repository.CardRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.CategoryRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.ChangeLogRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.DraftRepositoryImpl
+import com.dev.julian09.financeapp.data.repository.DraftRuleRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.LoanRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.MailRuleRepositoryImpl
 import com.dev.julian09.financeapp.data.repository.RecurringRepositoryImpl
@@ -32,6 +33,7 @@ import com.dev.julian09.financeapp.domain.port.ChangeLogRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.CsvFiles
 import com.dev.julian09.financeapp.domain.port.DraftRepository
+import com.dev.julian09.financeapp.domain.port.DraftRuleRepository
 import com.dev.julian09.financeapp.domain.port.ImportScheduler
 import com.dev.julian09.financeapp.domain.port.LegalConsentStore
 import com.dev.julian09.financeapp.domain.port.LoanRepository
@@ -95,6 +97,9 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindMailRuleRepository(impl: MailRuleRepositoryImpl): MailRuleRepository
+
+    @Binds
+    abstract fun bindDraftRuleRepository(impl: DraftRuleRepositoryImpl): DraftRuleRepository
 
     @Binds
     abstract fun bindChangeLogRepository(impl: ChangeLogRepositoryImpl): ChangeLogRepository

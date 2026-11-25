@@ -11,6 +11,7 @@ import com.dev.julian09.financeapp.domain.usecase.SearchTransactions
 import com.dev.julian09.financeapp.domain.usecase.SuggestDraft
 import com.dev.julian09.financeapp.domain.usecase.TransactionValidator
 import com.dev.julian09.financeapp.ui.FakeSyncScheduler
+import com.dev.julian09.financeapp.ui.learnRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterNotNull
@@ -77,11 +78,13 @@ class HistoryViewModelTest {
                     f.mailRules,
                     com.dev.julian09.financeapp.ui
                         .FakeDraftPrefs(),
+                    f.draftRules,
                 ),
                 TransactionValidator(f.accounts, f.categories),
                 FakeSyncScheduler(),
                 com.dev.julian09.financeapp.ui
                     .draftRecurring(f),
+                learnRules(f),
             ),
             SuggestDraft(
                 f.accounts,
@@ -89,6 +92,7 @@ class HistoryViewModelTest {
                 f.mailRules,
                 com.dev.julian09.financeapp.ui
                     .FakeDraftPrefs(),
+                f.draftRules,
             ),
         )
 

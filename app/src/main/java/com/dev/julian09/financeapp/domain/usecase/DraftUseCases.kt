@@ -6,8 +6,10 @@ import com.dev.julian09.financeapp.domain.finance.RECURRING_WINDOW_DAYS
 import com.dev.julian09.financeapp.domain.finance.RecurrenceCalculator
 import com.dev.julian09.financeapp.domain.finance.learn
 import com.dev.julian09.financeapp.domain.finance.matchRecurring
+import com.dev.julian09.financeapp.domain.finance.matchRule
 import com.dev.julian09.financeapp.domain.finance.normalizeMerchant
 import com.dev.julian09.financeapp.domain.model.Recurring
+import com.dev.julian09.financeapp.domain.model.RuleLevel
 import com.dev.julian09.financeapp.domain.model.Transaction
 import com.dev.julian09.financeapp.domain.model.TransactionDraft
 import com.dev.julian09.financeapp.domain.model.TransactionType
@@ -16,6 +18,7 @@ import com.dev.julian09.financeapp.domain.port.AccountRepository
 import com.dev.julian09.financeapp.domain.port.Clock
 import com.dev.julian09.financeapp.domain.port.DraftPrefs
 import com.dev.julian09.financeapp.domain.port.DraftRepository
+import com.dev.julian09.financeapp.domain.port.DraftRuleRepository
 import com.dev.julian09.financeapp.domain.port.MailRuleRepository
 import com.dev.julian09.financeapp.domain.port.RecurringRepository
 import com.dev.julian09.financeapp.domain.port.SyncScheduler
@@ -72,6 +75,7 @@ fun TransactionDraft.toTransaction(s: DraftSuggestion): Transaction? {
  * The account of the user's mail rule or of the matching last 4 digits ([accountFor], REQ-COR-06, REQ-COR-11) and what the
  * user decided the last times for the same merchant ([learn], 2.4); a transfer (REQ-COR-12) gets both accounts and no category.
  * Drafts from before 2.4 left no merchant on their movement, so the category last used with the same note still answers.
+ * 2.5: an expense that matches a rule takes its title and category first; without one, [learn] only suggests (PROBABLE at most).
  */
 class SuggestDraft
     @Inject
@@ -80,6 +84,7 @@ class SuggestDraft
         private val transactions: TransactionRepository,
         private val rules: MailRuleRepository,
         private val prefs: DraftPrefs,
+        private val draftRules: DraftRuleRepository,
     ) {
         suspend operator fun invoke(draft: TransactionDraft): DraftSuggestion {
             val active = accounts.observeActive().first()
@@ -87,6 +92,12 @@ class SuggestDraft
             val account = accountFor(draft.source, draft.lastDigits, active, ruled)
             val destination = draft.destinationSource?.let { accountFor(it, draft.destinationDigits, active, ruled) }
             if (draft.type == TransactionType.TRANSFER) return DraftSuggestion(account, null, destination)
+            if (draft.type == TransactionType.EXPENSE) {
+                matchRule(draft, account, draftRules.observeAll().first())?.let { r ->
+                    val level = if (r.level == RuleLevel.SURE) DraftLevel.SURE else DraftLevel.PROBABLE
+                    return DraftSuggestion(account, r.categoryId, level = level, note = r.note, titleLearned = true)
+                }
+            }
             val reset = account?.let { prefs.observeResets().first()[learningKey(it, draft.merchant)] }
             val learned =
                 account
@@ -108,7 +119,8 @@ class SuggestDraft
                 accountId = account,
                 categoryId = category,
                 destinationId = destination,
-                level = learned.level,
+                // Only rules register by themselves now
+                level = minOf(learned.level, DraftLevel.PROBABLE),
                 note = learned.note,
                 titleLearned = learned.level != DraftLevel.UNKNOWN,
                 basedOn = learned.basedOn,
@@ -176,6 +188,7 @@ class ApplyDraft
         private val validator: TransactionValidator,
         private val scheduler: SyncScheduler,
         private val draftRecurring: DraftRecurring,
+        private val learnRules: LearnRules,
     ) {
         /** False when something is missing: the caller opens Revisar transacción instead. */
         suspend operator fun invoke(draftId: UUID): Boolean {
@@ -188,15 +201,16 @@ class ApplyDraft
             val transaction = draft.toTransaction(suggestion)?.normalized() ?: return false
             if (validator.check(transaction).isNotEmpty()) return false
             drafts.apply(draftId, transaction)
+            learnRules(transaction)
             scheduler.requestSync()
             return true
         }
     }
 
 /**
- * 2.4-04 «Guardar solos los repetidos»: saves on its own the drafts that are [DraftLevel.SURE] (same merchant and amount, the
- * last 3 times ended the same). Never a transfer between own accounts, a draft whose account is unknown or an amount the history
- * never had ([learn] needs it equal); cards and installments may. Each is told to the user once, in the registered notice.
+ * 2.4-04 «Guardar solos los repetidos»: saves on its own the drafts that are [DraftLevel.SURE], which since 2.5 only a sure
+ * rule makes (an expense). Never a transfer, an income or a draft whose account is unknown; cards and installments may. Each is
+ * told to the user once, in the registered notice.
  */
 class AutoApplyDrafts
     @Inject
@@ -207,6 +221,7 @@ class AutoApplyDrafts
         private val prefs: DraftPrefs,
         private val scheduler: SyncScheduler,
         private val draftRecurring: DraftRecurring,
+        private val learnRules: LearnRules,
     ) {
         /** How many movements were saved. */
         suspend operator fun invoke(): Int {
@@ -230,6 +245,7 @@ class AutoApplyDrafts
                 val transaction = draft.toTransaction(suggestion)?.normalized() ?: continue
                 if (validator.check(transaction).isNotEmpty()) continue
                 drafts.apply(draft.id, transaction)
+                learnRules(transaction)
                 prefs.addRegistered(transaction.id)
                 saved++
             }
@@ -248,6 +264,7 @@ class UndoDraft
         private val clock: Clock,
         private val scheduler: SyncScheduler,
         private val recurring: RecurringRepository,
+        private val learnRules: LearnRules,
     ) {
         /** False when [transaction] did not come from a draft. */
         suspend operator fun invoke(transaction: Transaction): Boolean {
@@ -266,6 +283,8 @@ class UndoDraft
             }
             drafts.restore(draftId)
             prefs.resetLearning(learningKey(transaction.accountId, transaction.sourceMerchant), clock.now())
+            // A learned rule that registered it wrong is turned off
+            learnRules.forget(transaction)
             scheduler.requestSync()
             return true
         }
