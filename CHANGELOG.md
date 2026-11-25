@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-25
+
 ### Added
 - 2.5: the `draft_rules` table (Room 14) and its `draftRule` sync, the storage for the rules that title and file email drafts (#248).
 - 2.5 Registro automático: an expense draft that matches a rule (merchant, optional exact amount and account) takes its title and category; a sure rule registers it by itself when the switch is on, a probable one only fills it (`matchRule`, `SuggestDraft`, `AutoApplyDrafts`) (#248).
