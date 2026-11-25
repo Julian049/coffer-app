@@ -8,6 +8,7 @@ import com.dev.julian09.financeapp.domain.model.CategoryTotal
 import com.dev.julian09.financeapp.domain.model.ChangeEntry
 import com.dev.julian09.financeapp.domain.model.CreditCard
 import com.dev.julian09.financeapp.domain.model.DeferredPurchase
+import com.dev.julian09.financeapp.domain.model.DraftRule
 import com.dev.julian09.financeapp.domain.model.Installment
 import com.dev.julian09.financeapp.domain.model.Loan
 import com.dev.julian09.financeapp.domain.model.LoanInstallment
@@ -183,6 +184,12 @@ interface TransactionRepository {
         accountId: UUID,
         type: TransactionType,
         limit: Int = 30,
+    ): List<Transaction>
+
+    /** 2.5: the movements of [type] that came by email (sourceMerchant set), any account, newest first, for the draft rules. */
+    suspend fun fromMail(
+        type: TransactionType,
+        limit: Int = 500,
     ): List<Transaction>
 
     /** Every live movement that came from the draft [draftId]; a split has several. */
@@ -387,4 +394,17 @@ interface MailRuleRepository {
     )
 
     suspend fun remove(source: String)
+}
+
+/** 2.5: the merchant rules that title and file the drafts; synced as `draftRule`. */
+interface DraftRuleRepository {
+    /** Not deleted, by position then id; includes the disabled learned rules (the caller filters). */
+    fun observeAll(): Flow<List<DraftRule>>
+
+    suspend fun get(id: UUID): DraftRule?
+
+    /** Upsert; every row is marked pending and stamped with the clock. */
+    suspend fun saveAll(rules: List<DraftRule>)
+
+    suspend fun delete(id: UUID)
 }

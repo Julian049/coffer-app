@@ -299,6 +299,28 @@ data class TransactionDraftEntity(
     val syncError: String? = null,
 )
 
+/** 2.5: a merchant rule that gives a draft its title and category (V20, Room 14); money as ×10⁴, enums as names. */
+@Entity(tableName = "draft_rules", indices = [Index("syncState")])
+data class DraftRuleEntity(
+    @PrimaryKey val id: UUID,
+    val merchant: String,
+    val merchantKey: String,
+    val amount: Long? = null,
+    val accountId: UUID? = null,
+    val note: String,
+    val categoryId: UUID,
+    val level: String,
+    val origin: String,
+    val enabled: Boolean = true,
+    val learnedSince: Instant? = null,
+    val position: Int = 0,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val deletedAt: Instant? = null,
+    val syncState: SyncState = SyncState.PENDING,
+    val syncError: String? = null,
+)
+
 /** REQ-COR-11: a provider (and maybe its last 4 digits) sent to one account (V18, Room 12). */
 @Entity(tableName = "mail_rules", indices = [Index("syncState")])
 data class MailRuleEntity(

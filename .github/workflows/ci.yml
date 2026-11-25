@@ -25,6 +25,11 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
+      # Robolectric downloads its android-all jars from Maven Central at test time; a cut download fails whole test classes
+      - uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
       # Konsist architecture rules run inside testDebugUnitTest
       # Screenshots are compared against src/test/screenshots (Roborazzi)
       # Staging is signed with the release key so Google sign-in recognizes it (stable SHA-1); without the secrets

@@ -40,6 +40,7 @@ class DraftsTest {
             f.mailRules,
             com.dev.julian09.financeapp.ui
                 .FakeDraftPrefs(),
+            f.draftRules,
         )
     private val apply =
         ApplyDraft(
@@ -49,6 +50,8 @@ class DraftsTest {
             sync,
             com.dev.julian09.financeapp.ui
                 .draftRecurring(f),
+            com.dev.julian09.financeapp.ui
+                .learnRules(f),
         )
 
     @After

@@ -8,7 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- 2.5: the `draft_rules` table (Room 14) and its `draftRule` sync, the storage for the rules that title and file email drafts (#248).
+- 2.5 Registro automático: an expense draft that matches a rule (merchant, optional exact amount and account) takes its title and category; a sure rule registers it by itself when the switch is on, a probable one only fills it (`matchRule`, `SuggestDraft`, `AutoApplyDrafts`) (#248).
+- 2.5: `LearnRules` learns rules from the movements saved out of email drafts (the last 3 equal → sure, the last 2 → probable; any amount first, then an exact amount), and turns a learned rule off when Deshacer or an edit of the title or category shows it was wrong (#248).
+- 2.5: `SaveDraftRule`, `DeleteDraftRule`, `ReorderDraftRules`, `ObserveDraftRules` and `MerchantSuggestions` for the rule screens; new rules go above the less specific ones (#248).
 - 2.5 Saldo neto «Personalizado» (formerly «Elegir deudas»): each marked card counts its whole debt or only this period's payment, and its installment purchases unfold under it, each with its own mark; a purchase left out stops subtracting what is left to pay of it (or its installment of the period). These choices stay on the phone (`NetBalancePrefs`) (#253).
+
+### Changed
+- 2.5: what was learned without a rule (`learn`) only suggests now: it never registers a draft by itself, so incomes no longer register alone (#248).
 
 ### Fixed
 - Editing a movement: the date and time picker opens on the movement's own date and time instead of today; the remembered date was captured before the saved movement finished loading (#247).

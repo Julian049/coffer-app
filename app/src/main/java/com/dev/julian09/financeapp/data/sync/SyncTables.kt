@@ -7,6 +7,7 @@ import com.dev.julian09.financeapp.data.local.entity.CategoryEntity
 import com.dev.julian09.financeapp.data.local.entity.ChangeLogEntity
 import com.dev.julian09.financeapp.data.local.entity.CreditCardDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.DeferredPurchaseEntity
+import com.dev.julian09.financeapp.data.local.entity.DraftRuleEntity
 import com.dev.julian09.financeapp.data.local.entity.InstallmentEntity
 import com.dev.julian09.financeapp.data.local.entity.LoanDetailsEntity
 import com.dev.julian09.financeapp.data.local.entity.MailRuleEntity
@@ -678,6 +679,61 @@ class SyncTables
                 },
             )
 
+        /** 2.5: after the accounts and categories they point to. */
+        val draftRules =
+            SyncTable(
+                entity = "draftRule",
+                pending = { db.draftRules().pending(it) },
+                syncInfo = { db.draftRules().syncInfo(it) },
+                upsert = { db.draftRules().upsert(listOf(it)) },
+                markSynced = { id, at -> db.draftRules().markSynced(id, at) },
+                markFailed = { id, at, e -> db.draftRules().markFailed(id, at, e) },
+                idOf = DraftRuleEntity::id,
+                updatedAtOf = DraftRuleEntity::updatedAt,
+                encode = { r ->
+                    envelope(
+                        "draftRule",
+                        r.id,
+                        r.createdAt,
+                        r.updatedAt,
+                        r.deletedAt,
+                        buildJsonObject {
+                            put("merchant", r.merchant)
+                            put("merchantKey", r.merchantKey)
+                            put("amount", r.amount?.let(::amount))
+                            put("accountId", r.accountId?.toString())
+                            put("note", r.note)
+                            put("categoryId", r.categoryId.toString())
+                            put("level", r.level)
+                            put("origin", r.origin)
+                            put("enabled", r.enabled)
+                            put("learnedSince", r.learnedSince?.toString())
+                            put("position", r.position)
+                        },
+                    )
+                },
+                decode = { c ->
+                    DraftRuleEntity(
+                        id = UUID.fromString(c.id),
+                        merchant = c.data.text("merchant")!!,
+                        merchantKey = c.data.text("merchantKey")!!,
+                        amount = c.data.text("amount")?.let(::scaled),
+                        accountId = c.data.text("accountId")?.let(UUID::fromString),
+                        note = c.data.text("note")!!,
+                        categoryId = UUID.fromString(c.data.text("categoryId")!!),
+                        level = c.data.text("level")!!,
+                        origin = c.data.text("origin")!!,
+                        enabled = c.data.bool("enabled"),
+                        learnedSince = c.data.text("learnedSince")?.let(Instant::parse),
+                        position = c.data.int("position"),
+                        createdAt = Instant.parse(c.createdAt),
+                        updatedAt = Instant.parse(c.updatedAt),
+                        deletedAt = c.deletedAt?.let(Instant::parse),
+                        syncState = SyncState.SYNCED,
+                    )
+                },
+            )
+
         /**
          * Dependency order: settings, accounts and their card and loan terms, categories, tags, recurring expenses, transactions,
          * deferred purchases and their installments, then the history and the drafts, which follow the movement they became.
@@ -691,6 +747,7 @@ class SyncTables
                 categories,
                 tags,
                 mailRules,
+                draftRules,
                 recurring,
                 transactions,
                 deferred,
